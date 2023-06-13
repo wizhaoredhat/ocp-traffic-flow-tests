@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tft-clusterip-service
+  namespace: {{ name_space }}
+  labels:
+    tft-tests: "{{ index }}"
+spec:
+  type: ClusterIP
+  ports:
+    - name: tft-clusterip-service-tcp-{{ port }}
+      protocol: TCP
+      port: {{ port }}
+    - name: tft-clusterip-service-udp-{{ port }}
+      protocol: UDP
+      port: {{ port }}
+  selector:
+    tft-port: "{{ port }}"
