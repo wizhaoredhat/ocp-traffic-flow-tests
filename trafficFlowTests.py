@@ -1,5 +1,6 @@
 import common
-from common import PodType
+from common import PodType, ConnectionMode, TestCaseType
+from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
 from iperf import IperfServer
@@ -9,124 +10,35 @@ from measurePower import MeasurePower
 from enum import Enum
 import sys
 
-
-class TestCaseType(Enum):
-    POD_TO_POD_SAME_NODE                 = 1
-    POD_TO_POD_DIFF_NODE                 = 2
-    POD_TO_HOST_SAME_NODE                = 3
-    POD_TO_HOST_DIFF_NODE                = 4
-    POD_TO_CLUSTER_IP_TO_POD_SAME_NODE   = 5
-    POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE   = 6
-    POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE  = 7
-    POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE  = 8
-    POD_TO_NODE_PORT_TO_POD_SAME_NODE    = 9
-    POD_TO_NODE_PORT_TO_POD_DIFF_NODE    = 10
-    POD_TO_NODE_PORT_TO_HOST_SAME_NODE   = 11
-    POD_TO_NODE_PORT_TO_HOST_DIFF_NODE   = 12
-    HOST_TO_HOST_SAME_NODE               = 13
-    HOST_TO_HOST_DIFF_NODE               = 14
-    HOST_TO_POD_SAME_NODE                = 15
-    HOST_TO_POD_DIFF_NODE                = 16
-    HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE  = 17
-    HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE  = 18
-    HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE = 19
-    HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE = 20
-    HOST_TO_NODE_PORT_TO_POD_SAME_NODE   = 21
-    HOST_TO_NODE_PORT_TO_POD_DIFF_NODE   = 22
-    HOST_TO_NODE_PORT_TO_HOST_SAME_NODE  = 23
-    HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE  = 24
-    POD_TO_EXTERNAL                      = 25
-    HOST_TO_EXTERNAL                     = 26
-
-
 class TrafficFlowTests():
     def __init__(self, tft: TestConfig):
         self._tft = tft
         self.monitors = []
 
-    def create_iperf_server_client(self, sriov: bool, test_case: TestCaseType, node_server_name: str, node_client_name: str) -> (IperfServer, IperfClient):
-        server_pod_type = PodType.NORMAL
-        client_pod_type = PodType.NORMAL
-        if sriov:
-            server_pod_type = PodType.SRIOV
-            client_pod_type = PodType.SRIOV
+    def create_iperf_server_client(self, test_settings: TestSettings) -> (IperfServer, IperfClient):
+        logger.info(f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}")
 
-        if test_case == TestCaseType.POD_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_CLUSTER_IP_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_NODE_PORT_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_NODE_PORT_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_NODE_PORT_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.POD_TO_NODE_PORT_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_NODE_PORT_TO_POD_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_NODE_PORT_TO_POD_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE:
-            node_client_name = node_server_name
-        elif test_case == TestCaseType.HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE:
-            pass
-        elif test_case == TestCaseType.POD_TO_EXTERNAL:
-            pass
-        elif test_case == TestCaseType.HOST_TO_EXTERNAL:
-            pass
-
-        s = IperfServer(self._tft, 0, node_server_name, False, server_pod_type, True)
-        c = IperfClient(self._tft, s, 0, node_client_name, client_pod_type, True)
+        s = IperfServer(tft=self._tft, ts=self.test_settings)
+        c = IperfClient(tft=self._tft, ts=self.test_settings, server=s)
         return (s, c)
 
     def server_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:
-        pod_type = PodType.NORMAL
+        if test_id in (3, 4, 7, 8, 19, 20, 23, 24):
+            return PodType.HOSTBACKED
+
         if cfg_pod_type == "sriov":
-            pod_type = PodType.SRIOV
+            return PodType.SRIOV
 
-        if test_id in (4, 6, 10, 12):
-            pod_type = PodType.HOSTBACKED
-
-        return pod_type
+        return PodType.NORMAL
 
     def client_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:
-        pod_type = PodType.NORMAL
+        if test_id in range(13, 25) or test_id == 26:
+            return PodType.HOSTBACKED
+
         if cfg_pod_type == "sriov":
-            pod_type = PodType.SRIOV
+            return PodType.SRIOV
 
-        if test_id in (9, 10, 11, 12):
-            pod_type = PodType.HOSTBACKED
-
-        return pod_type
+        return PodType.NORMAL
 
     def configure_namespace(self, namespace: str):
         logger.info(f"Configuring namespace {namespace}")
@@ -159,9 +71,9 @@ class TrafficFlowTests():
         self.monitors.append(c)
 
     def run(self):
-        servers = []
-        clients = []
-        monitors = []
+        #servers = []
+        #clients = []
+        #monitors = []
         """
         for tests in self._tft.GetConfig():
             self.cleanup_previous_pods(tests['namespace'])
@@ -197,29 +109,43 @@ class TrafficFlowTests():
                                 monitors.append(c)
         """
 
-        #self.cleanup_previous_pods("default")
-        self.configure_namespace("default")
-        duration = 10
-        logger.info(f"Running for {duration} seconds")
+        for test_id in range(1, 25):
+            servers = []
+            clients = []
+            monitors = []
 
-        node_server_name = "worker-advnetlab23"
-        node_client_name = "worker-advnetlab24"
-        index = 0
+            self.cleanup_previous_pods("default")
+            self.configure_namespace("default")
+            duration = 10
+            logger.info(f"Running for {duration} seconds")
 
-        s, c = self.create_iperf_server_client(True, TestCaseType.POD_TO_POD_DIFF_NODE, node_server_name, node_client_name)
-        #s = IperfServer(self._tft, index, node_server_name, "false", self.server_test_to_pod_type(1, "sriov"), True)
-        #c = IperfClient(self._tft, s, index, node_client_name, self.client_test_to_pod_type(1, "sriov"), True)
-        servers.append(s)
-        clients.append(c)
+            ### Set in Configuration Reading Loop ###
+            node_server_name = "worker-236"
+            node_client_name = "worker-235"
+            index = 0
+            pod_type = "sriov"
+            ###################
 
-        self.measure_cpu(node_server_name, node_client_name, True)
-        self.measure_power(node_server_name, node_client_name, True)
+            self.test_settings = TestSettings(
+                test_case_id=test_id,
+                node_server_name=node_server_name,
+                node_client_name=node_client_name,
+                server_pod_type=self.server_test_to_pod_type(test_id, pod_type),
+                client_pod_type=self.client_test_to_pod_type(test_id, pod_type),
+            )
+            s, c = self.create_iperf_server_client(self.test_settings)
 
-        for tasks in servers + clients + self.monitors:
-            tasks.setup()
+            servers.append(s)
+            clients.append(c)
 
-        for tasks in servers + clients + self.monitors:
-            tasks.run(duration)
+            #self.measure_cpu(node_server_name, node_client_name, True)
+            #self.measure_power(node_server_name, node_client_name, True)
 
-        for tasks in servers + clients + self.monitors:
-            tasks.stop()
+            for tasks in servers + clients + self.monitors:
+                tasks.setup()
+
+            for tasks in servers + clients + self.monitors:
+                tasks.run(duration)
+
+            for tasks in servers + clients + self.monitors:
+                tasks.stop()

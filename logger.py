@@ -23,4 +23,4 @@ def configure_logger(lvl):
 
 prev_handler = None
 logger = None
-configure_logger(logging.INFO)
+configure_logger(logging.DEBUG)

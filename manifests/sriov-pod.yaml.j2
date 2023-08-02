@@ -16,5 +16,5 @@ spec:
     image: {{ test_image }}
     command:
       - "{{ command }}"
-    args: ["{{ args }}"]
+    args: {{ args }}
     imagePullPolicy: IfNotPresent
