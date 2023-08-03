@@ -22,24 +22,6 @@ class TrafficFlowTests():
         c = IperfClient(tft=self._tft, ts=self.test_settings, server=s)
         return (s, c)
 
-    def server_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:
-        if test_id in (3, 4, 7, 8, 19, 20, 23, 24):
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == "sriov":
-            return PodType.SRIOV
-
-        return PodType.NORMAL
-
-    def client_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:
-        if test_id in range(13, 25) or test_id == 26:
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == "sriov":
-            return PodType.SRIOV
-
-        return PodType.NORMAL
-
     def configure_namespace(self, namespace: str):
         logger.info(f"Configuring namespace {namespace}")
         r = self._tft.client_tenant.oc(f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
@@ -130,8 +112,8 @@ class TrafficFlowTests():
                 test_case_id=test_id,
                 node_server_name=node_server_name,
                 node_client_name=node_client_name,
-                server_pod_type=self.server_test_to_pod_type(test_id, pod_type),
-                client_pod_type=self.client_test_to_pod_type(test_id, pod_type),
+                server_pod_type=pod_type,
+                client_pod_type=pod_type
             )
             s, c = self.create_iperf_server_client(self.test_settings)
 

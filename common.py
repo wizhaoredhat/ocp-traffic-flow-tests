@@ -41,6 +41,9 @@ class ConnectionMode(Enum):
     NODE_PORT_IP                         = 3
     EXTERNAL_IP                          = 4
 
+class NodeLocation(Enum):
+    SAME_NODE                            = 1
+    DIFF_NODE                            = 2
 
 def j2_render(in_file_name, out_file_name, kwargs):
     with open(in_file_name) as inFile:
