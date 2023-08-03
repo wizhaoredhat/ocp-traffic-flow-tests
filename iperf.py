@@ -10,6 +10,8 @@ import sys
 import yaml
 import json
 
+IPERF_EXE = "iperf3"
+EXTERNAL_IPERF3_SERVER = "external-iperf3-server"
 
 class IperfServer(Task):
     def __init__(self, tft: TestConfig, ts: TestSettings):
@@ -17,7 +19,11 @@ class IperfServer(Task):
         self.exec_persistent = ts.server_is_persistent
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
+        self.connection_mode = ts.connection_mode
 
+        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+            self.pod_name = EXTERNAL_IPERF3_SERVER
+            return
         if self.pod_type == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
             self.out_file_yaml = f"./manifests/yamls/sriov-pod-{self.node_name}-server.yaml"
@@ -36,7 +42,7 @@ class IperfServer(Task):
         self.pod_name = self.template_args["pod_name"]
 
         if self.exec_persistent:
-            self.template_args["command"] = "iperf3"
+            self.template_args["command"] = IPERF_EXE
             self.template_args["args"] = ["-s", "-p", f"{self.port}"]
 
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
@@ -46,17 +52,25 @@ class IperfServer(Task):
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
     def setup(self):
-        super().setup()
+        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+            self.lh.run(f"podman stop {EXTERNAL_IPERF3_SERVER}")
+            cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} quay.io/wizhao/ft-base-image:0.9 -s"
+        else:
+            # Create the server pods
+            super().setup()
+            cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
+        
+        logger.info(f"Running {cmd}")
 
         def server(self, cmd: str):
-            if self.exec_persistent:
+            if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+                return self.lh.run(cmd)
+            elif self.exec_persistent:
                 return Result("Server is persistent.", "", 0)
             return self.run_oc(cmd)
 
-        cmd = f"exec -t {self.pod_name} -- iperf3 -s -p {self.port} --one-off --json"
         self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
         self.exec_thread.start()
-        logger.info(f"Running {cmd}")
 
     def run(self, duration: int):
         pass
@@ -99,10 +113,9 @@ class IperfClient(Task):
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()
-        cmd = f"exec -t {self.pod_name} -- iperf3 -c {server_ip} -p {self.port} --json -t {duration}"
+        cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
         self.exec_thread = ReturnValueThread(target=client, args=(self, cmd))
         self.exec_thread.start()
-        logger.info(f"Running {cmd}")
 
     def stop(self):
         logger.info(f"Stopping execution on {self.pod_name}")
@@ -125,8 +138,19 @@ class IperfClient(Task):
             logger.debug(f"get_target_ip() NodePortIP connection to {self.server.nodeport_ip_addr}")
             return self.server.nodeport_ip_addr
         elif self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            logger.error("Pod to External not yet supported")
-            sys.exit(-1)
+            external_pod_ip = self.get_podman_ip(EXTERNAL_IPERF3_SERVER)
+            logger.debug(f"get_target_ip() External connection to {external_pod_ip}")
+            return external_pod_ip
         server_ip = self.server.get_pod_ip()
         logger.debug(f"get_target_ip() Connection to server at {server_ip}")
         return server_ip
+    
+    def get_podman_ip(self, pod_name: str) -> str:
+        cmd = "podman inspect --format '{{.NetworkSettings.IPAddress}}' " + pod_name
+        ret = self.lh.run(cmd)
+        if ret.returncode != 0:
+            logger.error(f"Failed to inspect pod {pod_name} for IPAddress: {ret.err}")
+            sys.exit(-1)
+        return ret.out.strip()
+
+

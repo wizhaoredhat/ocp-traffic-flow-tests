@@ -2,7 +2,7 @@ from common import TestCaseType, PodType, ConnectionMode, NodeLocation
 
 class TestSettings():
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
-    def __init__(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str, server_pod_type: str, client_pod_type: str):
+    def __init__(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str, server_pod_type: str, client_pod_type: str, index: int):
         self.test_ip = test_case_id
         self.node_server_name = self._determine_server_name(test_case_id, node_server_name, node_client_name)
         self.node_client_name = node_client_name
@@ -12,8 +12,8 @@ class TestSettings():
         self.client_is_tenant = True
         self.server_is_tenant = True
         #TODO: Add task indexing
-        self.server_index = 0
-        self.client_index = 0
+        self.server_index = index
+        self.client_index = index
 
         # Derive params from test_case_id
         self.set_all_params_from_test_case_id(test_case_id)

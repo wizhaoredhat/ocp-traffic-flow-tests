@@ -61,8 +61,8 @@ class MeasurePower(Task):
         logger.info(f"Running {cmd}")
 
     def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
+        logger.info(f"Stopping measurePower execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.info(r)
-        logger.info(r.out)
+        logger.info(f"measurePower results: {r.out}")

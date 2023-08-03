@@ -33,7 +33,7 @@ class MeasureCPU(Task):
         logger.info(f"Running {cmd}")
 
     def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
+        logger.info(f"Stopping measureCPU execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.info(r)
