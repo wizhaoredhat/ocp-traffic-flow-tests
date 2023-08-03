@@ -7,7 +7,8 @@ This repository contains the yaml files, docker files, and test scripts to test 
 ```
 python -m venv tft-venv
 source tft-venv/bin/activate
-cat requirements.txt  | xargs -n1 pip3 install
+pip3 install --upgrade pip
+pip3 install -r requirements.txt
 ```
 
 ## Creating the docker pods
