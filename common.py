@@ -2,6 +2,12 @@ import jinja2
 from enum import Enum
 
 
+
+class TestType(Enum):
+    IPERF_TCP  = 1
+    IPERF_UDP  = 2
+    HTTP       = 3
+
 class PodType(Enum):
     NORMAL     = 1
     SRIOV      = 2

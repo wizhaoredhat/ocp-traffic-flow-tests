@@ -1,5 +1,5 @@
 import common
-from common import PodType, ConnectionMode
+from common import PodType, ConnectionMode, TestType
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
@@ -11,6 +11,8 @@ import yaml
 import json
 
 IPERF_EXE = "iperf3"
+IPERF_UDP_OPT = "-u -b 25G"
+IPERF_REV_OPT = "-R"
 EXTERNAL_IPERF3_SERVER = "external-iperf3-server"
 
 class IperfServer(Task):
@@ -53,7 +55,6 @@ class IperfServer(Task):
 
     def setup(self):
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            self.lh.run(f"podman stop {EXTERNAL_IPERF3_SERVER}")
             cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} quay.io/wizhao/ft-base-image:0.9 -s"
         else:
             # Create the server pods
@@ -89,6 +90,7 @@ class IperfClient(Task):
         self.port = self.server.port
         self.pod_type = ts.client_pod_type
         self.connection_mode = ts.connection_mode
+        self.test_type = ts.test_type
 
         if self.pod_type  == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
@@ -114,6 +116,8 @@ class IperfClient(Task):
 
         server_ip = self.get_target_ip()
         cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
+        if self.test_type == TestType.IPERF_UDP:
+            cmd = f" {cmd} {IPERF_UDP_OPT}"
         self.exec_thread = ReturnValueThread(target=client, args=(self, cmd))
         self.exec_thread.start()
 
@@ -122,14 +126,36 @@ class IperfClient(Task):
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.info(r)
-
         data = json.loads(r.out)
+        if self.test_type == TestType.IPERF_TCP:
+            self.print_tcp_results(data)
+        if self.test_type == TestType.IPERF_UDP:
+            self.print_udp_results(data)
+    
+    def print_tcp_results(self, data: dict):
         mss = data['start']['tcp_mss_default']
         logger.info(f"MSS = {mss}")
         gbps = data['end']['sum_received']['bits_per_second']/1e9
         logger.info(f"GBPS = {gbps}")
-        #logger.info(r.out)
+    
+    def print_udp_results(self, data: dict):
+        sum_data = data["end"]["sum"]
 
+        # Extracted values
+        total_bytes = sum_data["bytes"]
+        average_bitrate = sum_data["bits_per_second"]
+        average_jitter = sum_data["jitter_ms"]
+        total_lost_packets = sum_data["lost_packets"]
+        total_lost_percent = sum_data["lost_percent"]
+
+        # Print extracted information
+        logger.info(
+            f"Total Bytes: {total_bytes} bytes,"
+            f" Average Bitrate: {average_bitrate:.2f} bits/s,"
+            f" Average Jitter: {average_jitter:.9f} ms,"
+            f" Total Lost Packets: {total_lost_packets},"
+            f" Total Lost Percent: {total_lost_percent:.2f}%"
+)
     def get_target_ip(self) -> str:
         if self.connection_mode == ConnectionMode.CLUSTER_IP:
             logger.debug(f"get_target_ip() ClusterIP connection to {self.server.cluster_ip_addr}")

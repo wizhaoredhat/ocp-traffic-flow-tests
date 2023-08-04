@@ -1,13 +1,14 @@
 import common
-from common import PodType, ConnectionMode, TestCaseType
+from common import PodType, ConnectionMode, TestCaseType, TestType
 from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
-from iperf import IperfServer
-from iperf import IperfClient
+import iperf
+from iperf import IperfServer, IperfClient
 from measureCpu import MeasureCPU
 from measurePower import MeasurePower
 from enum import Enum
+from host import LocalHost
 import sys
 
 class TrafficFlowTests():
@@ -17,6 +18,7 @@ class TrafficFlowTests():
         self.clients = []
         self.monitors = []
         self.test_settings = None
+        self.lh = LocalHost()
 
     def create_iperf_server_client(self, test_settings: TestSettings) -> (IperfServer, IperfClient):
         logger.info(f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}")
@@ -35,13 +37,22 @@ class TrafficFlowTests():
             sys.exit(-1)
         logger.info(f"Configured namespace {namespace}")
 
-    def cleanup_previous_pods(self, namespace: str):
+    def cleanup_previous_testspace(self, namespace: str):
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
         r = self._tft.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             sys.exit(-1)
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
+        logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
+        r = self._tft.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        if r.returncode != 0:
+            logger.error(r)
+            sys.exit(-1)
+        logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
+        logger.info(f"Cleaning external containers {iperf.EXTERNAL_IPERF3_SERVER} (if present)")
+        cmd = f"podman stop {iperf.EXTERNAL_IPERF3_SERVER}"
+        self.lh.run(cmd)
 
     def enable_measure_cpu_plugin(self, node_server_name: str, node_client_name: str, tenant: bool):
         s = MeasureCPU(self._tft, node_server_name, tenant)
@@ -68,11 +79,11 @@ class TrafficFlowTests():
     def run(self):
         for tests in self._tft.GetConfig():
             self.configure_namespace(tests['namespace'])
+            self.cleanup_previous_testspace(tests['namespace'])
             duration = tests['duration']
             logger.info(f"Running {tests['name']} for {duration} seconds")
-            test_cases = [int(x) for x in tests['test_cases'].split(',') if x.strip().isdigit()]
+            test_cases = self._tft.parse_test_cases(tests['test_cases'])
             for test_id in test_cases:
-                self.cleanup_previous_pods(tests['namespace'])
                 self.servers = []
                 self.clients = []
                 self.monitors = []
@@ -82,22 +93,27 @@ class TrafficFlowTests():
                     for index in range(connections['instances']):
                         node_server_name = connections['server'][0]['name']
                         node_client_name = connections['client'][0]['name']
-                        if connections['type'] == "iperf":
+                        test_type = self._tft.validate_test_type(connections)
+                        if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
                             self.test_settings = TestSettings(
                                 test_case_id=test_id,
                                 node_server_name=node_server_name,
                                 node_client_name=node_client_name,
-                                server_pod_type=connections['server'][0]['type'],
-                                client_pod_type=connections['client'][0]['type'],
-                                index=index
+                                server_pod_type=self._tft.validate_pod_type(connections['server'][0]),
+                                client_pod_type=self._tft.validate_pod_type(connections['client'][0]),
+                                index=index,
+                                test_type=test_type
                             )
                             s, c = self.create_iperf_server_client(self.test_settings)
                             self.servers.append(s)
                             self.clients.append(c)
-                        for plugins in connections['plugins']:
-                            if plugins['name'] == "measure_cpu":
-                                self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
-                            if plugins['name'] == "measure_power":
-                                self.enable_measure_power_plugin(node_server_name, node_client_name, True)
+                        else:
+                            logger.error("http connections not currently supported")
+                        if connections['plugins']:
+                            for plugins in connections['plugins']:
+                                if plugins['name'] == "measure_cpu":
+                                    self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
+                                if plugins['name'] == "measure_power":
+                                    self.enable_measure_power_plugin(node_server_name, node_client_name, True)
                         
                         self.run_tests(duration)
