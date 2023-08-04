@@ -1,10 +1,12 @@
 from testConfig import TestConfig
 from trafficFlowTests import TrafficFlowTests
+import arguments
 
 
 def main():
     print("START HERE")
-    cc = TestConfig()
+    args = arguments.parse_args()
+    cc = TestConfig(args.config)
     tft = TrafficFlowTests(cc)
     tft.run()
 

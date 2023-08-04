@@ -12,10 +12,10 @@ class ClusterMode(Enum):
     DPU       = 3
 
 class TestConfig():
-    def __init__(self):
+    def __init__(self, config_path: str):
         self.mode = ClusterMode.SINGLE
 
-        with open("./config.yaml", 'r') as f:
+        with open(config_path, 'r') as f:
             contents = f.read()
             self.fullConfig = safe_load(io.StringIO(contents))
 

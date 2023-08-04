@@ -17,6 +17,7 @@ class Task(ABC):
         self.out_file_yaml = ""
         self.pod_name = ""
         self.exec_thread: Optional[ReturnValueThread] = None # type: ignore
+        self.lh = host.LocalHost()
 
         self.template_args["name_space"] = 'default'
         self.template_args["net_attach_def_name"] = 'default'
