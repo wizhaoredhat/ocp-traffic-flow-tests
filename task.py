@@ -21,7 +21,7 @@ class Task(ABC):
 
         self.template_args["name_space"] = 'default'
         self.template_args["net_attach_def_name"] = 'default'
-        self.template_args["test_image"] = 'quay.io/wizhao/ft-base-image:0.9'
+        self.template_args["test_image"] = common.FT_BASE_IMG
         self.template_args["command"] = "/sbin/init"
         self.template_args["args"] = ""
         self.template_args["index"] = f"{index}"

@@ -18,7 +18,7 @@ class MeasurePower(Task):
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
-        self.template_args["test_image"] = 'quay.io/wizhao/tft-tools:0.3'
+        self.template_args["test_image"] = common.TFT_TOOLS_IMG
 
         self.pod_name = self.template_args["pod_name"]
 

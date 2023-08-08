@@ -55,7 +55,7 @@ class IperfServer(Task):
 
     def setup(self):
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} quay.io/wizhao/ft-base-image:0.9 -s"
+            cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s"
         else:
             # Create the server pods
             super().setup()

@@ -60,7 +60,7 @@ class TestSettings():
 
     def _server_test_to_persistent(self, test_id: int) -> bool:
         #TODO: add logic to determine when this is required
-        return True
+        return False
 
     def server_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:
         if test_id in (3, 4, 7, 8, 19, 20, 23, 24):
