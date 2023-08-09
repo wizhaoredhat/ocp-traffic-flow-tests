@@ -5,6 +5,7 @@ from logger import logger
 from k8sClient import K8sClient
 from yaml import safe_load, safe_dump
 import io
+from common import TestType
 
 
 class ClusterMode(Enum):
@@ -46,6 +47,49 @@ class TestConfig():
             sys.exit(-1)
 
         logger.info(self.GetConfig())
+
+    def parse_test_cases(self, input_str: str):
+        output = []
+        parts = input_str.split(",")
+
+        for part in parts:
+            part = part.strip()
+            if part:
+                if not part.isdigit() and "-" not in part:
+                    raise ValueError(f"Invalid test case id: {part}")
+
+                if "-" in part:
+                    try:
+                        start, end = map(int, part.split("-"))
+                        output.extend(range(start, end + 1))
+                    except ValueError:
+                        raise ValueError(f"Invalid test case id: {part}")
+                else:
+                    output.append(int(part))
+
+        return output
+
+    def validate_pod_type(self, connection_server: dict):
+        if "sriov" in connection_server:
+            if "true" in connection_server['sriov'].lower():
+                return "sriov"
+        return "normal"
+
+    def validate_test_type(self, connection: dict) -> TestType:
+        if 'type' not in connection:
+            return TestType.IPERF_TCP
+
+        input_ct = connection['type'].lower()
+        if "iperf" in input_ct:
+            if "udp" in input_ct:
+                return TestType.IPERF_UDP
+            else:
+                return TestType.IPERF_TCP
+        elif "http" in input_ct:
+            return TestType.HTTP
+        else:
+            raise ValueError(f"Invalid connection type {connection['type']} provided. \
+                Supported connection types: iperf-tcp (default), iperf-udp, http") 
 
     def GetConfig(self):
         return self.fullConfig["tft"]

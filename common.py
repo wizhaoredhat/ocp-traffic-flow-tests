@@ -2,6 +2,14 @@ import jinja2
 from enum import Enum
 
 
+FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
+TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:0.3"
+
+class TestType(Enum):
+    IPERF_TCP  = 1
+    IPERF_UDP  = 2
+    HTTP       = 3
+
 class PodType(Enum):
     NORMAL     = 1
     SRIOV      = 2
