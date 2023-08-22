@@ -2,8 +2,8 @@ from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType
 
 class TestSettings():
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
-    def __init__(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str, server_pod_type: str, client_pod_type: str, index: int, test_type: TestType):
-        self.test_ip = test_case_id
+    def __init__(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str, server_pod_type: str, client_pod_type: str, index: int, test_type: TestType, log_path: str):
+        self.test_case_id = test_case_id
         self.node_server_name = self._determine_server_name(test_case_id, node_server_name, node_client_name)
         self.node_client_name = node_client_name
         self.server_pod_type = self.server_test_to_pod_type(test_case_id, server_pod_type)
@@ -15,6 +15,7 @@ class TestSettings():
         self.server_index = index
         self.client_index = index
         self.test_type = test_type
+        self.log_path = log_path
 
         # Derive params from test_case_id
         self.set_all_params_from_test_case_id(test_case_id)
@@ -29,7 +30,7 @@ class TestSettings():
 
     def get_test_info(self) -> str:
         return f"""{self.test_type.name} TEST CONFIGURATION
-        Test Case {self.test_ip}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.nodeLocation.name}
+        Test Case {self.test_case_id}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.nodeLocation.name}
         Client Node: {self.node_client_name}
             Tenant={self.client_is_tenant}
             Index={self.client_index}
@@ -38,6 +39,9 @@ class TestSettings():
             Tenant={self.server_is_tenant}
             Index={self.server_index}
         """
+
+    def get_test_str(self) -> str:
+        return f"{self.test_case_id}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}"
 
     def _test_id_to_connection_mode(self, test_case_id) -> ConnectionMode:
         """The connection type will be used to determine what IP the client should direct traffic to"""
@@ -48,6 +52,25 @@ class TestSettings():
         if test_case_id in (25, 26):
             return ConnectionMode.EXTERNAL_IP
         return ConnectionMode.POD_IP
+    
+    def get_test_info_dict(self) -> dict:
+        json_dump = {
+            "test_case_id": self.test_case_id,
+            "test_type": self.test_type.name,
+            "server": {
+                "name": self.node_server_name,
+                "pod_type": self.server_pod_type.name,
+                "is_tenant": self.server_is_tenant,
+                "index": self.server_index,
+            },
+            "client": {
+                "name": self.node_client_name,
+                "pod_type": self.client_pod_type.name,
+                "is_tenant": self.client_is_tenant,
+                "index": self.client_index
+            },    
+        }
+        return json_dump
 
     def _determine_server_name(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str):
         """If conducting Same Node testing, the server node should be the client node"""

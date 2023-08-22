@@ -3,6 +3,7 @@ tft:
     namespace: "default"
     test_cases: "1"
     duration: "10"
+    #logs: "/tmp/ft-logs" # default ft-logs/
     connections:
       - name: "Connection 1"
         type: "iperf-tcp"

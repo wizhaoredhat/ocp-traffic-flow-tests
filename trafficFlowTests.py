@@ -10,6 +10,8 @@ from measurePower import MeasurePower
 from enum import Enum
 from host import LocalHost
 import sys
+import os
+import datetime
 
 class TrafficFlowTests():
     def __init__(self, tft: TestConfig):
@@ -19,6 +21,7 @@ class TrafficFlowTests():
         self.monitors = []
         self.test_settings = None
         self.lh = LocalHost()
+        self.log_path = "ft-logs/"
 
     def create_iperf_server_client(self, test_settings: TestSettings) -> (IperfServer, IperfClient):
         logger.info(f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}")
@@ -76,10 +79,27 @@ class TrafficFlowTests():
         for tasks in self.servers + self.clients + self.monitors:
             tasks.stop()
 
+        for tasks in self.servers + self.clients + self.monitors:
+            tasks.output()
+    
+    def create_log_path(self, tests: dict) -> str:    
+        log_path = self.log_path  
+        # Create directory for logging
+        if "logs" in tests:
+            log_path = tests['logs']
+        # We will create a subdirectory using the datetime to ensure each run has discrete logs
+        datetime_string = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        log_path = log_path + "/" + datetime_string + "/"
+        logger.info(f"Logs will be written to {log_path}")
+        os.makedirs(log_path, exist_ok=False)
+        return log_path
+
+
     def run(self):
         for tests in self._tft.GetConfig():
             self.configure_namespace(tests['namespace'])
             self.cleanup_previous_testspace(tests['namespace'])
+            self.log_path = self.create_log_path(tests)
             duration = tests['duration']
             logger.info(f"Running {tests['name']} for {duration} seconds")
             test_cases = self._tft.parse_test_cases(tests['test_cases'])
@@ -102,7 +122,8 @@ class TrafficFlowTests():
                                 server_pod_type=self._tft.validate_pod_type(connections['server'][0]),
                                 client_pod_type=self._tft.validate_pod_type(connections['client'][0]),
                                 index=index,
-                                test_type=test_type
+                                test_type=test_type,
+                                log_path=self.log_path,
                             )
                             s, c = self.create_iperf_server_client(self.test_settings)
                             self.servers.append(s)
@@ -117,3 +138,4 @@ class TrafficFlowTests():
                                     self.enable_measure_power_plugin(node_server_name, node_client_name, True)
                         
                         self.run_tests(duration)
+                        self.cleanup_previous_testspace(tests['namespace'])

@@ -107,3 +107,12 @@ class Task(ABC):
     @abstractmethod
     def stop(self):
         raise NotImplementedError('Must implement stop()')
+    
+    """
+    output() should be called to store the results of this task in a machine readable format (i.e. json) in the log location specified by the user,
+    as well as print any required info/debug to the console. The results should be formatted such that other modules can easily consume the output, such
+    as a module to determine the success/failure/performance of a given run.
+    """
+    @abstractmethod
+    def output(self):
+        raise NotImplementedError('Must implement output()')

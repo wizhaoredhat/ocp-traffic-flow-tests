@@ -66,3 +66,7 @@ class MeasurePower(Task):
         if r.returncode != 0:
             logger.info(r)
         logger.info(f"measurePower results: {r.out}")
+
+    def output(self):
+        #TODO: handle printing/storing output here
+        pass
