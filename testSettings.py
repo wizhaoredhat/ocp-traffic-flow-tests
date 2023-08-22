@@ -52,7 +52,7 @@ class TestSettings():
         if test_case_id in (25, 26):
             return ConnectionMode.EXTERNAL_IP
         return ConnectionMode.POD_IP
-    
+
     def get_test_info_dict(self) -> dict:
         json_dump = {
             "test_case_id": self.test_case_id,

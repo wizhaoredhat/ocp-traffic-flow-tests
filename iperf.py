@@ -61,7 +61,7 @@ class IperfServer(Task):
             # Create the server pods
             super().setup()
             cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
-        
+
         logger.info(f"Running {cmd}")
 
         def server(self, cmd: str):
@@ -82,8 +82,8 @@ class IperfServer(Task):
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.error}")
-            logger.info(r)
-    
+        logger.debug(f"IperfServer.stop(): {r.out}")
+
     def output(self):
         pass
 
@@ -133,7 +133,8 @@ class IperfClient(Task):
         logger.info(f"Stopping execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
-            logger.info(r)
+            logger.error(r)
+        logger.debug(f"IperfClient.stop(): {r.out}")
         data = json.loads(r.out)
         self._output = self.generate_output(data)
 
@@ -144,7 +145,7 @@ class IperfClient(Task):
             "result": data
         }
         return json_dump
-    
+
     def output(self):
         # Store json output as run logs
         with open(self.log_path + self.ts.get_test_str() + ".json", "w") as output_file:
@@ -161,7 +162,7 @@ class IperfClient(Task):
             self.print_tcp_results(self._output["result"])
         if self.test_type == TestType.IPERF_UDP:
             self.print_udp_results(self._output["result"])     
-    
+
     def print_tcp_results(self, data: dict):
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
@@ -170,13 +171,15 @@ class IperfClient(Task):
         bitrate_sent = sum_sent["bits_per_second"] / 1e9
         transfer_received = sum_received["bytes"] / (1024 ** 3)
         bitrate_received = sum_received["bits_per_second"] / 1e9
+        mss = data['start']['tcp_mss_default']
 
         logger.info(
             f"\n  [ ID]   Interval              Transfer        Bitrate\n"
             f"  [SENT]   0.00-{sum_sent['seconds']:.2f} sec   {transfer_sent:.2f} GBytes  {bitrate_sent:.2f} Gbits/sec sender\n"
-            f"  [REC]   0.00-{sum_received['seconds']:.2f} sec   {transfer_received:.2f} GBytes  {bitrate_received:.2f} Gbits/sec receiver"
+            f"  [REC]   0.00-{sum_received['seconds']:.2f} sec   {transfer_received:.2f} GBytes  {bitrate_received:.2f} Gbits/sec receiver\n"
+            f"  MSS = {mss}"
         )
-    
+
     def print_udp_results(self, data: dict):
         sum_data = data["end"]["sum"]
 
@@ -208,10 +211,11 @@ class IperfClient(Task):
         server_ip = self.server.get_pod_ip()
         logger.debug(f"get_target_ip() Connection to server at {server_ip}")
         return server_ip
-    
+
     def get_podman_ip(self, pod_name: str) -> str:
         cmd = "podman inspect --format '{{.NetworkSettings.IPAddress}}' " + pod_name
         ret = self.lh.run(cmd)
+        logger.debug(f"get_podman_ip(): {ret.out}")
         if ret.returncode != 0:
             logger.error(f"Failed to inspect pod {pod_name} for IPAddress: {ret.err}")
             sys.exit(-1)

@@ -68,7 +68,7 @@ class TrafficFlowTests():
         c = MeasurePower(self._tft, node_client_name, tenant)
         self.monitors.append(s)
         self.monitors.append(c)
-    
+
     def run_tests(self, duration: int):
         for tasks in self.servers + self.clients + self.monitors:
             tasks.setup()
@@ -81,7 +81,7 @@ class TrafficFlowTests():
 
         for tasks in self.servers + self.clients + self.monitors:
             tasks.output()
-    
+
     def create_log_path(self, tests: dict) -> str:    
         log_path = self.log_path  
         # Create directory for logging
@@ -136,6 +136,6 @@ class TrafficFlowTests():
                                     self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
                                 if plugins['name'] == "measure_power":
                                     self.enable_measure_power_plugin(node_server_name, node_client_name, True)
-                        
+
                         self.run_tests(duration)
                         self.cleanup_previous_testspace(tests['namespace'])
