@@ -2,9 +2,8 @@ name: Build and Push
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
 
@@ -27,16 +26,14 @@ jobs:
     - name: Build and Push TFT-x86 image
       uses: docker/build-push-action@v2
       with:
-        context: ./images/
-        file: Containerfile
+        file: ./images/Containerfile
         push: true
         tags: |
           quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}-x86_64
     - name: Build and Push TFT-ARM64 image
       uses: docker/build-push-action@v2
       with:
-        context: ./images/
-        file: Containerfile
+        file: ./images/Containerfile
         push: true
         platforms: linux/arm64
         tags: |

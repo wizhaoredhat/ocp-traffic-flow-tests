@@ -3,6 +3,7 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
+from host import Result
 import sys
 import yaml
 import json
@@ -42,3 +43,7 @@ class MeasureCPU(Task):
         #logger.info(data)
         p_idle = data[0]['percent_idle']
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
+
+    def output(self):
+        #TODO: handle printing/storing output here
+        pass

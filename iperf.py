@@ -22,6 +22,7 @@ class IperfServer(Task):
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
         self.connection_mode = ts.connection_mode
+        self.log_path = ts.log_path
 
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             self.pod_name = EXTERNAL_IPERF3_SERVER
@@ -80,8 +81,11 @@ class IperfServer(Task):
         logger.info(f"Stopping execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
+            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.error}")
             logger.info(r)
-        #logger.info(r.out)
+    
+    def output(self):
+        pass
 
 class IperfClient(Task):
     def __init__(self, tft: TestConfig, ts: TestSettings, server: IperfServer):
@@ -91,6 +95,10 @@ class IperfClient(Task):
         self.pod_type = ts.client_pod_type
         self.connection_mode = ts.connection_mode
         self.test_type = ts.test_type
+        self.log_path = ts.log_path
+        self.test_case_id = ts.test_case_id
+        self.ts = ts
+        self.cmd = ""
 
         if self.pod_type  == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
@@ -115,10 +123,10 @@ class IperfClient(Task):
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()
-        cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
+        self.cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
         if self.test_type == TestType.IPERF_UDP:
-            cmd = f" {cmd} {IPERF_UDP_OPT}"
-        self.exec_thread = ReturnValueThread(target=client, args=(self, cmd))
+            self.cmd = f" {self.cmd} {IPERF_UDP_OPT}"
+        self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
         self.exec_thread.start()
 
     def stop(self):
@@ -127,35 +135,65 @@ class IperfClient(Task):
         if r.returncode != 0:
             logger.info(r)
         data = json.loads(r.out)
+        self._output = self.generate_output(data)
+
+    def generate_output(self, data: dict) -> dict:
+        json_dump = {
+            "tft-metadata": self.ts.get_test_info_dict(),
+            "command": self.cmd,
+            "result": data
+        }
+        return json_dump
+    
+    def output(self):
+        # Store json output as run logs
+        with open(self.log_path + self.ts.get_test_str() + ".json", "w") as output_file:
+            json.dump(self._output, output_file, indent=4)
+
+        # Print summary to console logs
+        logger.info(f"Results of {self.ts.get_test_str()}:")
+        if self.iperf_error_occured(self._output["result"]):
+            logger.error("Encountered error while running test:\n"
+                f"  {self._output['result']['error']}"
+            )
+            return
         if self.test_type == TestType.IPERF_TCP:
-            self.print_tcp_results(data)
+            self.print_tcp_results(self._output["result"])
         if self.test_type == TestType.IPERF_UDP:
-            self.print_udp_results(data)
+            self.print_udp_results(self._output["result"])     
     
     def print_tcp_results(self, data: dict):
-        mss = data['start']['tcp_mss_default']
-        logger.info(f"MSS = {mss}")
-        gbps = data['end']['sum_received']['bits_per_second']/1e9
-        logger.info(f"GBPS = {gbps}")
+        sum_sent = data["end"]["sum_sent"]
+        sum_received = data["end"]["sum_received"]
+
+        transfer_sent = sum_sent["bytes"] / (1024 ** 3)
+        bitrate_sent = sum_sent["bits_per_second"] / 1e9
+        transfer_received = sum_received["bytes"] / (1024 ** 3)
+        bitrate_received = sum_received["bits_per_second"] / 1e9
+
+        logger.info(
+            f"\n  [ ID]   Interval              Transfer        Bitrate\n"
+            f"  [SENT]   0.00-{sum_sent['seconds']:.2f} sec   {transfer_sent:.2f} GBytes  {bitrate_sent:.2f} Gbits/sec sender\n"
+            f"  [REC]   0.00-{sum_received['seconds']:.2f} sec   {transfer_received:.2f} GBytes  {bitrate_received:.2f} Gbits/sec receiver"
+        )
     
     def print_udp_results(self, data: dict):
         sum_data = data["end"]["sum"]
 
-        # Extracted values
-        total_bytes = sum_data["bytes"]
-        average_bitrate = sum_data["bits_per_second"]
+        total_gigabytes = sum_data["bytes"] / (1024 ** 3)
+        average_gigabitrate = sum_data["bits_per_second"] / 1e9
         average_jitter = sum_data["jitter_ms"]
         total_lost_packets = sum_data["lost_packets"]
         total_lost_percent = sum_data["lost_percent"]
 
-        # Print extracted information
         logger.info(
-            f"Total Bytes: {total_bytes} bytes,"
-            f" Average Bitrate: {average_bitrate:.2f} bits/s,"
-            f" Average Jitter: {average_jitter:.9f} ms,"
-            f" Total Lost Packets: {total_lost_packets},"
-            f" Total Lost Percent: {total_lost_percent:.2f}%"
-)
+            f"\n  Total GBytes: {total_gigabytes:.4f} GBytes\n"
+            f"  Average Bitrate: {average_gigabitrate:.2f} Gbits/s\n"
+            f"  Average Jitter: {average_jitter:.9f} ms\n"
+            f"  Total Lost Packets: {total_lost_packets}\n"
+            f"  Total Lost Percent: {total_lost_percent:.2f}%"
+        )
+
     def get_target_ip(self) -> str:
         if self.connection_mode == ConnectionMode.CLUSTER_IP:
             logger.debug(f"get_target_ip() ClusterIP connection to {self.server.cluster_ip_addr}")
@@ -179,4 +217,5 @@ class IperfClient(Task):
             sys.exit(-1)
         return ret.out.strip()
 
-
+    def iperf_error_occured(self, data: dict) -> bool:
+        return "error" in data
