@@ -65,6 +65,7 @@ class MeasurePower(Task):
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.info(r)
+        logger.debug(f"MeasurePower.out(): {r.out}")
         logger.info(f"measurePower results: {r.out}")
 
     def output(self):

@@ -38,9 +38,8 @@ class MeasureCPU(Task):
         r = self.exec_thread.join()
         if r.returncode != 0:
             logger.info(r)
-        #logger.info(r.out)
+        logger.debug(f"measureCpu.stop(): {r.out}")
         data = jc.parse('mpstat', r.out)
-        #logger.info(data)
         p_idle = data[0]['percent_idle']
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
