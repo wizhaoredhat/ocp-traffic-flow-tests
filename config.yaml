@@ -1,14 +1,15 @@
 tft:
   - name: "Test 1"
     namespace: "default"
+    # test cases can be specified individually i.e "1,2,3,6" or as a range i.e. "1-9,15-19"
     test_cases: "1"
     duration: "10"
-    #logs: "/tmp/ft-logs" # default ft-logs/
+    # Location of artifacts from run can be specified: default <working-dir>/ft-logs/
+    # logs: "/tmp/ft-logs"
     connections:
       - name: "Connection 1"
+        # supported types: iperf-tcp, iperf-udp
         type: "iperf-tcp"
-        # type: "iperf-udp"
-        # type: "http"
         instances: 1
         server:
           - name: "worker-229"
