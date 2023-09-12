@@ -2,7 +2,18 @@ from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType
 
 class TestSettings():
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
-    def __init__(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str, server_pod_type: str, client_pod_type: str, index: int, test_type: TestType, log_path: str):
+    def __init__(
+            self, connection_name: str,
+            test_case_id: TestCaseType,
+            node_server_name: str,
+            node_client_name: str,
+            server_pod_type: str,
+            client_pod_type: str,
+            index: int,
+            test_type: TestType,
+            log_path: str
+        ):
+        self.connection_name = connection_name
         self.test_case_id = test_case_id
         self.node_server_name = self._determine_server_name(test_case_id, node_server_name, node_client_name)
         self.node_client_name = node_client_name
@@ -55,7 +66,7 @@ class TestSettings():
 
     def get_test_info_dict(self) -> dict:
         json_dump = {
-            "test_case_id": self.test_case_id,
+            "test_case_id": TestCaseType(self.test_case_id).name,
             "test_type": self.test_type.name,
             "server": {
                 "name": self.node_server_name,

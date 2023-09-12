@@ -7,6 +7,7 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description='Build a custom image and store in the specified repository')
     parser.add_argument('config', metavar='config', type=str, help='Yaml file with test configuration (see config.yaml)')
+    parser.add_argument('evaluator_config', metavar='evaluator_config', type=str, help="Yaml file with configuration for scoring test results (see eval-config.yaml)")
     parser.add_argument('-v', '--verbosity', choices=['debug', 'info', 'warning', 'error', 'critical'], default='info', help='Set the logging level (default: info)')
 
     args = parser.parse_args()
@@ -23,5 +24,7 @@ def parse_args() -> argparse.Namespace:
 
     if not os.path.exists(args.config):
         raise ValueError("Must provide a valid config.yaml file (see config.yaml)")
+    if not os.path.exists(args.evaluator_config):
+        raise ValueError("Must provide a valid config file to evaluate results (see eval-config.yaml)")
 
     return args

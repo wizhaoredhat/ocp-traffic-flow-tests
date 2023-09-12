@@ -218,7 +218,7 @@ class IperfClient(Task):
         logger.debug(f"get_podman_ip(): {ret.out}")
         if ret.returncode != 0:
             logger.error(f"Failed to inspect pod {pod_name} for IPAddress: {ret.err}")
-            sys.exit(-1)
+            raise Exception(f"get_podman_ip(): failed to get podman ip")
         return ret.out.strip()
 
     def iperf_error_occured(self, data: dict) -> bool:
