@@ -4,6 +4,7 @@ import sys
 import yaml
 import json
 from collections import namedtuple
+from dataclasses import dataclass
 from common import TestCaseType, TestType
 from logger import logger
 
@@ -12,9 +13,27 @@ Bitrate = namedtuple("Bitrate", "tx rx")
 
 #TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
 # we can return a single "Status" from a test
-Status = namedtuple("Status", "result num_passed num_failed")
+@dataclass
+class PassFailStatus:
+    '''Pass/Fail ratio and result from evaluating a full tft Flow Test result
+    
+    Attributes:
+        result: boolean representing whether the test was successful (100% passing)
+        num_passed: int number of test cases passed
+        num_failed: int number of test cases failed'''
+    result: bool
+    num_passed: int
+    num_failed: int
 
-class Result():
+
+class TestResult():
+    '''Result of a single test case run
+
+    Attributes:
+        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
+        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        success: boolean representing whether the test passed or failed
+        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps'''
     def __init__(self, test_id: TestCaseType, test_type: TestType, success: bool, bitrate_gbps: Bitrate):
         self.test_id = test_id
         self.test_type = test_type
@@ -22,11 +41,11 @@ class Result():
         self.bitrate_gbps = bitrate_gbps
 
     def dump_to_json(self) -> dict:
-        return {"test_id": self.test_id,
+        return json.dumps({"test_id": self.test_id,
                 "test_type": self.test_type,
                 "success": self.success,
                 "Bitrate_Gbps_Tx": self.bitrate_gbps.tx,
-                "Bitrate_Gbps_Rx": self.bitrate_gbps.rx}
+                "Bitrate_Gbps_Rx": self.bitrate_gbps.rx})
 
 
 class Evaluator():
@@ -39,7 +58,7 @@ class Evaluator():
 
     def eval_log(self, log_path):
         with open(log_path, encoding='utf8') as file:
-            self.log = yaml.safe_load(file)
+            self.log = json.load(file)
 
         try:
             metadata = self.log["tft-metadata"]
@@ -53,7 +72,7 @@ class Evaluator():
         bitrate_threshold = self.get_threshold(test_case_id, test_type)
         bitrate_gbps = self.calculate_gbps(ft_result, test_type)
 
-        result = Result(
+        result = TestResult(
             test_id = test_case_id,
             test_type = test_type,
             success = self.is_passing(bitrate_threshold, bitrate_gbps),
@@ -82,7 +101,7 @@ class Evaluator():
             logger.error(f"Error calculating bitrate, Test of type {test_type} is not supported")
             raise Exception(f"calculate_gbps(): Invalid test_type {test_type} provided")
 
-    def dump_to_json(self) -> dict:
+    def dump_to_json(self) -> str:
         passing = []
         failing = []
         for result in self.results:
@@ -94,7 +113,7 @@ class Evaluator():
                 passing.append(output)
             else:
                 failing.append(output)
-        return {"passing": passing, "failing": failing}
+        return json.dumps({"passing": passing, "failing": failing})
 
     def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
         # If an error occured, bitrate = 0
@@ -132,7 +151,7 @@ class Evaluator():
         #TODO: Add http traffic testing
         return -1
 
-    def evaluate_pass_fail_status(self) -> Status:
+    def evaluate_pass_fail_status(self) -> PassFailStatus:
         total_passing = 0
         total_failing = 0
         for result in self.results:
@@ -140,13 +159,16 @@ class Evaluator():
                 total_passing += 1
             else:
                 total_failing += 1
-        return Status(total_failing == 0, total_passing, total_failing)
+        return PassFailStatus(result = total_failing == 0,
+                              num_passed = total_passing,
+                              num_failed = total_failing)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Tool to evaluate TFT Flow test results')
     parser.add_argument('config', metavar='config', type=str, help='Yaml file with tft test threshholds')
-    parser.add_argument('--logs', type=str, help='Directory containing TFT log files to evaluate')
+    parser.add_argument('logs', type=str, help='Directory containing TFT log files to evaluate')
+    parser.add_argument('output', type=str, help='Output file to write evaluation results to')
 
     args = parser.parse_args()
 
@@ -174,9 +196,9 @@ def main():
 
     # Generate Resulting Json
     data = evaluator.dump_to_json()
-    file_path = "/tmp/test.json"
+    file_path = args.output
     with open(file_path, "w") as json_file:
-        json.dump(data, json_file)
+        json_file.write(data)
     logger.info(data)
 
     res = evaluator.evaluate_pass_fail_status()

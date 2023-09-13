@@ -81,7 +81,7 @@ class IperfServer(Task):
         logger.info(f"Stopping execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
-            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.error}")
+            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}")
         logger.debug(f"IperfServer.stop(): {r.out}")
 
     def output(self):

@@ -13,23 +13,28 @@ import sys
 import os
 import shutil
 import json
-from evaluator import Evaluator, Result, Status
+from evaluator import Evaluator, PassFailStatus
 
 class TrafficFlowTests():
-    def __init__(self, tft: TestConfig):
-        self._cc = tft
+    def __init__(self, cc: TestConfig):
+        self._cc = cc
         self.servers = []
         self.clients = []
         self.monitors = []
         self.test_settings = None
         self.lh = LocalHost()
         self.log_path = "ft-logs/"
+        self.paths_to_run_logs = []
+
+    def get_path_to_results(self) -> str:
+        return self.log_path + "/RESULTS/"
+
 
     def create_iperf_server_client(self, test_settings: TestSettings) -> (IperfServer, IperfClient):
         logger.info(f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}")
 
-        s = IperfServer(tft=self._cc, ts=self.test_settings)
-        c = IperfClient(tft=self._cc, ts=self.test_settings, server=s)
+        s = IperfServer(cc=self._cc, ts=self.test_settings)
+        c = IperfClient(cc=self._cc, ts=self.test_settings, server=s)
         return (s, c)
 
     def configure_namespace(self, namespace: str):
@@ -84,90 +89,117 @@ class TrafficFlowTests():
         for tasks in self.servers + self.clients + self.monitors:
             tasks.output()
 
-    def create_log_path(self, tests: dict) -> str:    
-        log_path = self.log_path  
-        # Create directory for logging
+    def create_log_paths_from_tests(self, tests: dict):     
         if "logs" in tests:
-            log_path = tests['logs'] + '/'
-        if os.path.exists(log_path):
-            shutil.rmtree(log_path)
-        logger.info(f"Logs will be written to {log_path}")
-        os.makedirs(log_path, exist_ok=False)
-        for connection in tests["connections"]:
-            os.makedirs(f"{log_path}/{connection['name']}-{self._cc.validate_test_type(connection).name}")
-        return log_path
+            self.log_path = tests['logs'] + '/'
+        self.log_path = self.log_path
+        logger.info(f"Logs will be written to {self.log_path}")
+        shutil.rmtree(self.log_path)
+        os.makedirs(self.log_path)
+        
+        # Create directory for each connection / instance to store run results
+        for connections in tests['connections']:
+            for index in range(connections['instances']):
+                path=f"{self.log_path}/{connections['name']}-{index}"
+                logger.info(f"Creating dir {path}")
+                os.makedirs(path, exist_ok=False)
+        
 
-    def evaluate_flow_tests(self, eval_config: str, *log_paths: str, ) -> Status:
+    def evaluate_flow_tests(self, eval_config: str, log_path: str) -> PassFailStatus:
         evaluator = Evaluator(eval_config)
 
-        for log_path in log_paths:
-            logger.info(f"Evaluating results of tests {log_path}*")
-            file_path = self.log_path + "/RESULTS/"
-            os.makedirs(file_path, exist_ok=True)
+        logger.info(f"Evaluating results of tests {log_path}")
+        file_path = self.log_path + "RESULTS/"
+        os.makedirs(file_path, exist_ok=True)
 
-            # Hand evaluator files to evaluate
-            for file in os.listdir(log_path):
-                log = os.path.join(log_path, file)
+        # Hand evaluator files to evaluate
+        for file in os.listdir(log_path):
+            log = os.path.join(log_path, file)
 
-                if os.path.isfile(log):
-                    logger.debug(f"Evaluating log {log}")
-                    evaluator.eval_log(log)
+            if os.path.isfile(log):
+                logger.debug(f"Evaluating log {log}")
+                evaluator.eval_log(log)
 
-            # Generate Resulting Json
-            file = file_path + "summary.json"
-            logger.info(f"Dumping results to {file}")
-            data = evaluator.dump_to_json()
-            with open(file, "w") as file:
-                json.dump(data, file)
+        # Generate Resulting Json
+        file = file_path + "summary.json"
+        logger.info(f"Dumping results to {file}")
+        data = evaluator.dump_to_json()
+        with open(file, "w") as file:
+            file.write(data)
 
-            # Return Status
-            return evaluator.evaluate_pass_fail_status()
+        # Return PassFailStatus
+        return evaluator.evaluate_pass_fail_status()
 
 
-    def run(self, tests: dict, eval_config: str) -> Status:
+    def run_test_case(self, tests: dict, test_id: int):
+        self.servers = []
+        self.clients = []
+        self.monitors = []
+        duration = tests['duration']
+        #TODO Allow for multiple connections / instances to run simultaneously
+        for connections in tests['connections']:
+            logger.info(f"Starting {connections['name']}")
+            logger.info(f"Number Of Simultaneous connections {connections['instances']}")
+            for index in range(connections['instances']):
+                node_server_name = connections['server'][0]['name']
+                node_client_name = connections['client'][0]['name']
+                test_type = self._cc.validate_test_type(connections)
+                log_path=f"{self.log_path}/{connections['name']}-{index}/"
+                if log_path not in self.paths_to_run_logs:
+                    self.paths_to_run_logs.append(log_path)
+
+                if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
+                    self.test_settings = TestSettings(
+                        connection_name=connections['name'],
+                        test_case_id=test_id,
+                        node_server_name=node_server_name,
+                        node_client_name=node_client_name,
+                        server_pod_type=self._cc.validate_pod_type(connections['server'][0]),
+                        client_pod_type=self._cc.validate_pod_type(connections['client'][0]),
+                        index=index,
+                        test_type=test_type,
+                        log_path=log_path,
+                    )
+                    s, c = self.create_iperf_server_client(self.test_settings)
+                    self.servers.append(s)
+                    self.clients.append(c)
+                else:
+                    logger.error("http connections not currently supported")
+                if connections['plugins']:
+                    for plugins in connections['plugins']:
+                        if plugins['name'] == "measure_cpu":
+                            self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
+                        if plugins['name'] == "measure_power":
+                            self.enable_measure_power_plugin(node_server_name, node_client_name, True)
+
+                self.run_tests(duration)
+                self.cleanup_previous_testspace(tests['namespace'])
+
+    def evaluate_run_success(self) -> bool:
+        all_passing = True
+        # For the result of every test run, check the status of each run log to ensure all test passed
+        results = []
+        for run_log_path in self.paths_to_run_logs:
+            results.append(self.evaluate_flow_tests(self.eval_config, run_log_path))
+        
+
+        for pfstatus in results:
+            logger.info(f"RESULT: Success = {pfstatus.result}. Passed {pfstatus.num_passed}/{pfstatus.num_passed + pfstatus.num_failed}")
+            if not pfstatus.result:
+                all_passing = False
+        
+        return all_passing
+
+    def run(self, tests: dict, eval_config: str):
+        self.paths_to_run_logs = []
+        self.eval_config = eval_config
         self.configure_namespace(tests['namespace'])
         self.cleanup_previous_testspace(tests['namespace'])
-        self.log_path = self.create_log_path(tests)
-        duration = tests['duration']
-        logger.info(f"Running {tests['name']} for {duration} seconds")
+        self.create_log_paths_from_tests(tests)
+        logger.info(f"Running test {tests['name']} for {tests['duration']} seconds")
         test_cases = self._cc.parse_test_cases(tests['test_cases'])
         for test_id in test_cases:
-            self.servers = []
-            self.clients = []
-            self.monitors = []
-            #TODO Allow for multiple connections / instances and compile results into single log
-            for connections in tests['connections']:
-                logger.info(f"Starting {connections['name']}")
-                logger.info(f"Number Of Simultaneous connections {connections['instances']}")
-                for index in range(connections['instances']):
-                    node_server_name = connections['server'][0]['name']
-                    node_client_name = connections['client'][0]['name']
-                    test_type = self._cc.validate_test_type(connections)
-                    log_path=f"{self.log_path}/{connections['name']}-{test_type.name}/"
-                    if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
-                        self.test_settings = TestSettings(
-                            connection_name=connections['name'],
-                            test_case_id=test_id,
-                            node_server_name=node_server_name,
-                            node_client_name=node_client_name,
-                            server_pod_type=self._cc.validate_pod_type(connections['server'][0]),
-                            client_pod_type=self._cc.validate_pod_type(connections['client'][0]),
-                            index=index,
-                            test_type=test_type,
-                            log_path=log_path,
-                        )
-                        s, c = self.create_iperf_server_client(self.test_settings)
-                        self.servers.append(s)
-                        self.clients.append(c)
-                    else:
-                        logger.error("http connections not currently supported")
-                    if connections['plugins']:
-                        for plugins in connections['plugins']:
-                            if plugins['name'] == "measure_cpu":
-                                self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
-                            if plugins['name'] == "measure_power":
-                                self.enable_measure_power_plugin(node_server_name, node_client_name, True)
+            self.run_test_case(
+                tests=tests,
+                test_id=test_id)
 
-                    self.run_tests(duration)
-                    self.cleanup_previous_testspace(tests['namespace'])
-        return self.evaluate_flow_tests(eval_config, log_path)
