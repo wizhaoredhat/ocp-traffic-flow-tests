@@ -16,8 +16,8 @@ IPERF_REV_OPT = "-R"
 EXTERNAL_IPERF3_SERVER = "external-iperf3-server"
 
 class IperfServer(Task):
-    def __init__(self, tft: TestConfig, ts: TestSettings):
-        super().__init__(tft, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+    def __init__(self, cc: TestConfig, ts: TestSettings):
+        super().__init__(cc, ts.server_index, ts.node_server_name, ts.server_is_tenant)
         self.exec_persistent = ts.server_is_persistent
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
@@ -88,8 +88,8 @@ class IperfServer(Task):
         pass
 
 class IperfClient(Task):
-    def __init__(self, tft: TestConfig, ts: TestSettings, server: IperfServer):
-        super().__init__(tft, ts.client_index, ts.node_client_name, ts.client_is_tenant)
+    def __init__(self, cc: TestConfig, ts: TestSettings, server: IperfServer):
+        super().__init__(cc, ts.client_index, ts.node_client_name, ts.client_is_tenant)
         self.server = server
         self.port = self.server.port
         self.pod_type = ts.client_pod_type
