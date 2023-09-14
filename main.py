@@ -15,7 +15,7 @@ def main():
 
         
         if not tft.evaluate_run_success():
-            print(f"Failure detected in {test.name} results")
+            print(f"Failure detected in {test['name']} results")
             sys.exit(-1)
 
 if __name__ == "__main__":

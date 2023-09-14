@@ -3,14 +3,16 @@ import os
 import sys
 import yaml
 import json
-from collections import namedtuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from common import TestCaseType, TestType
 from logger import logger
 from pathlib import Path
 
 
-Bitrate = namedtuple("Bitrate", "tx rx")
+@dataclass
+class Bitrate:
+    tx: int
+    rx: int
 
 #TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
 # we can return a single "Status" from a test
@@ -26,7 +28,7 @@ class PassFailStatus:
     num_passed: int
     num_failed: int
 
-
+@dataclass
 class TestResult():
     '''Result of a single test case run
 
@@ -35,18 +37,11 @@ class TestResult():
         test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
         success: boolean representing whether the test passed or failed
         birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps'''
-    def __init__(self, test_id: TestCaseType, test_type: TestType, success: bool, bitrate_gbps: Bitrate):
-        self.test_id = test_id
-        self.test_type = test_type
-        self.success = success
-        self.bitrate_gbps = bitrate_gbps
+    test_id: TestCaseType
+    test_type: TestType
+    success: bool
+    bitrate_gbps: Bitrate
 
-    def dump_to_json(self) -> str:
-        return json.dumps({"test_id": self.test_id,
-                "test_type": self.test_type,
-                "success": self.success,
-                "Bitrate_Gbps_Tx": self.bitrate_gbps.tx,
-                "Bitrate_Gbps_Rx": self.bitrate_gbps.rx})
 
 
 class Evaluator():
@@ -55,7 +50,7 @@ class Evaluator():
             c = yaml.safe_load(file)
 
         self.config = c
-        self.results = []
+        self.test_results = []
 
     def eval_log(self, log_path: Path):
         with open(log_path, encoding='utf8') as file:
@@ -78,8 +73,7 @@ class Evaluator():
             test_type = test_type,
             success = self.is_passing(bitrate_threshold, bitrate_gbps),
             bitrate_gbps = bitrate_gbps)
-
-        self.results.append(result)
+        self.test_results.append(result)
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
         return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
@@ -105,15 +99,11 @@ class Evaluator():
     def dump_to_json(self) -> str:
         passing = []
         failing = []
-        for result in self.results:
-            output = {"test_case_id": result.test_id,
-                      "test_type": result.test_type,
-                      "Bitrate_Gbps_rx": result.bitrate_gbps.rx,
-                      "Bitrate_Gbps_tx": result.bitrate_gbps.tx}
+        for result in self.test_results:
             if result.success == True:
-                passing.append(output)
+                passing.append(asdict(result))
             else:
-                failing.append(output)
+                failing.append(asdict(result))
         return json.dumps({"passing": passing, "failing": failing})
 
     def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
@@ -155,7 +145,7 @@ class Evaluator():
     def evaluate_pass_fail_status(self) -> PassFailStatus:
         total_passing = 0
         total_failing = 0
-        for result in self.results:
+        for result in self.test_results:
             if result.success:
                 total_passing += 1
             else:
