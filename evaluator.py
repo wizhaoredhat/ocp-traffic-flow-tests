@@ -7,6 +7,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from common import TestCaseType, TestType
 from logger import logger
+from pathlib import Path
 
 
 Bitrate = namedtuple("Bitrate", "tx rx")
@@ -40,7 +41,7 @@ class TestResult():
         self.success = success
         self.bitrate_gbps = bitrate_gbps
 
-    def dump_to_json(self) -> dict:
+    def dump_to_json(self) -> str:
         return json.dumps({"test_id": self.test_id,
                 "test_type": self.test_type,
                 "success": self.success,
@@ -56,7 +57,7 @@ class Evaluator():
         self.config = c
         self.results = []
 
-    def eval_log(self, log_path):
+    def eval_log(self, log_path: Path):
         with open(log_path, encoding='utf8') as file:
             self.log = json.load(file)
 
@@ -172,12 +173,12 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.config):
+    if not Path(args.config).exists():
         logger.error(f"No config file found at {args.config}, exiting")
         sys.exit(-1)
 
     if args.logs:
-        if not os.path.exists(args.logs):
+        if not Path(args.logs).exists():
             logger.error(f"Log directory {args.logs} does not exist")
             sys.exit(-1)
 
@@ -188,11 +189,10 @@ def main():
     evaluator = Evaluator(args.config)
 
     # Hand evaluator files to evaluate
-    for file in os.listdir(args.logs):
-        log = os.path.join(args.logs, file)
-
-        if os.path.isfile(log):
-            evaluator.eval_log(log)
+    for file in Path(args.logs).iterdir():
+        if file.is_file():
+            print(file)
+            evaluator.eval_log(file)
 
     # Generate Resulting Json
     data = evaluator.dump_to_json()

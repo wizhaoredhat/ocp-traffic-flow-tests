@@ -148,7 +148,8 @@ class IperfClient(Task):
 
     def output(self):
         # Store json output as run logs
-        with open(self.log_path + self.ts.get_test_str() + ".json", "w") as output_file:
+        log = self.log_path / (self.ts.get_test_str() + ".json")
+        with open(log, "w") as output_file:
             json.dump(self._output, output_file, indent=4)
 
         # Print summary to console logs

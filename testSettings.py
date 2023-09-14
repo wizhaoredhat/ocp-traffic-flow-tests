@@ -1,4 +1,5 @@
 from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType
+from pathlib import Path
 
 class TestSettings():
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
@@ -11,7 +12,7 @@ class TestSettings():
             client_pod_type: str,
             index: int,
             test_type: TestType,
-            log_path: str
+            log_path: Path
         ):
         self.connection_name = connection_name
         self.test_case_id = test_case_id

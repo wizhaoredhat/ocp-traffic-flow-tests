@@ -13,6 +13,7 @@ import sys
 import os
 import shutil
 import json
+from pathlib import Path
 from evaluator import Evaluator, PassFailStatus
 
 class TrafficFlowTests():
@@ -23,7 +24,7 @@ class TrafficFlowTests():
         self.monitors = []
         self.test_settings = None
         self.lh = LocalHost()
-        self.log_path = "ft-logs/"
+        self.log_path = Path("ft-logs")
         self.paths_to_run_logs = []
 
     def get_path_to_results(self) -> str:
@@ -91,37 +92,35 @@ class TrafficFlowTests():
 
     def create_log_paths_from_tests(self, tests: dict):     
         if "logs" in tests:
-            self.log_path = tests['logs'] + '/'
+            self.log_path = Path(tests['logs'])
         self.log_path = self.log_path
         logger.info(f"Logs will be written to {self.log_path}")
-        shutil.rmtree(self.log_path)
-        os.makedirs(self.log_path)
+        if self.log_path.is_dir():
+            shutil.rmtree(self.log_path)
         
         # Create directory for each connection / instance to store run results
         for connections in tests['connections']:
             for index in range(connections['instances']):
-                path=f"{self.log_path}/{connections['name']}-{index}"
+                path=Path(f"{self.log_path}/{connections['name']}-{index}")
                 logger.info(f"Creating dir {path}")
-                os.makedirs(path, exist_ok=False)
+                path.mkdir(parents=True)
         
 
-    def evaluate_flow_tests(self, eval_config: str, log_path: str) -> PassFailStatus:
+    def evaluate_flow_tests(self, eval_config: str, log_dir: Path) -> PassFailStatus:
         evaluator = Evaluator(eval_config)
 
-        logger.info(f"Evaluating results of tests {log_path}")
-        file_path = self.log_path + "RESULTS/"
-        os.makedirs(file_path, exist_ok=True)
+        logger.info(f"Evaluating results of tests {log_dir}")
+        results_path = self.log_path / "RESULTS"
+        results_path.mkdir(exist_ok=True)
 
         # Hand evaluator files to evaluate
-        for file in os.listdir(log_path):
-            log = os.path.join(log_path, file)
-
-            if os.path.isfile(log):
-                logger.debug(f"Evaluating log {log}")
-                evaluator.eval_log(log)
+        for file in log_dir.iterdir():
+            if file.exists():
+                logger.debug(f"Evaluating log {file}")
+                evaluator.eval_log(file)
 
         # Generate Resulting Json
-        file = file_path + "summary.json"
+        file = results_path / "summary.json"
         logger.info(f"Dumping results to {file}")
         data = evaluator.dump_to_json()
         with open(file, "w") as file:
@@ -144,7 +143,7 @@ class TrafficFlowTests():
                 node_server_name = connections['server'][0]['name']
                 node_client_name = connections['client'][0]['name']
                 test_type = self._cc.validate_test_type(connections)
-                log_path=f"{self.log_path}/{connections['name']}-{index}/"
+                log_path=Path(f"{self.log_path}/{connections['name']}-{index}")
                 if log_path not in self.paths_to_run_logs:
                     self.paths_to_run_logs.append(log_path)
 
