@@ -4,7 +4,7 @@ import sys
 import yaml
 import json
 from dataclasses import dataclass, asdict
-from common import TestCaseType, TestType
+from common import TestCaseType, TestType, IperfOutput, TestMetadata
 from logger import logger
 from pathlib import Path
 
@@ -19,7 +19,7 @@ class Bitrate:
 @dataclass
 class PassFailStatus:
     '''Pass/Fail ratio and result from evaluating a full tft Flow Test result
-    
+
     Attributes:
         result: boolean representing whether the test was successful (100% passing)
         num_passed: int number of test cases passed
@@ -35,10 +35,12 @@ class TestResult():
     Attributes:
         test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
         test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        reverse: Specify whether test is client->server or reversed server->client
         success: boolean representing whether the test passed or failed
         birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps'''
     test_id: TestCaseType
     test_type: TestType
+    reverse: bool
     success: bool
     bitrate_gbps: Bitrate
 
@@ -53,24 +55,21 @@ class Evaluator():
         self.test_results = []
 
     def eval_log(self, log_path: Path):
-        with open(log_path, encoding='utf8') as file:
-            self.log = json.load(file)
 
         try:
-            metadata = self.log["tft-metadata"]
-            test_case_id = metadata["test_case_id"]
-            test_type = metadata["test_type"]
-            ft_result = self.log["result"]
+            with open(log_path, 'r') as file:
+                data = IperfOutput(**json.load(file))
+            md = TestMetadata(**data.tft_metadata)
         except KeyError as e:
             logger.error(f"KeyError: {e}. Malformed log handed to eval_log()")
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
-
-        bitrate_threshold = self.get_threshold(test_case_id, test_type)
-        bitrate_gbps = self.calculate_gbps(ft_result, test_type)
+        bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
+        bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
 
         result = TestResult(
-            test_id = test_case_id,
-            test_type = test_type,
+            test_id = md.test_case_id,
+            test_type = md.test_type,
+            reverse= md.reverse,
             success = self.is_passing(bitrate_threshold, bitrate_gbps),
             bitrate_gbps = bitrate_gbps)
         self.test_results.append(result)
