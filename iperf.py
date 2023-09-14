@@ -16,8 +16,8 @@ IPERF_REV_OPT = "-R"
 EXTERNAL_IPERF3_SERVER = "external-iperf3-server"
 
 class IperfServer(Task):
-    def __init__(self, tft: TestConfig, ts: TestSettings):
-        super().__init__(tft, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+    def __init__(self, cc: TestConfig, ts: TestSettings):
+        super().__init__(cc, ts.server_index, ts.node_server_name, ts.server_is_tenant)
         self.exec_persistent = ts.server_is_persistent
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
@@ -81,15 +81,15 @@ class IperfServer(Task):
         logger.info(f"Stopping execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
-            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.error}")
+            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}")
         logger.debug(f"IperfServer.stop(): {r.out}")
 
     def output(self):
         pass
 
 class IperfClient(Task):
-    def __init__(self, tft: TestConfig, ts: TestSettings, server: IperfServer):
-        super().__init__(tft, ts.client_index, ts.node_client_name, ts.client_is_tenant)
+    def __init__(self, cc: TestConfig, ts: TestSettings, server: IperfServer):
+        super().__init__(cc, ts.client_index, ts.node_client_name, ts.client_is_tenant)
         self.server = server
         self.port = self.server.port
         self.pod_type = ts.client_pod_type
@@ -148,7 +148,8 @@ class IperfClient(Task):
 
     def output(self):
         # Store json output as run logs
-        with open(self.log_path + self.ts.get_test_str() + ".json", "w") as output_file:
+        log = self.log_path / (self.ts.get_test_str() + ".json")
+        with open(log, "w") as output_file:
             json.dump(self._output, output_file, indent=4)
 
         # Print summary to console logs
@@ -218,7 +219,7 @@ class IperfClient(Task):
         logger.debug(f"get_podman_ip(): {ret.out}")
         if ret.returncode != 0:
             logger.error(f"Failed to inspect pod {pod_name} for IPAddress: {ret.err}")
-            sys.exit(-1)
+            raise Exception(f"get_podman_ip(): failed to get podman ip")
         return ret.out.strip()
 
     def iperf_error_occured(self, data: dict) -> bool:

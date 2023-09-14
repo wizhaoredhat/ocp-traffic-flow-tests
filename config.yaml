@@ -7,7 +7,7 @@ tft:
     # Location of artifacts from run can be specified: default <working-dir>/ft-logs/
     # logs: "/tmp/ft-logs"
     connections:
-      - name: "Connection 1"
+      - name: "Connection_1"
         # supported types: iperf-tcp, iperf-udp
         type: "iperf-tcp"
         instances: 1
