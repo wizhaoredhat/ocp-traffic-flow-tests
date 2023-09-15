@@ -19,9 +19,6 @@ from evaluator import Evaluator, PassFailStatus
 class TrafficFlowTests():
     def __init__(self, cc: TestConfig):
         self._cc = cc
-        self.servers = []
-        self.clients = []
-        self.monitors = []
         self.test_settings = None
         self.lh = LocalHost()
         self.log_path = Path("ft-logs")
@@ -65,29 +62,29 @@ class TrafficFlowTests():
         cmd = f"podman stop {iperf.EXTERNAL_IPERF3_SERVER}"
         self.lh.run(cmd)
 
-    def enable_measure_cpu_plugin(self, node_server_name: str, node_client_name: str, tenant: bool):
+    def enable_measure_cpu_plugin(self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool):
         s = MeasureCPU(self._cc, node_server_name, tenant)
         c = MeasureCPU(self._cc, node_client_name, tenant)
-        self.monitors.append(s)
-        self.monitors.append(c)
+        monitors.append(s)
+        monitors.append(c)
 
-    def enable_measure_power_plugin(self, node_server_name: str, node_client_name: str, tenant: bool):
+    def enable_measure_power_plugin(self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool):
         s = MeasurePower(self._cc, node_server_name, tenant)
         c = MeasurePower(self._cc, node_client_name, tenant)
-        self.monitors.append(s)
-        self.monitors.append(c)
+        monitors.append(s)
+        monitors.append(c)
 
-    def run_tests(self, duration: int):
-        for tasks in self.servers + self.clients + self.monitors:
+    def run_tests(self, servers, clients, monitors, duration: int):
+        for tasks in servers + clients + monitors:
             tasks.setup()
 
-        for tasks in self.servers + self.clients + self.monitors:
+        for tasks in servers + clients + monitors:
             tasks.run(duration)
 
-        for tasks in self.servers + self.clients + self.monitors:
+        for tasks in servers + clients + monitors:
             tasks.stop()
 
-        for tasks in self.servers + self.clients + self.monitors:
+        for tasks in servers + clients + monitors:
             tasks.output()
 
     def create_log_paths_from_tests(self, tests: dict):     
@@ -131,9 +128,6 @@ class TrafficFlowTests():
 
 
     def run_test_case(self, tests: dict, test_id: int):
-        self.servers = []
-        self.clients = []
-        self.monitors = []
         duration = tests['duration']
         #TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests['connections']:
@@ -143,36 +137,45 @@ class TrafficFlowTests():
                 node_server_name = connections['server'][0]['name']
                 node_client_name = connections['client'][0]['name']
                 test_type = self._cc.validate_test_type(connections)
-                log_path=Path(f"{self.log_path}/{connections['name']}-{index}")
-                if log_path not in self.paths_to_run_logs:
-                    self.paths_to_run_logs.append(log_path)
+                def _run(reverse: bool = False):
+                    servers = []
+                    clients = []
+                    monitors = []
+                    log_path=Path(f"{self.log_path}/{connections['name']}-{index}")
+                    if log_path not in self.paths_to_run_logs:
+                        self.paths_to_run_logs.append(log_path)
 
-                if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
-                    self.test_settings = TestSettings(
-                        connection_name=connections['name'],
-                        test_case_id=test_id,
-                        node_server_name=node_server_name,
-                        node_client_name=node_client_name,
-                        server_pod_type=self._cc.validate_pod_type(connections['server'][0]),
-                        client_pod_type=self._cc.validate_pod_type(connections['client'][0]),
-                        index=index,
-                        test_type=test_type,
-                        log_path=log_path,
-                    )
-                    s, c = self.create_iperf_server_client(self.test_settings)
-                    self.servers.append(s)
-                    self.clients.append(c)
-                else:
-                    logger.error("http connections not currently supported")
-                if connections['plugins']:
-                    for plugins in connections['plugins']:
-                        if plugins['name'] == "measure_cpu":
-                            self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
-                        if plugins['name'] == "measure_power":
-                            self.enable_measure_power_plugin(node_server_name, node_client_name, True)
+                    if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
+                        self.test_settings = TestSettings(
+                            connection_name=connections['name'],
+                            test_case_id=test_id,
+                            node_server_name=node_server_name,
+                            node_client_name=node_client_name,
+                            server_pod_type=self._cc.validate_pod_type(connections['server'][0]),
+                            client_pod_type=self._cc.validate_pod_type(connections['client'][0]),
+                            index=index,
+                            test_type=test_type,
+                            log_path=log_path,
+                            reverse=reverse
+                        )
+                        s, c = self.create_iperf_server_client(self.test_settings)
+                        servers.append(s)
+                        clients.append(c)
+                    else:
+                        logger.error("http connections not currently supported")
+                    if connections['plugins']:
+                        for plugins in connections['plugins']:
+                            if plugins['name'] == "measure_cpu":
+                                self.enable_measure_cpu_plugin(monitors, node_server_name, node_client_name, True)
+                            if plugins['name'] == "measure_power":
+                                self.enable_measure_power_plugin(monitors, node_server_name, node_client_name, True)
 
-                self.run_tests(duration)
-                self.cleanup_previous_testspace(tests['namespace'])
+                    self.run_tests(servers, clients, monitors, duration)
+                    self.cleanup_previous_testspace(tests['namespace'])
+                # if test_type is iperf_TCP run both forward and reverse tests
+                _run()
+                if test_type == TestType.IPERF_TCP:
+                    _run(reverse=True)
 
     def evaluate_run_success(self) -> bool:
         all_passing = True

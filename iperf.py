@@ -1,11 +1,12 @@
 import common
-from common import PodType, ConnectionMode, TestType
+from common import PodType, ConnectionMode, TestType, IperfOutput
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
 from host import Result
 from testSettings import TestSettings
+from dataclasses import asdict
 import sys
 import yaml
 import json
@@ -14,6 +15,9 @@ IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"
 IPERF_REV_OPT = "-R"
 EXTERNAL_IPERF3_SERVER = "external-iperf3-server"
+
+# Finishing switching iperf data handling to dataclass
+
 
 class IperfServer(Task):
     def __init__(self, cc: TestConfig, ts: TestSettings):
@@ -98,6 +102,7 @@ class IperfClient(Task):
         self.log_path = ts.log_path
         self.test_case_id = ts.test_case_id
         self.ts = ts
+        self.reverse = ts.reverse
         self.cmd = ""
 
         if self.pod_type  == PodType.SRIOV:
@@ -126,6 +131,8 @@ class IperfClient(Task):
         self.cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
         if self.test_type == TestType.IPERF_UDP:
             self.cmd = f" {self.cmd} {IPERF_UDP_OPT}"
+        if self.reverse:
+            self.cmd = f" {self.cmd} {IPERF_REV_OPT}"
         self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
         self.exec_thread.start()
 
@@ -138,31 +145,34 @@ class IperfClient(Task):
         data = json.loads(r.out)
         self._output = self.generate_output(data)
 
-    def generate_output(self, data: dict) -> dict:
-        json_dump = {
-            "tft-metadata": self.ts.get_test_info_dict(),
-            "command": self.cmd,
-            "result": data
-        }
+    def generate_output(self, data: dict) -> IperfOutput:
+        json_dump = IperfOutput(
+            tft_metadata=self.ts.get_test_metadata(),
+            command=self.cmd,
+            result=data,
+        )
         return json_dump
 
     def output(self):
         # Store json output as run logs
         log = self.log_path / (self.ts.get_test_str() + ".json")
         with open(log, "w") as output_file:
-            json.dump(self._output, output_file, indent=4)
+            data = asdict(self._output)
+            print(data)
+            json.dump(data, output_file)
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occured(self._output["result"]):
+        print(self._output)
+        if self.iperf_error_occured(self._output.result):
             logger.error("Encountered error while running test:\n"
-                f"  {self._output['result']['error']}"
+                f"  {self._output.result['error']}"
             )
             return
         if self.test_type == TestType.IPERF_TCP:
-            self.print_tcp_results(self._output["result"])
+            self.print_tcp_results(self._output.result)
         if self.test_type == TestType.IPERF_UDP:
-            self.print_udp_results(self._output["result"])     
+            self.print_udp_results(self._output.result)     
 
     def print_tcp_results(self, data: dict):
         sum_sent = data["end"]["sum_sent"]

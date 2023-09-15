@@ -1,4 +1,5 @@
 import jinja2
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -52,6 +53,29 @@ class ConnectionMode(Enum):
 class NodeLocation(Enum):
     SAME_NODE                            = 1
     DIFF_NODE                            = 2
+
+
+@dataclass
+class PodInfo():
+    name: str
+    pod_type: str
+    is_tenant: bool
+    index: int
+
+@dataclass
+class TestMetadata():
+    test_case_id: str
+    test_type: str
+    reverse: bool
+    server: PodInfo
+    client: PodInfo
+
+@dataclass
+class IperfOutput():
+    tft_metadata: TestMetadata
+    command: str
+    result: dict
+
 
 def j2_render(in_file_name, out_file_name, kwargs):
     with open(in_file_name) as inFile:

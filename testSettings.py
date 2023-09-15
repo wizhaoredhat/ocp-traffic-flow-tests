@@ -1,4 +1,4 @@
-from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType
+from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType, PodInfo, TestMetadata
 from pathlib import Path
 
 class TestSettings():
@@ -12,7 +12,8 @@ class TestSettings():
             client_pod_type: str,
             index: int,
             test_type: TestType,
-            log_path: Path
+            log_path: Path,
+            reverse: bool = False
         ):
         self.connection_name = connection_name
         self.test_case_id = test_case_id
@@ -28,6 +29,7 @@ class TestSettings():
         self.client_index = index
         self.test_type = test_type
         self.log_path = log_path
+        self.reverse = reverse
 
         # Derive params from test_case_id
         self.set_all_params_from_test_case_id(test_case_id)
@@ -53,7 +55,10 @@ class TestSettings():
         """
 
     def get_test_str(self) -> str:
-        return f"{self.test_case_id}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}"
+        direction = ""
+        if self.reverse:
+            direction = "-REV"
+        return f"{self.test_case_id}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}{direction}"
 
     def _test_id_to_connection_mode(self, test_case_id) -> ConnectionMode:
         """The connection type will be used to determine what IP the client should direct traffic to"""
@@ -65,23 +70,24 @@ class TestSettings():
             return ConnectionMode.EXTERNAL_IP
         return ConnectionMode.POD_IP
 
-    def get_test_info_dict(self) -> dict:
-        json_dump = {
-            "test_case_id": TestCaseType(self.test_case_id).name,
-            "test_type": self.test_type.name,
-            "server": {
-                "name": self.node_server_name,
-                "pod_type": self.server_pod_type.name,
-                "is_tenant": self.server_is_tenant,
-                "index": self.server_index,
-            },
-            "client": {
-                "name": self.node_client_name,
-                "pod_type": self.client_pod_type.name,
-                "is_tenant": self.client_is_tenant,
-                "index": self.client_index
-            },    
-        }
+    def get_test_metadata(self) -> TestMetadata:
+        json_dump = TestMetadata(
+            test_case_id=TestCaseType(self.test_case_id).name,
+            test_type=self.test_type.name,
+            reverse=self.reverse,
+            server=PodInfo(
+                name=self.node_server_name,
+                pod_type=self.server_pod_type.name,
+                is_tenant=self.server_is_tenant,
+                index=self.client_index
+            ),
+            client=PodInfo(
+                name=self.node_client_name,
+                pod_type=self.client_pod_type.name,
+                is_tenant=self.client_is_tenant,
+                index=self.client_index
+            )
+        )
         return json_dump
 
     def _determine_server_name(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str):
