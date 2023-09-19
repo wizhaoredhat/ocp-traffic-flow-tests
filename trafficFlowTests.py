@@ -7,6 +7,7 @@ import iperf
 from iperf import IperfServer, IperfClient
 from measureCpu import MeasureCPU
 from measurePower import MeasurePower
+from validateHWOL import ValidateHWOL
 from enum import Enum
 from host import LocalHost
 import sys
@@ -66,6 +67,12 @@ class TrafficFlowTests():
     def enable_measure_power_plugin(self, node_server_name: str, node_client_name: str, tenant: bool):
         s = MeasurePower(self._tft, node_server_name, tenant)
         c = MeasurePower(self._tft, node_client_name, tenant)
+        self.monitors.append(s)
+        self.monitors.append(c)
+    
+    def enable_validate_HWOL_plugin(self, node_server_name: str, node_client_name: str, tenant: bool):
+        s = ValidateHWOL(self._tft, node_server_name, tenant)
+        c = ValidateHWOL(self._tft, node_client_name, tentant)
         self.monitors.append(s)
         self.monitors.append(c)
 
@@ -136,6 +143,8 @@ class TrafficFlowTests():
                                     self.enable_measure_cpu_plugin(node_server_name, node_client_name, True)
                                 if plugins['name'] == "measure_power":
                                     self.enable_measure_power_plugin(node_server_name, node_client_name, True)
+                                if plugins['name'] == "validate_HWOL":
+                                    self.enable_validate_HWOL_plugin(node_server_name,node_client_name, True)
 
                         self.run_tests(duration)
                         self.cleanup_previous_testspace(tests['namespace'])

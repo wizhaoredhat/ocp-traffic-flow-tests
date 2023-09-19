@@ -12,13 +12,13 @@ tft:
         type: "iperf-tcp"
         instances: 1
         server:
-          - name: "worker-229"
+          - name: "worker-145"
             persistent: "false"
             sriov: "true"
         client:
-          - name: "worker-230"
+          - name: "worker-146"
             sriov: "true"
         plugins:
           - name: capture_flows
-          - name: measure_cpu
-          - name: measure_power
+          - name: HWOL_validation
+          - name: measureCPU
