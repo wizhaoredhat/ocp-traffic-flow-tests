@@ -12,8 +12,8 @@ import re
 import time
 
 class MeasurePower(Task):
-    def __init__(self, cc: TestConfig, node_name: str, tenant: bool):
-        super().__init__(cc, 0, node_name, tenant)
+    def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
+        super().__init__(tc, 0, node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"

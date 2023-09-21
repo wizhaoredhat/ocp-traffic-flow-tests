@@ -60,8 +60,8 @@ class Evaluator():
             with open(log_path, 'r') as file:
                 data = IperfOutput(**json.load(file))
             md = TestMetadata(**data.tft_metadata)
-        except KeyError as e:
-            logger.error(f"KeyError: {e}. Malformed log handed to eval_log()")
+        except Exception as e:
+            logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
         bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
         bitrate_gbps = self.calculate_gbps(data.result, md.test_type)

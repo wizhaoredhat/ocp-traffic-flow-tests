@@ -17,8 +17,8 @@ from pathlib import Path
 from evaluator import Evaluator, PassFailStatus
 
 class TrafficFlowTests():
-    def __init__(self, cc: TestConfig):
-        self._cc = cc
+    def __init__(self, tc: TestConfig):
+        self._tc = tc
         self.test_settings = None
         self.lh = LocalHost()
         self.log_path = Path("ft-logs")
@@ -31,13 +31,13 @@ class TrafficFlowTests():
     def create_iperf_server_client(self, test_settings: TestSettings) -> (IperfServer, IperfClient):
         logger.info(f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}")
 
-        s = IperfServer(cc=self._cc, ts=self.test_settings)
-        c = IperfClient(cc=self._cc, ts=self.test_settings, server=s)
+        s = IperfServer(tc=self._tc, ts=self.test_settings)
+        c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def configure_namespace(self, namespace: str):
         logger.info(f"Configuring namespace {namespace}")
-        r = self._cc.client_tenant.oc(f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
+        r = self._tc.client_tenant.oc(f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false")
         if r.returncode != 0:
@@ -47,13 +47,13 @@ class TrafficFlowTests():
 
     def cleanup_previous_testspace(self, namespace: str):
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = self._cc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
+        r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception(f"cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = self._cc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        r = self._tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception(f"cleanup_previous_testspace(): Failed to delete services")
@@ -63,14 +63,14 @@ class TrafficFlowTests():
         self.lh.run(cmd)
 
     def enable_measure_cpu_plugin(self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool):
-        s = MeasureCPU(self._cc, node_server_name, tenant)
-        c = MeasureCPU(self._cc, node_client_name, tenant)
+        s = MeasureCPU(self._tc, node_server_name, tenant)
+        c = MeasureCPU(self._tc, node_client_name, tenant)
         monitors.append(s)
         monitors.append(c)
 
     def enable_measure_power_plugin(self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool):
-        s = MeasurePower(self._cc, node_server_name, tenant)
-        c = MeasurePower(self._cc, node_client_name, tenant)
+        s = MeasurePower(self._tc, node_server_name, tenant)
+        c = MeasurePower(self._tc, node_client_name, tenant)
         monitors.append(s)
         monitors.append(c)
 
@@ -126,6 +126,58 @@ class TrafficFlowTests():
         # Return PassFailStatus
         return evaluator.evaluate_pass_fail_status()
 
+    def evaluate_run_success(self) -> bool:
+        all_passing = True
+        # For the result of every test run, check the status of each run log to ensure all test passed
+        results = []
+        for run_log_path in self.paths_to_run_logs:
+            results.append(self.evaluate_flow_tests(self.eval_config, run_log_path))
+
+
+        for pfstatus in results:
+            logger.info(f"RESULT: Success = {pfstatus.result}. Passed {pfstatus.num_passed}/{pfstatus.num_passed + pfstatus.num_failed}")
+            if not pfstatus.result:
+                all_passing = False
+
+        return all_passing
+    
+    def _run(self, connections: dict, test_type: TestType, test_id: int, index: int, duration: int, reverse: bool = False):
+        servers = []
+        clients = []
+        monitors = []
+        node_server_name = connections['server'][0]['name']
+        node_client_name = connections['client'][0]['name']
+        log_path=Path(os.path.join(self.log_path, f"{connections['name']}-{index}"))
+        if log_path not in self.paths_to_run_logs:
+            self.paths_to_run_logs.append(log_path)
+
+        if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
+            self.test_settings = TestSettings(
+                connection_name=connections['name'],
+                test_case_id=test_id,
+                node_server_name=node_server_name,
+                node_client_name=node_client_name,
+                server_pod_type=self._tc.validate_pod_type(connections['server'][0]),
+                client_pod_type=self._tc.validate_pod_type(connections['client'][0]),
+                index=index,
+                test_type=test_type,
+                log_path=log_path,
+                reverse=reverse
+            )
+            s, c = self.create_iperf_server_client(self.test_settings)
+            servers.append(s)
+            clients.append(c)
+        else:
+            logger.error("http connections not currently supported")
+        if connections['plugins']:
+            for plugins in connections['plugins']:
+                if plugins['name'] == "measure_cpu":
+                    self.enable_measure_cpu_plugin(monitors, node_server_name, node_client_name, True)
+                if plugins['name'] == "measure_power":
+                    self.enable_measure_power_plugin(monitors, node_server_name, node_client_name, True)
+
+        self.run_tests(servers, clients, monitors, duration)
+
 
     def run_test_case(self, tests: dict, test_id: int):
         duration = tests['duration']
@@ -134,63 +186,12 @@ class TrafficFlowTests():
             logger.info(f"Starting {connections['name']}")
             logger.info(f"Number Of Simultaneous connections {connections['instances']}")
             for index in range(connections['instances']):
-                node_server_name = connections['server'][0]['name']
-                node_client_name = connections['client'][0]['name']
-                test_type = self._cc.validate_test_type(connections)
-                def _run(reverse: bool = False):
-                    servers = []
-                    clients = []
-                    monitors = []
-                    log_path=Path(f"{self.log_path}/{connections['name']}-{index}")
-                    if log_path not in self.paths_to_run_logs:
-                        self.paths_to_run_logs.append(log_path)
-
-                    if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
-                        self.test_settings = TestSettings(
-                            connection_name=connections['name'],
-                            test_case_id=test_id,
-                            node_server_name=node_server_name,
-                            node_client_name=node_client_name,
-                            server_pod_type=self._cc.validate_pod_type(connections['server'][0]),
-                            client_pod_type=self._cc.validate_pod_type(connections['client'][0]),
-                            index=index,
-                            test_type=test_type,
-                            log_path=log_path,
-                            reverse=reverse
-                        )
-                        s, c = self.create_iperf_server_client(self.test_settings)
-                        servers.append(s)
-                        clients.append(c)
-                    else:
-                        logger.error("http connections not currently supported")
-                    if connections['plugins']:
-                        for plugins in connections['plugins']:
-                            if plugins['name'] == "measure_cpu":
-                                self.enable_measure_cpu_plugin(monitors, node_server_name, node_client_name, True)
-                            if plugins['name'] == "measure_power":
-                                self.enable_measure_power_plugin(monitors, node_server_name, node_client_name, True)
-
-                    self.run_tests(servers, clients, monitors, duration)
-                    self.cleanup_previous_testspace(tests['namespace'])
+                test_type = self._tc.validate_test_type(connections)
                 # if test_type is iperf_TCP run both forward and reverse tests
-                _run()
+                self._run(connections=connections, test_type=test_type, test_id=test_id, index=index, duration=duration)
                 if test_type == TestType.IPERF_TCP:
-                    _run(reverse=True)
-
-    def evaluate_run_success(self) -> bool:
-        all_passing = True
-        # For the result of every test run, check the status of each run log to ensure all test passed
-        results = []
-        for run_log_path in self.paths_to_run_logs:
-            results.append(self.evaluate_flow_tests(self.eval_config, run_log_path))
-        
-
-        for pfstatus in results:
-            logger.info(f"RESULT: Success = {pfstatus.result}. Passed {pfstatus.num_passed}/{pfstatus.num_passed + pfstatus.num_failed}")
-            if not pfstatus.result:
-                all_passing = False
-        
-        return all_passing
+                    self._run(connections=connections, test_type=test_type, test_id=test_id, index=index, duration=duration, reverse=True)
+                self.cleanup_previous_testspace(tests['namespace'])
 
     def run(self, tests: dict, eval_config: str):
         self.paths_to_run_logs = []
@@ -199,9 +200,8 @@ class TrafficFlowTests():
         self.cleanup_previous_testspace(tests['namespace'])
         self.create_log_paths_from_tests(tests)
         logger.info(f"Running test {tests['name']} for {tests['duration']} seconds")
-        test_cases = self._cc.parse_test_cases(tests['test_cases'])
+        test_cases = self._tc.parse_test_cases(tests['test_cases'])
         for test_id in test_cases:
             self.run_test_case(
                 tests=tests,
                 test_id=test_id)
-

@@ -11,7 +11,7 @@ from thread import ReturnValueThread
 import host
 
 class Task(ABC):
-    def __init__(self, cc: TestConfig, index: int, node_name: str, tenant: bool):
+    def __init__(self, tc: TestConfig, index: int, node_name: str, tenant: bool):
         self.template_args = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
@@ -29,18 +29,18 @@ class Task(ABC):
         self.index = index
         self.node_name = node_name
         self.tenant = tenant
-        if not self.tenant and cc.mode == ClusterMode.SINGLE:
+        if not self.tenant and tc.mode == ClusterMode.SINGLE:
             logger.error("Cannot have non-tenant Task when cluster mode is single.")
             sys.exit(-1)
 
         self.template_args["node_name"] = self.node_name
-        self.cc = cc
+        self.tc = tc
 
     def run_oc(self, cmd: str) -> host.Result:
         if self.tenant:
-            r = self.cc.client_tenant.oc(cmd)
+            r = self.tc.client_tenant.oc(cmd)
         else:
-            r = self.cc.client_infra.oc(cmd)
+            r = self.tc.client_infra.oc(cmd)
         return r
 
     def get_pod_ip(self):

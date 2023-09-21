@@ -6,11 +6,11 @@ import sys
 
 def main():
     args = arguments.parse_args()
-    cc = TestConfig(args.config)
-    tft = TrafficFlowTests(cc)
+    tc = TestConfig(args.config)
+    tft = TrafficFlowTests(tc)
 
     results = []
-    for test in tft._cc.GetConfig():
+    for test in tft._tc.GetConfig():
         tft.run(test, args.evaluator_config)
 
         
