@@ -26,7 +26,6 @@ class IperfServer(Task):
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
         self.connection_mode = ts.connection_mode
-        self.log_path = ts.log_path
 
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             self.pod_name = EXTERNAL_IPERF3_SERVER
@@ -88,7 +87,7 @@ class IperfServer(Task):
             logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}")
         logger.debug(f"IperfServer.stop(): {r.out}")
 
-    def output(self):
+    def output(self, out: common.TftAggregateOutput):
         pass
 
 class IperfClient(Task):
@@ -99,7 +98,6 @@ class IperfClient(Task):
         self.pod_type = ts.client_pod_type
         self.connection_mode = ts.connection_mode
         self.test_type = ts.test_type
-        self.log_path = ts.log_path
         self.test_case_id = ts.test_case_id
         self.ts = ts
         self.reverse = ts.reverse
@@ -153,12 +151,9 @@ class IperfClient(Task):
         )
         return json_dump
 
-    def output(self):
-        # Store json output as run logs
-        log = self.log_path / (self.ts.get_test_str() + ".json")
-        with open(log, "w") as output_file:
-            data = asdict(self._output)
-            json.dump(data, output_file)
+    def output(self, out: common.TftAggregateOutput):
+        # Return machine-readable output to top level
+        out.flow_test = self._output
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")

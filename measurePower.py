@@ -1,4 +1,4 @@
-import common
+from common import j2_render, TFT_TOOLS_IMG, PluginOutput, TftAggregateOutput
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
@@ -7,7 +7,6 @@ from host import Result
 import sys
 import yaml
 import json
-import jc
 import re
 import time
 
@@ -18,11 +17,13 @@ class MeasurePower(Task):
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
-        self.template_args["test_image"] = common.TFT_TOOLS_IMG
+        self.template_args["test_image"] = TFT_TOOLS_IMG
 
         self.pod_name = self.template_args["pod_name"]
+        self.node_name = node_name
+        self.cmd = ""
 
-        common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
+        j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int):
@@ -51,23 +52,36 @@ class MeasurePower(Task):
                 if time.time() > end_time:
                     break
             r = Result(f"{total_pwr/iteration}", "", 0)
-            logger.info(r)
             return r
 
         # 1 report at intervals defined by the duration in seconds.
-        cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
-        self.exec_thread = ReturnValueThread(target=stat, args=(self, cmd, duration))
+        self.cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
+        self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd, duration))
         self.exec_thread.start()
-        logger.info(f"Running {cmd}")
+        logger.info(f"Running {self.cmd}")
 
     def stop(self):
         logger.info(f"Stopping measurePower execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
-            logger.info(r)
-        logger.debug(f"MeasurePower.out(): {r.out}")
-        logger.info(f"measurePower results: {r.out}")
+            logger.error(r)
+        self._output = self.generate_output(data=r.out)
 
-    def output(self):
-        #TODO: handle printing/storing output here
-        pass
+    def output(self, out: TftAggregateOutput):
+        # Return machine-readable output to top level
+        out.plugins.append(self._output)
+
+        # Print summary to console logs
+        logger.info(f"measurePower results: {self._output.result}")
+
+    def generate_output(self, data) -> PluginOutput:
+        return PluginOutput(
+            plugin_metadata={
+                "name": "MeasurePower",
+                "node_name": self.node_name,
+                "pod_name": self.pod_name
+            },
+            command=self.cmd,
+            result=data,
+            name="measure_power"
+        )

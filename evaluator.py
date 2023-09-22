@@ -4,7 +4,7 @@ import sys
 import yaml
 import json
 from dataclasses import dataclass, asdict
-from common import TestCaseType, TestType, IperfOutput, TestMetadata
+from common import TestCaseType, TestType, IperfOutput, TestMetadata, TftAggregateOutput, TFT_TESTS
 from logger import logger
 from pathlib import Path
 
@@ -54,15 +54,15 @@ class Evaluator():
         self.config = c
         self.test_results = []
 
-    def eval_log(self, log_path: Path):
-
+    def _eval_flow_test(self, run):
         try:
-            with open(log_path, 'r') as file:
-                data = IperfOutput(**json.load(file))
+            run = TftAggregateOutput(**run)
+            data = IperfOutput(**run.flow_test)
             md = TestMetadata(**data.tft_metadata)
         except Exception as e:
-            logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
-            raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
+            logger.error(f"Exception: {e}. Malformed log handed to _eval()")
+            raise Exception(f"_eval(): error parsing data for expected fields")
+
         bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
         bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
 
@@ -73,6 +73,20 @@ class Evaluator():
             success = self.is_passing(bitrate_threshold, bitrate_gbps),
             bitrate_gbps = bitrate_gbps)
         self.test_results.append(result)
+
+    def eval_log(self, log_path: Path):
+        try:
+            with open(log_path, 'r') as file:
+                runs = json.load(file)[TFT_TESTS]                
+        except Exception as e:
+            logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
+            raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
+
+        for run in runs:
+            self._eval_flow_test(run)
+            for plugin in run["plugins"]:
+                #TODO: add evaluation for plugins
+                logger.debug(f'Reading result from plugin {plugin["name"]}')
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
         return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
@@ -166,10 +180,9 @@ def parse_args() -> argparse.Namespace:
         logger.error(f"No config file found at {args.config}, exiting")
         sys.exit(-1)
 
-    if args.logs:
-        if not Path(args.logs).exists():
-            logger.error(f"Log directory {args.logs} does not exist")
-            sys.exit(-1)
+    if not Path(args.logs).exists():
+        logger.error(f"Log file {args.logs} does not exist")
+        sys.exit(-1)
 
     return args
 
@@ -177,11 +190,9 @@ def main():
     args = parse_args()
     evaluator = Evaluator(args.config)
 
-    # Hand evaluator files to evaluate
-    for file in Path(args.logs).iterdir():
-        if file.is_file():
-            print(file)
-            evaluator.eval_log(file)
+    # Hand evaluator log file to evaluate
+    file = Path(args.logs)
+    evaluator.eval_log(file)
 
     # Generate Resulting Json
     data = evaluator.dump_to_json()

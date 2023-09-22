@@ -9,7 +9,6 @@ def main():
     tc = TestConfig(args.config)
     tft = TrafficFlowTests(tc)
 
-    results = []
     for test in tft._tc.GetConfig():
         tft.run(test, args.evaluator_config)
 

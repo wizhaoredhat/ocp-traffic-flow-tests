@@ -1,10 +1,11 @@
 import jinja2
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict, field
 from enum import Enum
-
+from typing import List
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:0.3"
+TFT_TESTS = "tft-tests"
 
 class TestType(Enum):
     IPERF_TCP  = 1
@@ -75,6 +76,27 @@ class IperfOutput():
     tft_metadata: TestMetadata
     command: str
     result: dict
+
+@dataclass
+class PluginOutput():
+    plugin_metadata: dict
+    command: str
+    result: dict
+    name: str
+
+@dataclass
+class TftAggregateOutput():
+    '''Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
+    pass a reference to an instance of TftAggregateOutput to each task to which the task will append
+    it's respective output. A list of this class will be the expected format of input provided to
+    evaluator.py.
+
+    Attributes:
+        flow_test: an object of type IperfOutput containing the results of a flow test run
+        plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
+        resulting output to.'''
+    flow_test: IperfOutput = None
+    plugins: List[PluginOutput] = field(default_factory=list)
 
 
 def j2_render(in_file_name, out_file_name, kwargs):
