@@ -12,7 +12,6 @@ class TestSettings():
             client_pod_type: str,
             index: int,
             test_type: TestType,
-            log_path: Path,
             reverse: bool = False
         ):
         self.connection_name = connection_name
@@ -28,7 +27,6 @@ class TestSettings():
         self.server_index = index
         self.client_index = index
         self.test_type = test_type
-        self.log_path = log_path
         self.reverse = reverse
 
         # Derive params from test_case_id

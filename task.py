@@ -11,7 +11,7 @@ from thread import ReturnValueThread
 import host
 
 class Task(ABC):
-    def __init__(self, cc: TestConfig, index: int, node_name: str, tenant: bool):
+    def __init__(self, tc: TestConfig, index: int, node_name: str, tenant: bool):
         self.template_args = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
@@ -29,18 +29,18 @@ class Task(ABC):
         self.index = index
         self.node_name = node_name
         self.tenant = tenant
-        if not self.tenant and cc.mode == ClusterMode.SINGLE:
+        if not self.tenant and tc.mode == ClusterMode.SINGLE:
             logger.error("Cannot have non-tenant Task when cluster mode is single.")
             sys.exit(-1)
 
         self.template_args["node_name"] = self.node_name
-        self.cc = cc
+        self.tc = tc
 
     def run_oc(self, cmd: str) -> host.Result:
         if self.tenant:
-            r = self.cc.client_tenant.oc(cmd)
+            r = self.tc.client_tenant.oc(cmd)
         else:
-            r = self.cc.client_infra.oc(cmd)
+            r = self.tc.client_infra.oc(cmd)
         return r
 
     def get_pod_ip(self):
@@ -109,10 +109,10 @@ class Task(ABC):
         raise NotImplementedError('Must implement stop()')
     
     """
-    output() should be called to store the results of this task in a machine readable format (i.e. json) in the log location specified by the user,
-    as well as print any required info/debug to the console. The results should be formatted such that other modules can easily consume the output, such
-    as a module to determine the success/failure/performance of a given run.
+    output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the
+    TftAggregateOutput Plugin fields. Additionally, this function should handle printing any required info/debug to the console. The results must
+    be formated such that other modules can easily consume the output, such as a module to determine the success/failure/performance of a given run.
     """
     @abstractmethod
-    def output(self):
+    def output(self, out: common.TftAggregateOutput):
         raise NotImplementedError('Must implement output()')
