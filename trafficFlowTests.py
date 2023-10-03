@@ -5,6 +5,7 @@ from testConfig import TestConfig
 from logger import logger
 import iperf
 from iperf import IperfServer, IperfClient
+from validateOffload import ValidateOffload
 from measureCpu import MeasureCPU
 from measurePower import MeasurePower
 from enum import Enum
@@ -72,6 +73,12 @@ class TrafficFlowTests():
     def _enable_measure_power_plugin(self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool):
         s = MeasurePower(self._tc, node_server_name, tenant)
         c = MeasurePower(self._tc, node_client_name, tenant)
+        monitors.append(s)
+        monitors.append(c)
+    
+    def enable_validate_offload_plugin(self, monitors: list, iperf_server: IperfServer, iperf_client: IperfClient, tenant: bool):
+        s = ValidateOffload(self._tc, iperf_server, tenant)
+        c = ValidateOffload(self._tc, iperf_client, tenant)
         monitors.append(s)
         monitors.append(c)
 
@@ -166,6 +173,11 @@ class TrafficFlowTests():
                     self._enable_measure_cpu_plugin(monitors, node_server_name, node_client_name, True)
                 if plugins['name'] == "measure_power":
                     self._enable_measure_power_plugin(monitors, node_server_name, node_client_name, True)
+                if plugins['name'] == "validate_offload":
+                    # TODO allow this to run on each individual server + client pairs.
+                    iperf_server = servers[-1]
+                    iperf_client = clients[-1]
+                    self.enable_validate_offload_plugin(monitors, iperf_server, iperf_client, True)
 
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)

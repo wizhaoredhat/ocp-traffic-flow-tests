@@ -85,6 +85,13 @@ class PluginOutput():
     name: str
 
 @dataclass
+class RxTxData():
+    rx_start: int
+    tx_start: int
+    rx_end: int
+    tx_end: int
+
+@dataclass
 class TftAggregateOutput():
     '''Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
     pass a reference to an instance of TftAggregateOutput to each task to which the task will append
