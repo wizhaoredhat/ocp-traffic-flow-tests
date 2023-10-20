@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
-TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:09-27-2023"
+TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
 class TestType(Enum):
