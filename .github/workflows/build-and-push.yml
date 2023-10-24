@@ -6,7 +6,6 @@ on:
       - main
 
 jobs:
-
   build-and-push:
 
     runs-on: ubuntu-latest
@@ -14,34 +13,19 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Set date
-      id: date
-      run: echo "::set-output name=date::$(date +'%m-%d-%Y')"
+    - name: Set up Docker Buildx
+      run: |
+        docker buildx
     - name: Authenticate
       uses: docker/login-action@v1
       with:
         registry: quay.io
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_PASSWORD }}
-    - name: Build and Push TFT-x86 image
-      uses: docker/build-push-action@v2
-      with:
-        file: ./images/Containerfile
-        push: true
-        tags: |
-          quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}-x86_64
-    - name: Build and Push TFT-ARM64 image
-      uses: docker/build-push-action@v2
-      with:
-        file: ./images/Containerfile
-        push: true
-        platforms: linux/arm64
-        tags: |
-          quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}-aarch64
-    - name: Create and Push Multi-Architecture Manifest
+    - name: Build and Push Multiarch image
       run: |
-        sudo podman manifest create tft-tools-${{ steps.date.outputs.date }}-list
-        sudo podman manifest add tft-tools-${{ steps.date.outputs.date }}-list quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}-x86_64
-        sudo podman manifest add tft-tools-${{ steps.date.outputs.date }}-list quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}-aarch64
-        sudo podman manifest push tft-tools-${{ steps.date.outputs.date }}-list quay.io/wizhao/tft-tools:${{ steps.date.outputs.date }}
-        sudo podman manifest push tft-tools-${{ steps.date.outputs.date }}-list quay.io/wizhao/tft-tools:latest
+        docker buildx build \
+          --file ./images/Containerfile \
+          --platform linux/arm64,linux/amd64\
+          --tag quay.io/wizhao/tft-tools:latest \
+          --push .
