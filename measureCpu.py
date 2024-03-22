@@ -3,18 +3,17 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
-from host import Result
-import sys
-import yaml
-import json
 import jc
+
 
 class MeasureCPU(Task):
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
-        self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
+        self.out_file_yaml = (
+            f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
+        )
         self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
         self.template_args["test_image"] = TFT_TOOLS_IMG
 
@@ -41,8 +40,8 @@ class MeasureCPU(Task):
         if r.returncode != 0:
             logger.info(r)
         logger.debug(f"measureCpu.stop(): {r.out}")
-        data = jc.parse('mpstat', r.out)
-        p_idle = data[0]['percent_idle']
+        data = jc.parse("mpstat", r.out)
+        p_idle = data[0]["percent_idle"]
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
         self._output = self.generate_output(data)
 
@@ -51,10 +50,10 @@ class MeasureCPU(Task):
         out.plugins.append(self._output)
 
         # Print summary to console logs
-        p_idle = self._output.result['percent_idle']
+        p_idle = self._output.result["percent_idle"]
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
-    #TODO: We are currently only storing the "cpu: all" data from mpstat
+    # TODO: We are currently only storing the "cpu: all" data from mpstat
     def generate_output(self, data) -> PluginOutput:
         return PluginOutput(
             plugin_metadata={
@@ -64,5 +63,5 @@ class MeasureCPU(Task):
             },
             command=self.cmd,
             result=data[0],
-            name="measure_cpu"
+            name="measure_cpu",
         )

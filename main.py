@@ -12,10 +12,10 @@ def main():
     for test in tft._tc.GetConfig():
         tft.run(test, args.evaluator_config)
 
-        
         if not tft.evaluate_run_success():
             print(f"Failure detected in {test['name']} results")
             sys.exit(-1)
+
 
 if __name__ == "__main__":
     main()

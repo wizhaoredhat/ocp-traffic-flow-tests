@@ -1,6 +1,7 @@
 from threading import Thread
 from logger import logger
 
+
 class ReturnValueThread(Thread):
     def __init__(self, *args, **kwargs):
         self._target = None

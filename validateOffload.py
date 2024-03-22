@@ -1,4 +1,11 @@
-from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput, PodType, RxTxData
+from common import (
+    TFT_TOOLS_IMG,
+    PluginOutput,
+    j2_render,
+    TftAggregateOutput,
+    PodType,
+    RxTxData,
+)
 from dataclasses import asdict
 from logger import logger
 from time import sleep
@@ -6,24 +13,29 @@ from testConfig import TestConfig
 from iperf import IperfServer, IperfClient
 from thread import ReturnValueThread
 from task import Task
-from host import Result
 from typing import Optional, Union
 import sys
-import yaml
 import json
-import jc
+
 
 class ValidateOffload(Task):
-    def __init__(self, tft: TestConfig, iperf_instance: Union[IperfServer, IperfClient], tenant: bool):
+    def __init__(
+        self,
+        tft: TestConfig,
+        iperf_instance: Union[IperfServer, IperfClient],
+        tenant: bool,
+    ):
         super().__init__(tft, 0, iperf_instance.node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
-        self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-validate-offload.yaml"
+        self.out_file_yaml = (
+            f"./manifests/yamls/tools-pod-{self.node_name}-validate-offload.yaml"
+        )
         self.template_args["pod_name"] = f"tools-pod-{self.node_name}-validate-offload"
         self.template_args["test_image"] = TFT_TOOLS_IMG
 
         self.pod_name = self.template_args["pod_name"]
-        self._iperf_instance= iperf_instance
+        self._iperf_instance = iperf_instance
         self.iperf_pod_name = iperf_instance.template_args["pod_name"]
         self.iperf_pod_type = iperf_instance.pod_type
 
@@ -34,10 +46,10 @@ class ValidateOffload(Task):
         if self.iperf_pod_type == PodType.HOSTBACKED:
             logger.info(f"The VF representor is: ovn-k8s-mp0_0")
             return "ovn-k8s-mp0_0"
-        
+
         self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=/host/run/crio/crio.sock ps -a --name={self.iperf_pod_name} -o json "'
         r = self.run_oc(self.get_vf_rep_cmd)
-        
+
         if r.returncode != 0:
             if "already exists" not in r.err:
                 logger.info(r)
@@ -45,18 +57,22 @@ class ValidateOffload(Task):
 
         vf_rep_json = r.out
         data = json.loads(vf_rep_json)
-        logger.info(f"The VF representor is: %s" % data["containers"][0]["podSandboxId"][:15])
+        logger.info(
+            f"The VF representor is: %s" % data["containers"][0]["podSandboxId"][:15]
+        )
         return data["containers"][0]["podSandboxId"][:15]
 
     def run_ethtool_cmd(self, vf_rep: str) -> (int, int):
-        self.ethtool_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
+        self.ethtool_cmd = (
+            f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
+        )
         r = self.run_oc(self.ethtool_cmd)
         if self.iperf_pod_type != PodType.HOSTBACKED:
             if r.returncode != 0:
                 if "already exists" not in r.err:
                     logger.info(r)
                     sys.exit(-1)
-        
+
         ethtool_output = r.out
         rxpacket = self.parse_out_packet(ethtool_output, "rx_packet")
         txpacket = self.parse_out_packet(ethtool_output, "tx_packet")
@@ -69,14 +85,19 @@ class ValidateOffload(Task):
                 return int(stripped_line.split(":")[1])
 
         return None
-    
+
     def run_st(self) -> RxTxData:
         vf_rep = self.extract_vf_rep()
         (rxpacket_start, txpacket_start) = self.run_ethtool_cmd(vf_rep)
         sleep(self._duration)
         (rxpacket_end, txpacket_end) = self.run_ethtool_cmd(vf_rep)
 
-        return RxTxData(rx_start=rxpacket_start, tx_start=txpacket_start, rx_end=rxpacket_end, tx_end=txpacket_end)
+        return RxTxData(
+            rx_start=rxpacket_start,
+            tx_start=txpacket_start,
+            rx_end=rxpacket_end,
+            tx_end=txpacket_end,
+        )
 
     def run(self, duration: int):
         self.exec_thread = ReturnValueThread(target=self.run_st)
@@ -86,16 +107,16 @@ class ValidateOffload(Task):
     def stop(self):
         logger.info(f"Stopping Get Vf Rep execution on {self.pod_name}")
         r = self.exec_thread.join()
-        
+
         if self.iperf_pod_type == PodType.HOSTBACKED:
             data = {}
         else:
             data = asdict(r)
         self._output_ethtool = self.generate_output_ethtool(data, self.ethtool_cmd)
-    
+
     def output(self, out: TftAggregateOutput):
-        out.plugins.append(self._output_ethtool) 
-        
+        out.plugins.append(self._output_ethtool)
+
         if self.iperf_pod_type == PodType.HOSTBACKED:
             if isinstance(self._iperf_instance, IperfClient):
                 logger.info(f"The client VF representor ovn-k8s-mp0_0 does not exist")
@@ -108,7 +129,10 @@ class ValidateOffload(Task):
             rx_packet_end = self._output_ethtool.result["rx_end"]
             tx_packet_end = self._output_ethtool.result["tx_end"]
 
-            logger.info("rx_packet_start: %d\n tx_packet_start: %d\n rx_packet_end: %d\n tx_packet_end: %d\n" % (rx_packet_start,tx_packet_start,rx_packet_end,tx_packet_end))
+            logger.info(
+                "rx_packet_start: %d\n tx_packet_start: %d\n rx_packet_end: %d\n tx_packet_end: %d\n"
+                % (rx_packet_start, tx_packet_start, rx_packet_end, tx_packet_end)
+            )
 
     def generate_output_ethtool(self, data, cmd: str) -> PluginOutput:
         return PluginOutput(
@@ -118,6 +142,6 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             command=cmd,
-            result= data,
-            name="get_ethtool_stats"
+            result=data,
+            name="get_ethtool_stats",
         )

@@ -4,18 +4,18 @@ from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
 from host import Result
-import sys
-import yaml
-import json
 import re
 import time
+
 
 class MeasurePower(Task):
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
-        self.out_file_yaml = f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
+        self.out_file_yaml = (
+            f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
+        )
         self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
         self.template_args["test_image"] = TFT_TOOLS_IMG
 
@@ -56,7 +56,9 @@ class MeasurePower(Task):
 
         # 1 report at intervals defined by the duration in seconds.
         self.cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
-        self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd, duration))
+        self.exec_thread = ReturnValueThread(
+            target=stat, args=(self, self.cmd, duration)
+        )
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
@@ -79,9 +81,9 @@ class MeasurePower(Task):
             plugin_metadata={
                 "name": "MeasurePower",
                 "node_name": self.node_name,
-                "pod_name": self.pod_name
+                "pod_name": self.pod_name,
             },
             command=self.cmd,
             result=data,
-            name="measure_power"
+            name="measure_power",
         )
