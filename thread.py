@@ -1,16 +1,17 @@
 from threading import Thread
 from logger import logger
+from typing import Any, Callable, Optional
 
 
 class ReturnValueThread(Thread):
-    def __init__(self, *args, **kwargs):
-        self._target = None
-        self._args = args
-        self._kwargs = kwargs
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._target: Optional[Callable[..., Any]] = None
+        self._args: tuple = args
+        self._kwargs: dict = kwargs
         super().__init__(*args, **kwargs)
-        self.result = None
+        self.result: Optional[Any] = None
 
-    def run(self):
+    def run(self) -> None:
         if self._target is None:
             return
         try:
@@ -19,6 +20,6 @@ class ReturnValueThread(Thread):
             logger.error(e)
             pass
 
-    def join(self, *args, **kwargs):
+    def join(self, *args: Any, **kwargs: Any) -> Optional[Any]:
         super().join(*args, **kwargs)
         return self.result

@@ -13,7 +13,7 @@ from testConfig import TestConfig
 from iperf import IperfServer, IperfClient
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 import sys
 import json
 
@@ -62,7 +62,7 @@ class ValidateOffload(Task):
         )
         return data["containers"][0]["podSandboxId"][:15]
 
-    def run_ethtool_cmd(self, vf_rep: str) -> (int, int):
+    def run_ethtool_cmd(self, vf_rep: str) -> Tuple[int, int]:
         self.ethtool_cmd = (
             f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
         )
@@ -78,13 +78,14 @@ class ValidateOffload(Task):
         txpacket = self.parse_out_packet(ethtool_output, "tx_packet")
         return (rxpacket, txpacket)
 
-    def parse_out_packet(self, output: str, prefix: str) -> Optional[int]:
+    def parse_out_packet(self, output: str, prefix: str) -> int:
         for line in output.splitlines():
             stripped_line = line.strip()
             if stripped_line.startswith(prefix):
                 return int(stripped_line.split(":")[1])
 
-        return None
+        logger.warning(f"Parse packet. Prefix: {prefix} not found in: {output}")
+        return 0
 
     def run_st(self) -> RxTxData:
         vf_rep = self.extract_vf_rep()

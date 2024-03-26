@@ -8,11 +8,14 @@ from testConfig import TestConfig
 from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
+from typing import Dict, Union, List
 
 
 class Task(ABC):
-    def __init__(self, tc: TestConfig, index: int, node_name: str, tenant: bool):
-        self.template_args = {}
+    def __init__(
+        self, tc: TestConfig, index: int, node_name: str, tenant: bool
+    ) -> None:
+        self.template_args: Dict[str, Union[str, List[str]]] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
@@ -37,11 +40,10 @@ class Task(ABC):
         self.tc = tc
 
     def run_oc(self, cmd: str) -> host.Result:
-        if self.tenant:
-            r = self.tc.client_tenant.oc(cmd)
-        else:
-            r = self.tc.client_infra.oc(cmd)
-        return r
+        client = self.tc.client_tenant if self.tenant else self.tc.client_infra
+        if client is None:
+            raise ValueError("Client is not initialized")
+        return client.oc(cmd)
 
     def get_pod_ip(self):
         r = self.run_oc(f"get pod {self.pod_name} -o yaml")

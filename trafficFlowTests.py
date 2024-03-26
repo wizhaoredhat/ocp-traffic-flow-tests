@@ -1,5 +1,6 @@
 from common import (
     TestType,
+    TestCaseType,
     TftAggregateOutput,
     TFT_TESTS,
 )
@@ -7,6 +8,7 @@ from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
 import iperf
+from task import Task
 from iperf import IperfServer, IperfClient
 from validateOffload import ValidateOffload
 from measureCpu import MeasureCPU
@@ -18,20 +20,21 @@ from evaluator import Evaluator
 from typing import List
 import datetime
 from dataclasses import asdict
+from typing import Tuple, Optional
 
 
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig):
-        self._tc = tc
-        self.test_settings = None
+        self._tc: TestConfig = tc
+        self.test_settings: TestSettings
         self.lh = LocalHost()
-        self.log_path = Path("ft-logs")
-        self.log_file = None
+        self.log_path: Path = Path("ft-logs")
+        self.log_file: Path
         self.tft_output: List[TftAggregateOutput] = []
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
-    ) -> (IperfServer, IperfClient):
+    ) -> Tuple[IperfServer, IperfClient]:
         logger.info(
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -102,7 +105,11 @@ class TrafficFlowTests:
         monitors.append(c)
 
     def _run_tests(
-        self, servers, clients, monitors, duration: int
+        self,
+        servers: List[IperfServer],
+        clients: List[IperfClient],
+        monitors: List[Task],
+        duration: int,
     ) -> TftAggregateOutput:
         tft_aggregate_output = TftAggregateOutput()
 
@@ -166,14 +173,14 @@ class TrafficFlowTests:
         self,
         connections: dict,
         test_type: TestType,
-        test_id: int,
+        test_id: TestCaseType,
         index: int,
         duration: int,
         reverse: bool = False,
     ):
-        servers = []
-        clients = []
-        monitors = []
+        servers: List[IperfServer] = []
+        clients: List[IperfClient] = []
+        monitors: List[Task] = []
         node_server_name = connections["server"][0]["name"]
         node_client_name = connections["client"][0]["name"]
 
@@ -216,7 +223,7 @@ class TrafficFlowTests:
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict, test_id: int):
+    def _run_test_case(self, tests: dict, test_id: TestCaseType):
         duration = tests["duration"]
         # TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests["connections"]:
@@ -245,7 +252,7 @@ class TrafficFlowTests:
                     )
                 self._cleanup_previous_testspace(tests["namespace"])
 
-    def run(self, tests: dict, eval_config: str) -> Path:
+    def run(self, tests: dict, eval_config: str) -> None:
         self.eval_config = eval_config
         self._configure_namespace(tests["namespace"])
         self._cleanup_previous_testspace(tests["namespace"])

@@ -6,6 +6,7 @@ from k8sClient import K8sClient
 from yaml import safe_load
 import io
 from common import TestType
+from typing import List, Dict
 
 
 class ClusterMode(Enum):
@@ -14,6 +15,13 @@ class ClusterMode(Enum):
 
 
 class TestConfig:
+    kubeconfig_tenant: str = "/root/kubeconfig.tenantcluster"
+    kubeconfig_infra: str = "/root/kubeconfig.infracluster"
+    kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
+    mode: ClusterMode
+    client_tenant: K8sClient
+    client_infra: K8sClient
+
     def __init__(self, config_path: str):
         self.mode = ClusterMode.SINGLE
 
@@ -55,8 +63,8 @@ class TestConfig:
 
         logger.info(self.GetConfig())
 
-    def parse_test_cases(self, input_str: str):
-        output = []
+    def parse_test_cases(self, input_str: str) -> List[int]:
+        output: List[int] = []
         parts = input_str.split(",")
 
         for part in parts:
@@ -76,7 +84,7 @@ class TestConfig:
 
         return output
 
-    def validate_pod_type(self, connection_server: dict):
+    def validate_pod_type(self, connection_server: Dict[str, str]) -> str:
         if "sriov" in connection_server:
             if "true" in connection_server["sriov"].lower():
                 return "sriov"
@@ -100,5 +108,5 @@ class TestConfig:
                 Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
-    def GetConfig(self):
+    def GetConfig(self) -> List[str]:
         return self.fullConfig["tft"]

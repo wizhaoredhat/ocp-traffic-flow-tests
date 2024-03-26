@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List
+from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -71,8 +71,8 @@ class PodInfo:
 
 @dataclass
 class TestMetadata:
-    test_case_id: str
-    test_type: str
+    test_case_id: TestCaseType
+    test_type: TestType
     reverse: bool
     server: PodInfo
     client: PodInfo
@@ -113,11 +113,11 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: IperfOutput = None
+    flow_test: Optional[IperfOutput] = None
     plugins: List[PluginOutput] = field(default_factory=list)
 
 
-def j2_render(in_file_name, out_file_name, kwargs):
+def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
