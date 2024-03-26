@@ -13,7 +13,7 @@ from testConfig import TestConfig
 from iperf import IperfServer, IperfClient, EXTERNAL_IPERF3_SERVER
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 import sys
 import json
 from syncManager import SyncManager

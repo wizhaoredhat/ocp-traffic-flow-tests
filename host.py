@@ -5,8 +5,9 @@ import shlex
 import sys
 from logger import logger
 from common import Result
+from abc import ABC, abstractmethod
 
-class Host:
+class Host(ABC):
     def ipa(self) -> dict:
         return json.loads(self.run("ip -json a").out)
 
@@ -16,9 +17,13 @@ class Host:
     def all_ports(self) -> dict:
         return json.loads(self.run("ip -json link").out)
 
+    @abstractmethod
+    def run(self, cmd: str, env: dict = os.environ.copy()) -> Result:
+        pass
+
 
 class LocalHost(Host):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def run(self, cmd: str, env: dict = os.environ.copy()) -> Result:

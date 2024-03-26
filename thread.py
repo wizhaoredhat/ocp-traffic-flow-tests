@@ -13,7 +13,7 @@ class ReturnValueThread(Thread):
         cleanup_action: Optional[Callable[..., Result]] = None,
         cleanup_args: tuple = (),
         cleanup_kwargs: dict = {},
-    ):
+    ) -> None:
         super().__init__()
         self._target = target
         self._args = args

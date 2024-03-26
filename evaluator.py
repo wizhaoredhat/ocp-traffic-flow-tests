@@ -19,8 +19,8 @@ from common import serialize_enum, dataclass_from_dict
 
 @dataclass
 class Bitrate:
-    tx: int
-    rx: int
+    tx: float
+    rx: float
 
 
 # TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
@@ -64,7 +64,7 @@ class Evaluator:
             c = yaml.safe_load(file)
 
         self.config = c
-        self.test_results = []
+        self.test_results: List[TestResult] = []
 
     def _eval_flow_test(self, run):
         try:
@@ -175,7 +175,8 @@ class Evaluator:
 
     def calculate_gbps_http(self, result: dict) -> Bitrate:
         # TODO: Add http traffic testing
-        return -1
+        raise NotImplementedError("calculate_gbps_http is not yet implemented")
+        return -1  # type: ignore
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
         total_passing = 0

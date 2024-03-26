@@ -165,7 +165,7 @@ class TftAggregateOutput:
         ]
 
 
-def j2_render(in_file_name, out_file_name, kwargs):
+def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
