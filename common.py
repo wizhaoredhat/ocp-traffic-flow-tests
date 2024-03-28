@@ -1,5 +1,5 @@
 import jinja2
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, cast
 
@@ -64,7 +64,7 @@ class NodeLocation(Enum):
 @dataclass
 class PodInfo:
     name: str
-    pod_type: str
+    pod_type: PodType
     is_tenant: bool
     index: int
 
@@ -124,3 +124,31 @@ def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> 
     rendered = template.render(**kwargs)
     with open(out_file_name, "w") as outFile:
         outFile.write(rendered)
+
+
+def serialize_enum(
+    data: Union[Enum, Dict[Any, Any], List[Any], Any]
+) -> Union[str, Dict[Any, Any], List[Any], Any]:
+    if isinstance(data, Enum):
+        return data.name
+    elif isinstance(data, dict):
+        return {k: serialize_enum(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [serialize_enum(item) for item in data]
+    else:
+        return data
+
+
+T = TypeVar("T")
+
+
+def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    assert is_dataclass(cls), "from_dict() should only be used with dataclasses."
+    field_types = {f.name: f.type for f in fields(cls)}  # type: ignore
+    field_values = {}
+    for field_name, field_type in field_types.items():
+        if is_dataclass(field_type) and field_name in data:
+            field_values[field_name] = from_dict(field_type, data[field_name])
+        elif field_name in data:
+            field_values[field_name] = data[field_name]
+    return cast(T, cls(**field_values))
