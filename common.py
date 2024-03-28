@@ -1,5 +1,5 @@
 import jinja2
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
@@ -90,7 +90,7 @@ class NodeLocation(Enum):
 @dataclass
 class PodInfo:
     name: str
-    pod_type: str
+    pod_type: PodType
     is_tenant: bool
     index: int
 
