@@ -9,11 +9,12 @@ from common import (
     IperfOutput,
     TestMetadata,
     TftAggregateOutput,
+    PluginOutput,
     TFT_TESTS,
 )
 from logger import logger
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Union
 from common import serialize_enum, from_dict
 
 
@@ -69,17 +70,11 @@ class Evaluator:
         }
         self.test_results: List[TestResult] = []
 
-    def _eval_flow_test(self, run) -> None:
-        try:
-            run = TftAggregateOutput(**run)
-            data = IperfOutput(**run.flow_test)
-            md = from_dict(TestMetadata(**data.tft_metadata))
-        except Exception as e:
-            logger.error(f"Exception: {e}. Malformed log handed to _eval()")
-            raise Exception(f"_eval(): error parsing data for expected fields")
+    def _eval_flow_test(self, run: IperfOutput) -> None:
+        md = run.tft_metadata
 
         bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
-        bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
+        bitrate_gbps = self.calculate_gbps(run.result, md.test_type)
 
         result = TestResult(
             test_id=md.test_case_id,
@@ -99,7 +94,10 @@ class Evaluator:
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
 
         for run in runs:
-            self._eval_flow_test(run)
+            if "flow_test" in run and run["flow_test"] is not None:
+                run["flow_test"] = from_dict(IperfOutput, run["flow_test"])
+
+            self._eval_flow_test(run["flow_test"])
             for plugin in run["plugins"]:
                 # TODO: add evaluation for plugins
                 logger.debug(f'Reading result from plugin {plugin["name"]}')

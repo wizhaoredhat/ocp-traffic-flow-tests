@@ -1,11 +1,27 @@
 import jinja2
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
+
+
+def enum_factory(enum_type: Type[Enum]):
+    def factory(value: Any) -> Enum:
+        if isinstance(value, enum_type):
+            return value
+        elif isinstance(value, str):
+            member = enum_type.__members__.get(value)
+            if member is not None:
+                return member
+            else:
+                raise ValueError(f"{value} is not a valid member of {enum_type}")
+        else:
+            raise ValueError(f"Cannot convert {value} to {enum_type}")
+
+    return factory
 
 
 class TestType(Enum):
@@ -71,18 +87,20 @@ class PodInfo:
 
 @dataclass
 class TestMetadata:
-    test_case_id: TestCaseType
-    test_type: TestType
     reverse: bool
-    server: PodInfo
-    client: PodInfo
+    test_case_id: TestCaseType = field(default_factory=enum_factory(TestCaseType))
+    test_type: TestType = field(default_factory=enum_factory(TestType))
+    server: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
+    client: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
 
 
 @dataclass
 class IperfOutput:
-    tft_metadata: TestMetadata
     command: str
     result: dict
+    tft_metadata: TestMetadata = field(
+        default_factory=lambda: from_dict(TestMetadata, {})
+    )
 
 
 @dataclass
@@ -113,8 +131,13 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput] = None
+    flow_test: Optional[IperfOutput] = field(
+        default_factory=lambda: from_dict(IperfOutput, {})
+    )
     plugins: List[PluginOutput] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.plugins = [from_dict(PluginOutput, plugin) for plugin in self.plugins]
 
 
 def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
@@ -144,11 +167,18 @@ T = TypeVar("T")
 
 def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
     assert is_dataclass(cls), "from_dict() should only be used with dataclasses."
-    field_types = {f.name: f.type for f in fields(cls)}  # type: ignore
     field_values = {}
-    for field_name, field_type in field_types.items():
+    for field in fields(cls):
+        field_name = field.name
+        field_type = field.type
         if is_dataclass(field_type) and field_name in data:
             field_values[field_name] = from_dict(field_type, data[field_name])
+        elif (
+            isinstance(field.type, type)
+            and issubclass(field.type, Enum)
+            and field_name in data
+        ):
+            field_values[field_name] = enum_factory(field.type)(data[field_name])
         elif field_name in data:
             field_values[field_name] = data[field_name]
-    return cast(T, cls(**field_values))
+    return cls(**field_values)
