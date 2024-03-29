@@ -23,6 +23,7 @@ class TestConfig():
         self.kubeconfig_tenant = "/root/kubeconfig.tenantcluster"
         self.kubeconfig_infra = "/root/kubeconfig.infracluster"
         self.kubeconfig_single = "/root/kubeconfig.nicmodecluster"
+        self.kubeconfig_cx = "/root/kubeconfig.smartniccluster"
         self.client_tenant = None
         self.client_infra = None
         self.server_node = None
@@ -34,6 +35,9 @@ class TestConfig():
         if lh.file_exists(self.kubeconfig_single):
             self.mode = ClusterMode.SINGLE
             self.client_tenant = K8sClient(self.kubeconfig_single)
+        elif lh.file_exists(self.kubeconfig_cx):
+            self.mode = ClusterMode.SINGLE
+            self.client_tenant = K8sClient(self.kubeconfig_cx)
         elif lh.file_exists(self.kubeconfig_tenant):
             if lh.file_exists(self.kubeconfig_infra):
                 self.mode = ClusterMode.DPU
