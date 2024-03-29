@@ -1,5 +1,5 @@
 import jinja2
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
@@ -97,11 +97,11 @@ class PodInfo:
 
 @dataclass
 class TestMetadata:
-    test_case_id: TestCaseType
-    test_type: TestType
     reverse: bool
-    server: PodInfo
-    client: PodInfo
+    test_case_id: TestCaseType = field(default_factory=enum_factory(TestCaseType))
+    test_type: TestType = field(default_factory=enum_factory(TestType))
+    server: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
+    client: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
 
     def __post_init__(self) -> None:
         self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
@@ -146,7 +146,9 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput] = None
+    flow_test: Optional[IperfOutput] = field(
+        default_factory=lambda: from_dict(IperfOutput, {})
+    )
     plugins: List[PluginOutput] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -202,4 +204,4 @@ def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
             field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
         elif field_name in data:
             field_values[field_name] = data[field_name]
-    return cast(T, cls(**field_values))
+    return cls(**field_values)

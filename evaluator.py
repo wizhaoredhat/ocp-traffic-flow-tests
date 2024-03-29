@@ -9,6 +9,7 @@ from common import (
     IperfOutput,
     TestMetadata,
     TftAggregateOutput,
+    PluginOutput,
     TFT_TESTS,
 )
 from logger import logger
@@ -69,17 +70,11 @@ class Evaluator:
         }
         self.test_results: List[TestResult] = []
 
-    def _eval_flow_test(self, run) -> None:
-        try:
-            run = TftAggregateOutput(**run)
-            data = IperfOutput(**run.flow_test)
-            md = from_dict(TestMetadata(**data.tft_metadata))
-        except Exception as e:
-            logger.error(f"Exception: {e}. Malformed log handed to _eval()")
-            raise Exception(f"_eval(): error parsing data for expected fields")
+    def _eval_flow_test(self, run: IperfOutput) -> None:
+        md = run.tft_metadata
 
         bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
-        bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
+        bitrate_gbps = self.calculate_gbps(run.result, md.test_type)
 
         result = TestResult(
             test_id=md.test_case_id,
