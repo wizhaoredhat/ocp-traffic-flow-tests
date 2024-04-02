@@ -6,6 +6,7 @@ from task import Task
 from host import Result
 import re
 import time
+import json
 
 
 class MeasurePower(Task):
@@ -62,21 +63,15 @@ class MeasurePower(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def stop(self):
-        logger.info(f"Stopping measurePower execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.error(r)
-        self._output = self.generate_output(data=r.out)
-
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         out.plugins.append(self._output)
 
         # Print summary to console logs
         logger.info(f"measurePower results: {self._output.result}")
 
-    def generate_output(self, data) -> PluginOutput:
+    def generate_output(self, data: str) -> PluginOutput:
+        parsed_data = json.loads(data)
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasurePower",
@@ -84,6 +79,6 @@ class MeasurePower(Task):
                 "pod_name": self.pod_name,
             },
             command=self.cmd,
-            result=data,
+            result=parsed_data,
             name="measure_power",
         )

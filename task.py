@@ -108,9 +108,21 @@ class Task(ABC):
     def run(self, duration: int):
         raise NotImplementedError("Must implement run()")
 
-    @abstractmethod
-    def stop(self):
-        raise NotImplementedError("Must implement stop()")
+    def stop(self) -> None:
+        class_name = self.__class__.__name__
+        logger.info(f"Stopping execution on {class_name}")
+        self.exec_thread.join()
+        if self.exec_thread.result is not None:
+            r = self.exec_thread.result
+            if r.returncode != 0:
+                logger.error(
+                    f"Error occurred while stopping {class_name}: errcode: {r.returncode} err {r.err}"
+                )
+            logger.debug(f"{class_name}.stop(): {r.out}")
+            self._output = self.generate_output(data=r.out)
+        else:
+            logger.error(f"Thread {class_name} did not return a result")
+            self._output = common.BaseOutput("", {})
 
     """
     output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the
@@ -121,3 +133,7 @@ class Task(ABC):
     @abstractmethod
     def output(self, out: common.TftAggregateOutput):
         raise NotImplementedError("Must implement output()")
+
+    @abstractmethod
+    def generate_output(self, data: dict) -> common.BaseOutput:
+        raise NotImplementedError("Must implement generate_output()")

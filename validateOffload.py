@@ -5,6 +5,7 @@ from common import (
     TftAggregateOutput,
     PodType,
     RxTxData,
+    BaseOutput,
 )
 from dataclasses import asdict
 from logger import logger
@@ -112,7 +113,7 @@ class ValidateOffload(Task):
             data = {}
         else:
             data = asdict(r)
-        self._output_ethtool = self.generate_output_ethtool(data, self.ethtool_cmd)
+        self._output_ethtool = self.generate_output(data, self.ethtool_cmd)
 
     def output(self, out: TftAggregateOutput):
         out.plugins.append(self._output_ethtool)
@@ -134,7 +135,7 @@ class ValidateOffload(Task):
                 % (rx_packet_start, tx_packet_start, rx_packet_end, tx_packet_end)
             )
 
-    def generate_output_ethtool(self, data, cmd: str) -> PluginOutput:
+    def generate_output(self, data, cmd: str) -> PluginOutput:
         return PluginOutput(
             plugin_metadata={
                 "name": "GetEthtoolStats",
