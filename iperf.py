@@ -87,15 +87,6 @@ class IperfServer(Task):
     def run(self, duration: int):
         pass
 
-    def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.error(
-                f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}"
-            )
-        logger.debug(f"IperfServer.stop(): {r.out}")
-
     def output(self, out: common.TftAggregateOutput):
         pass
 
@@ -153,15 +144,6 @@ class IperfClient(Task):
             self.cmd = f" {self.cmd} {IPERF_REV_OPT}"
         self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
         self.exec_thread.start()
-
-    def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.error(r)
-        logger.debug(f"IperfClient.stop(): {r.out}")
-        data = json.loads(r.out)
-        self._output = self.generate_output(data)
 
     def generate_output(self, data: dict) -> IperfOutput:
         json_dump = IperfOutput(

@@ -34,17 +34,6 @@ class MeasureCPU(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def stop(self):
-        logger.info(f"Stopping measureCPU execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.info(r)
-        logger.debug(f"measureCpu.stop(): {r.out}")
-        data = jc.parse("mpstat", r.out)
-        p_idle = data[0]["percent_idle"]
-        logger.info(f"Idle on {self.node_name} = {p_idle}%")
-        self._output = self.generate_output(data)
-
     def output(self, out: TftAggregateOutput):
         # Return machine-readable output to top level
         out.plugins.append(self._output)

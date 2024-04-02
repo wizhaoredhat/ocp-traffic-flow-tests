@@ -62,17 +62,6 @@ class MeasurePower(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def stop(self) -> None:
-        logger.info(f"Stopping measurePower execution on {self.pod_name}")
-        self.exec_thread.join()
-        if self.exec_thread.result is not None:
-            r = self.exec_thread.result
-            if r.returncode != 0:
-                logger.error(r)
-            self._output = self.generate_output(data=r.out)
-        else:
-            logger.error("Thread did not return a result")
-
     def output(self, out: TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         out.plugins.append(self._output)

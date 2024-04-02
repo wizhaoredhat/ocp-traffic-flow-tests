@@ -9,6 +9,7 @@ from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
 from typing import Dict, Union, List
+import json
 
 
 class Task(ABC):
@@ -110,9 +111,20 @@ class Task(ABC):
     def run(self, duration: int) -> None:
         raise NotImplementedError("Must implement run()")
 
-    @abstractmethod
     def stop(self) -> None:
-        raise NotImplementedError("Must implement stop()")
+        class_name = self.__class__.__name__
+        logger.info(f"Stopping execution on {class_name}")
+        self.exec_thread.join()
+        if self.exec_thread.result is not None:
+            r = self.exec_thread.result
+            if r.returncode != 0:
+                logger.error(
+                    f"Error occurred while stopping {class_name}: errcode: {r.returncode} err {r.err}"
+                )
+            logger.debug(f"{class_name}.stop(): {r.out}")
+            self._output = self.generate_output(data=json.loads(r.out))
+        else:
+            logger.error("Thread did not return a result")
 
     """
     output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the
