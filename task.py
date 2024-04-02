@@ -19,7 +19,7 @@ class Task(ABC):
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
-        self.exec_thread: Optional[ReturnValueThread] = None  # type: ignore
+        self.exec_thread: ReturnValueThread
         self.lh = host.LocalHost()
 
         self.template_args["name_space"] = "default"
@@ -45,7 +45,7 @@ class Task(ABC):
             raise ValueError("Client is not initialized")
         return client.oc(cmd)
 
-    def get_pod_ip(self):
+    def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml")
         if r.returncode != 0:
             logger.info(r)
@@ -87,7 +87,7 @@ class Task(ABC):
             "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'"
         ).out
 
-    def setup(self):
+    def setup(self) -> None:
         # Check if pod already exists
         r = self.run_oc(f"get pod {self.pod_name} --output=json")
         if r.returncode != 0:
@@ -107,11 +107,11 @@ class Task(ABC):
             sys.exit(-1)
 
     @abstractmethod
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         raise NotImplementedError("Must implement run()")
 
     @abstractmethod
-    def stop(self):
+    def stop(self) -> None:
         raise NotImplementedError("Must implement stop()")
 
     """
@@ -121,5 +121,5 @@ class Task(ABC):
     """
 
     @abstractmethod
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         raise NotImplementedError("Must implement output()")
