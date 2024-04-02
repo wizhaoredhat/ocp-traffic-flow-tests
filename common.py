@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List
+from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -97,8 +97,8 @@ class PodInfo:
 
 @dataclass
 class TestMetadata:
-    test_case_id: str
-    test_type: str
+    test_case_id: TestCaseType
+    test_type: TestType
     reverse: bool
     server: PodInfo
     client: PodInfo
@@ -116,7 +116,6 @@ class TestMetadata:
 class BaseOutput:
     command: str
     result: dict
-
 
 @dataclass
 class IperfOutput(BaseOutput):
