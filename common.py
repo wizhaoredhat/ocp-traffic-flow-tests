@@ -1,27 +1,26 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, cast
+from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
 
-def enum_factory(enum_type: Type[Enum]):
-    def factory(value: Any) -> Enum:
-        if isinstance(value, enum_type):
-            return value
-        elif isinstance(value, str):
-            member = enum_type.__members__.get(value)
-            if member is not None:
-                return member
-            else:
-                raise ValueError(f"{value} is not a valid member of {enum_type}")
-        else:
-            raise ValueError(f"Cannot convert {value} to {enum_type}")
+E = TypeVar("E", bound=Enum)
 
-    return factory
+
+def enum_convert(enum_type: Type[E], value: Any) -> E:
+    if isinstance(value, enum_type):
+        return value
+    elif isinstance(value, str):
+        try:
+            return enum_type[value]
+        except KeyError:
+            raise ValueError(f"Cannot convert {value} to {enum_type}")
+    else:
+        raise ValueError(f"Invalid type for conversion to {enum_type}")
 
 
 class TestType(Enum):
@@ -88,19 +87,31 @@ class PodInfo:
 @dataclass
 class TestMetadata:
     reverse: bool
-    test_case_id: TestCaseType = field(default_factory=enum_factory(TestCaseType))
-    test_type: TestType = field(default_factory=enum_factory(TestType))
-    server: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
-    client: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
+    test_case_id: TestCaseType
+    test_type: TestType
+    server: PodInfo
+    client: PodInfo
+
+    def __post_init__(self) -> None:
+        self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
+        self.test_type = enum_convert(TestType, self.test_type)
+        if isinstance(self.server, dict):
+            self.server = from_dict(PodInfo, self.server)
+        if isinstance(self.client, dict):
+            self.client = from_dict(PodInfo, self.client)
 
 
 @dataclass
 class IperfOutput:
     command: str
     result: dict
-    tft_metadata: TestMetadata = field(
-        default_factory=lambda: from_dict(TestMetadata, {})
-    )
+    tft_metadata: TestMetadata
+
+    def __post_init__(self) -> None:
+        if isinstance(self.tft_metadata, dict):
+            self.tft_metadata = from_dict(TestMetadata, self.tft_metadata)
+        elif not isinstance(self.tft_metadata, TestMetadata):
+            raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
 
 
 @dataclass
@@ -131,13 +142,19 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput] = field(
-        default_factory=lambda: from_dict(IperfOutput, {})
-    )
-    plugins: List[PluginOutput] = field(default_factory=list)
+    flow_test: Optional[IperfOutput]
+    plugins: List[PluginOutput]
 
-    def __post_init__(self):
-        self.plugins = [from_dict(PluginOutput, plugin) for plugin in self.plugins]
+    def __post_init__(self) -> None:
+        if isinstance(self.flow_test, dict):
+            self.flow_test = from_dict(IperfOutput, self.flow_test)
+        elif self.flow_test is not None and not isinstance(self.flow_test, IperfOutput):
+            raise ValueError("flow_test must be an IperfOutput instance or a dict")
+
+        self.plugins = [
+            from_dict(PluginOutput, plugin) if isinstance(plugin, dict) else plugin
+            for plugin in self.plugins
+        ]
 
 
 def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
@@ -173,12 +190,6 @@ def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
         field_type = field.type
         if is_dataclass(field_type) and field_name in data:
             field_values[field_name] = from_dict(field_type, data[field_name])
-        elif (
-            isinstance(field.type, type)
-            and issubclass(field.type, Enum)
-            and field_name in data
-        ):
-            field_values[field_name] = enum_factory(field.type)(data[field_name])
         elif field_name in data:
             field_values[field_name] = data[field_name]
-    return cls(**field_values)
+    return cast(T, cls(**field_values))
