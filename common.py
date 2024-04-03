@@ -79,17 +79,19 @@ class TestMetadata:
 
 
 @dataclass
-class IperfOutput:
-    tft_metadata: TestMetadata
+class BaseOutput:
     command: str
     result: dict
 
 
 @dataclass
-class PluginOutput:
+class IperfOutput(BaseOutput):
+    tft_metadata: TestMetadata
+
+
+@dataclass
+class PluginOutput(BaseOutput):
     plugin_metadata: dict
-    command: str
-    result: dict
     name: str
 
 

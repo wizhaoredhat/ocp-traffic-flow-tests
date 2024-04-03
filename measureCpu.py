@@ -37,6 +37,9 @@ class MeasureCPU(Task):
 
     def output(self, out: TftAggregateOutput):
         # Return machine-readable output to top level
+        assert isinstance(
+            self._output, PluginOutput
+        ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
         out.plugins.append(self._output)
 
         # Print summary to console logs

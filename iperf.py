@@ -159,6 +159,9 @@ class IperfClient(Task):
 
     def output(self, out: common.TftAggregateOutput):
         # Return machine-readable output to top level
+        assert isinstance(
+            self._output, IperfOutput
+        ), f"Expected variable to be of type IperfOutput, got {type(self._output)} instead."
         out.flow_test = self._output
 
         # Print summary to console logs
