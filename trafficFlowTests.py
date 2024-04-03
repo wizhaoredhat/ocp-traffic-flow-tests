@@ -3,6 +3,9 @@ from common import (
     TestCaseType,
     TftAggregateOutput,
     TFT_TESTS,
+    BaseOutput,
+    IperfOutput,
+    TestMetadata
 )
 from testSettings import TestSettings
 from testConfig import TestConfig
@@ -262,3 +265,8 @@ class TrafficFlowTests:
         for test_id in test_cases:
             self._run_test_case(tests=tests, test_id=test_id)
         self._dump_result_to_log()
+
+    def generate_output(self, data: dict) -> BaseOutput:
+        raise NotImplementedError(
+            "generate_output() not implemented in TrafficFlowTests"
+        )

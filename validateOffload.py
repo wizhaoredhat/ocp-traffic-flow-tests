@@ -5,6 +5,7 @@ from common import (
     TftAggregateOutput,
     PodType,
     RxTxData,
+    BaseOutput,
 )
 from dataclasses import asdict
 from logger import logger
@@ -148,3 +149,6 @@ class ValidateOffload(Task):
             result=data,
             name="get_ethtool_stats",
         )
+
+    def generate_output(self, data: dict) -> BaseOutput:
+        raise NotImplementedError("generate_output() not implemented in IperfServer")

@@ -135,3 +135,7 @@ class Task(ABC):
     @abstractmethod
     def output(self, out: common.TftAggregateOutput) -> None:
         raise NotImplementedError("Must implement output()")
+
+    @abstractmethod
+    def generate_output(self, data: dict) -> common.BaseOutput:
+        raise NotImplementedError("Must implement generate_output()")
