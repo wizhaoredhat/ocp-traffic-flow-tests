@@ -37,7 +37,7 @@ class MeasureCPU(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, PluginOutput

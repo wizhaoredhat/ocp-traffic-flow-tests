@@ -183,7 +183,7 @@ class IperfClient(Task):
         )
         return json_dump
 
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, IperfOutput
@@ -203,7 +203,7 @@ class IperfClient(Task):
         if self.test_type == TestType.IPERF_UDP:
             self.print_udp_results(self._output.result)
 
-    def print_tcp_results(self, data: dict):
+    def print_tcp_results(self, data: dict) -> None:
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
 
@@ -220,7 +220,7 @@ class IperfClient(Task):
             f"  MSS = {mss}"
         )
 
-    def print_udp_results(self, data: dict):
+    def print_udp_results(self, data: dict) -> None:
         sum_data = data["end"]["sum"]
 
         total_gigabytes = sum_data["bytes"] / (1024**3)

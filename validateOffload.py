@@ -6,6 +6,7 @@ from common import (
     PodType,
     Result,
 )
+from dataclasses import asdict, is_dataclass
 from logger import logger
 import time
 from testConfig import TestConfig

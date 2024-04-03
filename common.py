@@ -114,8 +114,19 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: IperfOutput = None
-    plugins: List[PluginOutput] = field(default_factory=list)
+    flow_test: Optional[IperfOutput] = None
+    plugins: List[PluginOutput] = []
+
+    def __post_init__(self) -> None:
+        if isinstance(self.flow_test, dict):
+            self.flow_test = from_dict(IperfOutput, self.flow_test)
+        elif self.flow_test is not None and not isinstance(self.flow_test, IperfOutput):
+            raise ValueError("flow_test must be an IperfOutput instance or a dict")
+
+        self.plugins = [
+            from_dict(PluginOutput, plugin) if isinstance(plugin, dict) else plugin
+            for plugin in self.plugins
+        ]
 
 
 def j2_render(in_file_name, out_file_name, kwargs):

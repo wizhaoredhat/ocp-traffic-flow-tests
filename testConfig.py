@@ -100,5 +100,5 @@ class TestConfig:
                 Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
-    def GetConfig(self):
+    def GetConfig(self) -> dict:
         return self.fullConfig["tft"]
