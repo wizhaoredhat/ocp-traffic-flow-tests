@@ -7,7 +7,7 @@ from common import (
     RxTxData,
     BaseOutput,
 )
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from logger import logger
 from time import sleep
 from testConfig import TestConfig
@@ -101,22 +101,25 @@ class ValidateOffload(Task):
             tx_end=txpacket_end,
         )
 
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         self.exec_thread = ReturnValueThread(target=self.run_st)
         self._duration = int(duration)
         self.exec_thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info(f"Stopping Get Vf Rep execution on {self.pod_name}")
         r = self.exec_thread.join()
 
         if self.iperf_pod_type == PodType.HOSTBACKED:
             data = {}
         else:
+            assert is_dataclass(r) and not isinstance(
+                r, type
+            ), f"Expected r to be a dataclass, got {type(r)} instead."
             data = asdict(r)
         self._output_ethtool = self.generate_output_ethtool(data, self.ethtool_cmd)
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
         out.plugins.append(self._output_ethtool)
 
         if self.iperf_pod_type == PodType.HOSTBACKED:
@@ -138,7 +141,7 @@ class ValidateOffload(Task):
                 f"tx_packet_end: {tx_packet_end}\n"
             )
 
-    def generate_output_ethtool(self, data, cmd: str) -> PluginOutput:
+    def generate_output_ethtool(self, data: dict, cmd: str) -> PluginOutput:
         return PluginOutput(
             plugin_metadata={
                 "name": "GetEthtoolStats",

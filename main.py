@@ -4,7 +4,7 @@ import arguments
 import sys
 
 
-def main():
+def main() -> None:
     args = arguments.parse_args()
     tc = TestConfig(args.config)
     tft = TrafficFlowTests(tc)

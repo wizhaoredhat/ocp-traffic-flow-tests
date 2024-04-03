@@ -144,8 +144,8 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput]
-    plugins: List[PluginOutput]
+    flow_test: Optional[IperfOutput] = None
+    plugins: List[PluginOutput] = []
 
     def __post_init__(self) -> None:
         if isinstance(self.flow_test, dict):

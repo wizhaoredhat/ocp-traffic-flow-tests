@@ -24,8 +24,8 @@ class MeasureCPU(Task):
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def stat(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def stat(self, cmd: str) -> Result:  # type: ignore
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
@@ -34,7 +34,7 @@ class MeasureCPU(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, PluginOutput
@@ -46,7 +46,7 @@ class MeasureCPU(Task):
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
     # TODO: We are currently only storing the "cpu: all" data from mpstat
-    def generate_output(self, data) -> PluginOutput:
+    def generate_output(self, data: dict) -> PluginOutput:
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasureCPU",

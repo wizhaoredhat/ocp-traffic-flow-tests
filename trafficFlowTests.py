@@ -46,7 +46,7 @@ class TrafficFlowTests:
         c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
         return (s, c)
 
-    def _configure_namespace(self, namespace: str):
+    def _configure_namespace(self, namespace: str) -> None:
         logger.info(f"Configuring namespace {namespace}")
         r = self._tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
@@ -60,7 +60,7 @@ class TrafficFlowTests:
             )
         logger.info(f"Configured namespace {namespace}")
 
-    def _cleanup_previous_testspace(self, namespace: str):
+    def _cleanup_previous_testspace(self, namespace: str) -> None:
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
         r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
@@ -81,7 +81,7 @@ class TrafficFlowTests:
 
     def _enable_measure_cpu_plugin(
         self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
-    ):
+    ) -> None:
         s = MeasureCPU(self._tc, node_server_name, tenant)
         c = MeasureCPU(self._tc, node_client_name, tenant)
         monitors.append(s)
@@ -89,7 +89,7 @@ class TrafficFlowTests:
 
     def _enable_measure_power_plugin(
         self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
-    ):
+    ) -> None:
         s = MeasurePower(self._tc, node_server_name, tenant)
         c = MeasurePower(self._tc, node_client_name, tenant)
         monitors.append(s)
@@ -101,7 +101,7 @@ class TrafficFlowTests:
         iperf_server: IperfServer,
         iperf_client: IperfClient,
         tenant: bool,
-    ):
+    ) -> None:
         s = ValidateOffload(self._tc, iperf_server, tenant)
         c = ValidateOffload(self._tc, iperf_client, tenant)
         monitors.append(s)
@@ -130,7 +130,7 @@ class TrafficFlowTests:
 
         return tft_aggregate_output
 
-    def _create_log_paths_from_tests(self, tests: dict):
+    def _create_log_paths_from_tests(self, tests: dict) -> None:
         if "logs" in tests:
             self.log_path = Path(tests["logs"])
         self.log_path.mkdir(parents=True, exist_ok=True)
@@ -138,10 +138,10 @@ class TrafficFlowTests:
         self.log_file = self.log_path / f"{timestamp}.json"
         logger.info(f"Logs will be written to {self.log_file}")
 
-    def _dump_result_to_log(self):
+    def _dump_result_to_log(self) -> None:
         # Dump test outputs into log file
         log = self.log_file
-        json_out = {TFT_TESTS: []}
+        json_out: dict = {TFT_TESTS: []}
         for out in self.tft_output:
             json_out[TFT_TESTS].append(asdict(out))
         with open(log, "w") as output_file:
@@ -180,7 +180,7 @@ class TrafficFlowTests:
         index: int,
         duration: int,
         reverse: bool = False,
-    ):
+    ) -> None:
         servers: List[IperfServer] = []
         clients: List[IperfClient] = []
         monitors: List[Task] = []
@@ -226,7 +226,7 @@ class TrafficFlowTests:
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict, test_id: TestCaseType):
+    def _run_test_case(self, tests: dict, test_id: TestCaseType) -> None:
         duration = tests["duration"]
         # TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests["connections"]:

@@ -64,7 +64,7 @@ class IperfServer(Task):
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
-    def setup(self):
+    def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s"
         else:
@@ -74,7 +74,7 @@ class IperfServer(Task):
 
         logger.info(f"Running {cmd}")
 
-        def server(self, cmd: str):
+        def server(self, cmd: str) -> Result:  # type: ignore
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
                 return self.lh.run(cmd)
             elif self.exec_persistent:
@@ -84,11 +84,14 @@ class IperfServer(Task):
         self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
         self.exec_thread.start()
 
-    def run(self, duration: int):
-        pass
+    def run(self, duration: int) -> None:
+        raise NotImplementedError("run() not implemented in IperfServer")
 
-    def output(self, out: common.TftAggregateOutput):
-        pass
+    def output(self, out: common.TftAggregateOutput) -> None:
+        raise NotImplementedError("output() not implemented in IperfServer")
+
+    def generate_output(self, data: dict) -> common.BaseOutput:
+        raise NotImplementedError("generate_output() not implemented in IperfServer")
 
 
 class IperfClient(Task):
@@ -132,8 +135,8 @@ class IperfClient(Task):
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def client(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def client(self, cmd: str) -> Result:  # type: ignore
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()
@@ -153,7 +156,7 @@ class IperfClient(Task):
         )
         return json_dump
 
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, IperfOutput
@@ -173,7 +176,7 @@ class IperfClient(Task):
         if self.test_type == TestType.IPERF_UDP:
             self.print_udp_results(self._output.result)
 
-    def print_tcp_results(self, data: dict):
+    def print_tcp_results(self, data: dict) -> None:
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
 
@@ -190,7 +193,7 @@ class IperfClient(Task):
             f"  MSS = {mss}"
         )
 
-    def print_udp_results(self, data: dict):
+    def print_udp_results(self, data: dict) -> None:
         sum_data = data["end"]["sum"]
 
         total_gigabytes = sum_data["bytes"] / (1024**3)
