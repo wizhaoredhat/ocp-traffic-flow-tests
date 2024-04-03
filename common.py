@@ -102,9 +102,13 @@ class TestMetadata:
 
 
 @dataclass
-class IperfOutput:
+class BaseOutput:
     command: str
     result: dict
+
+
+@dataclass
+class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
     def __post_init__(self) -> None:
@@ -115,10 +119,8 @@ class IperfOutput:
 
 
 @dataclass
-class PluginOutput:
+class PluginOutput(BaseOutput):
     plugin_metadata: dict
-    command: str
-    result: dict
     name: str
 
 
