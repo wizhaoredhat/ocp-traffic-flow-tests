@@ -16,7 +16,7 @@ class Task(ABC):
     def __init__(
         self, tc: TestConfig, index: int, node_name: str, tenant: bool
     ) -> None:
-        self.template_args: Dict[str, Union[str, List[str]]] = {}
+        self.template_args: Dict[str, str] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""

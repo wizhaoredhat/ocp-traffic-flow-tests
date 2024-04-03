@@ -56,7 +56,7 @@ class IperfServer(Task):
 
         if self.exec_persistent:
             self.template_args["command"] = IPERF_EXE
-            self.template_args["args"] = ["-s", "-p", f"{self.port}"]
+            self.template_args["args"] = ["-s", "-p", f"{self.port}"]  # type: ignore
 
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
