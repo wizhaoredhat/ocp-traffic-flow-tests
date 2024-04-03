@@ -84,6 +84,19 @@ class IperfServer(Task):
         self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
         self.exec_thread.start()
 
+    def stop(self) -> None:
+        logger.info(f"Stopping execution on {self.pod_name}")
+        self.exec_thread.join()
+        if self.exec_thread.result is not None:
+            r = self.exec_thread.result
+            if r.returncode != 0:
+                logger.error(
+                    f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}"
+                )
+            logger.debug(f"IperfServer.stop(): {r.out}")
+        else:
+            logger.error("Thread did not return a result")
+
     def run(self, duration: int) -> None:
         raise NotImplementedError("run() not implemented in IperfServer")
 
