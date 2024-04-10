@@ -18,25 +18,16 @@ class TestConfig:
     kubeconfig_tenant: str = "/root/kubeconfig.tenantcluster"
     kubeconfig_infra: str = "/root/kubeconfig.infracluster"
     kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
-    mode: ClusterMode
+    kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
+    mode: ClusterMode = ClusterMode.SINGLE
     client_tenant: K8sClient
     client_infra: K8sClient
+    full_config: dict
 
     def __init__(self, config_path: str):
-        self.mode = ClusterMode.SINGLE
-
         with open(config_path, "r") as f:
             contents = f.read()
-            self.fullConfig = safe_load(io.StringIO(contents))
-
-        self.kubeconfig_tenant = "/root/kubeconfig.tenantcluster"
-        self.kubeconfig_infra = "/root/kubeconfig.infracluster"
-        self.kubeconfig_single = "/root/kubeconfig.nicmodecluster"
-        self.kubeconfig_cx = "/root/kubeconfig.smartniccluster"
-        self.client_tenant = None
-        self.client_infra = None
-        self.server_node = None
-        self.client_node = None
+            self.full_config = safe_load(io.StringIO(contents))
 
         lh = host.LocalHost()
 
@@ -114,4 +105,4 @@ class TestConfig:
             )
 
     def GetConfig(self) -> dict:
-        return self.fullConfig["tft"]
+        return self.full_config["tft"]
