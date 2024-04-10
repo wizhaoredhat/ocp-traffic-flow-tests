@@ -19,6 +19,11 @@ def enum_convert(enum_type: Type[E], value: Any) -> E:
             return enum_type[value]
         except KeyError:
             raise ValueError(f"Cannot convert {value} to {enum_type}")
+    elif isinstance(value, int):
+        try:
+            return enum_type(value)
+        except ValueError:
+            raise ValueError(f"Cannot convert {value} to {enum_type}")
     else:
         raise ValueError(f"Invalid type for conversion to {enum_type}")
 
@@ -145,7 +150,7 @@ class TftAggregateOutput:
         resulting output to."""
 
     flow_test: Optional[IperfOutput] = None
-    plugins: List[PluginOutput] = []
+    plugins: List[PluginOutput] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if isinstance(self.flow_test, dict):
