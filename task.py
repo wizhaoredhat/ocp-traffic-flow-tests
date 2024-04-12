@@ -2,13 +2,12 @@ import sys
 import yaml
 import common
 from abc import ABC, abstractmethod
-from typing import Optional
 from logger import logger
 from testConfig import TestConfig
 from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
-from typing import Dict, Union, List
+from typing import Dict
 import json
 
 

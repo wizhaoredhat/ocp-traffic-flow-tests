@@ -6,7 +6,6 @@ from thread import ReturnValueThread
 from task import Task
 from host import Result
 from testSettings import TestSettings
-import json
 
 IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"

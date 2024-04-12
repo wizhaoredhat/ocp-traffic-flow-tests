@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
+from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"

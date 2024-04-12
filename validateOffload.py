@@ -14,7 +14,7 @@ from testConfig import TestConfig
 from iperf import IperfServer, IperfClient
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union, Tuple
+from typing import Union, Tuple
 import sys
 import json
 

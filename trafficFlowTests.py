@@ -4,8 +4,6 @@ from common import (
     TftAggregateOutput,
     TFT_TESTS,
     BaseOutput,
-    IperfOutput,
-    TestMetadata,
 )
 from testSettings import TestSettings
 from testConfig import TestConfig

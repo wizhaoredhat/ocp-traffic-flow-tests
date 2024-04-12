@@ -3,7 +3,6 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
-import jc
 
 
 class MeasureCPU(Task):

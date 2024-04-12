@@ -7,14 +7,11 @@ from common import (
     TestCaseType,
     TestType,
     IperfOutput,
-    TestMetadata,
-    TftAggregateOutput,
-    PluginOutput,
     TFT_TESTS,
 )
 from logger import logger
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import List
 from common import serialize_enum, from_dict
 
 
