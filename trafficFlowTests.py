@@ -4,6 +4,7 @@ from common import (
     TftAggregateOutput,
     TFT_TESTS,
     BaseOutput,
+    serialize_enum,
 )
 from testSettings import TestSettings
 from testConfig import TestConfig
@@ -143,7 +144,7 @@ class TrafficFlowTests:
         for out in self.tft_output:
             json_out[TFT_TESTS].append(asdict(out))
         with open(log, "w") as output_file:
-            json.dump(json_out, output_file)
+            json.dump(serialize_enum(json_out), output_file)
 
     def evaluate_run_success(self) -> bool:
         # For the result of every test run, check the status of each run log to ensure all test passed
