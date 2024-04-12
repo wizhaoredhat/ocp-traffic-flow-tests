@@ -117,7 +117,9 @@ class TestSettings:
 
     def _server_test_to_persistent(self, test_id: TestCaseType) -> bool:
         # TODO: add logic to determine when this is required
-        raise NotImplementedError("_server_test_to_persistent is not implemented")
+        # Apparently its critical that this is false, so it should be implemented!!
+        # Doesn't run when I throw an error
+        # raise NotImplementedError("_server_test_to_persistent is not implemented")
         return False
 
     def server_test_to_pod_type(
