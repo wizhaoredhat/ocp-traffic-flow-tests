@@ -90,7 +90,7 @@ class IperfServer(Task):
             r = self.exec_thread.result
             if r.returncode != 0:
                 logger.error(
-                    f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}"
+                    f"Error occurred while stopping Iperf server: errcode: {r.returncode} err {r.err}"
                 )
             logger.debug(f"IperfServer.stop(): {r.out}")
         else:
@@ -177,7 +177,7 @@ class IperfClient(Task):
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occured(self._output.result):
+        if self.iperf_error_occurred(self._output.result):
             logger.error(
                 "Encountered error while running test:\n"
                 f"  {self._output.result['error']}"
@@ -250,5 +250,5 @@ class IperfClient(Task):
             raise Exception(f"get_podman_ip(): failed to get podman ip")
         return ret.out.strip()
 
-    def iperf_error_occured(self, data: dict) -> bool:
+    def iperf_error_occurred(self, data: dict) -> bool:
         return "error" in data

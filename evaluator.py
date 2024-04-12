@@ -132,9 +132,9 @@ class Evaluator:
         )
 
     def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
-        # If an error occured, bitrate = 0
+        # If an error occurred, bitrate = 0
         if "error" in result:
-            logger.error(f"An error occured during iperf test: {result['error']}")
+            logger.error(f"An error occurred during iperf test: {result['error']}")
             return Bitrate(0, 0)
 
         try:
@@ -154,9 +154,9 @@ class Evaluator:
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_received:.5g}"))
 
     def calculate_gbps_iperf_udp(self, result: dict) -> Bitrate:
-        # If an error occured, bitrate = 0
+        # If an error occurred, bitrate = 0
         if "error" in result:
-            logger.error(f"An error occured during iperf test: {result['error']}")
+            logger.error(f"An error occurred during iperf test: {result['error']}")
             return Bitrate(0, 0)
 
         sum_data = result["end"]["sum"]
