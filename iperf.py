@@ -192,7 +192,7 @@ class IperfClient(Task):
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occured(self._output.result):
+        if self.iperf_error_occurred(self._output.result):
             logger.error(
                 "Encountered error while running test:\n"
                 f"  {self._output.result['error']}"
@@ -273,5 +273,5 @@ class IperfClient(Task):
             f"get_podman_ip(): failed to get {pod_name} ip after 5 attempts"
         )
 
-    def iperf_error_occured(self, data: dict) -> bool:
+    def iperf_error_occurred(self, data: dict) -> bool:
         return "error" in data
