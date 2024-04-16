@@ -121,7 +121,7 @@ class Task(ABC):
                     f"Error occurred while stopping {class_name}: errcode: {r.returncode} err {r.err}"
                 )
             logger.debug(f"{class_name}.stop(): {r.out}")
-            self._output = self.generate_output(data=json.loads(r.out))
+            self._output = self.generate_output(data=r.out)
         else:
             logger.error("Thread did not return a result")
 
@@ -136,5 +136,5 @@ class Task(ABC):
         raise NotImplementedError("Must implement output()")
 
     @abstractmethod
-    def generate_output(self, data: dict) -> common.BaseOutput:
+    def generate_output(self, data: str) -> common.BaseOutput:
         raise NotImplementedError("Must implement generate_output()")

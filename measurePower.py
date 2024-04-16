@@ -6,6 +6,7 @@ from task import Task
 from host import Result
 import re
 import time
+import json
 
 
 class MeasurePower(Task):
@@ -72,7 +73,8 @@ class MeasurePower(Task):
         # Print summary to console logs
         logger.info(f"measurePower results: {self._output.result}")
 
-    def generate_output(self, data: dict) -> PluginOutput:
+    def generate_output(self, data: str) -> PluginOutput:
+        parsed_data = json.loads(data)
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasurePower",
@@ -80,6 +82,6 @@ class MeasurePower(Task):
                 "pod_name": self.pod_name,
             },
             command=self.cmd,
-            result=data,
+            result=parsed_data,
             name="measure_power",
         )

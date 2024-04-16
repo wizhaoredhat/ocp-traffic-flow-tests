@@ -3,6 +3,8 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
+import jc
+from typing import List, Dict, Any, cast
 
 
 class MeasureCPU(Task):
@@ -45,7 +47,9 @@ class MeasureCPU(Task):
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
     # TODO: We are currently only storing the "cpu: all" data from mpstat
-    def generate_output(self, data: dict) -> PluginOutput:
+    def generate_output(self, data: str) -> PluginOutput:
+        # satisfy the linter. jc.parse returns a list of dicts in this case
+        parsed_data = cast(List[Dict[str, Any]], jc.parse("mpstat", data))
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasureCPU",
@@ -53,6 +57,6 @@ class MeasureCPU(Task):
                 "pod_name": self.pod_name,
             },
             command=self.cmd,
-            result=data[0],
+            result=parsed_data[0],
             name="measure_cpu",
         )

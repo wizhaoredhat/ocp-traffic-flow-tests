@@ -7,6 +7,7 @@ from task import Task
 from host import Result
 from testSettings import TestSettings
 import time
+import json
 
 IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"
@@ -103,7 +104,7 @@ class IperfServer(Task):
     def output(self, out: common.TftAggregateOutput) -> None:
         raise NotImplementedError("output() not implemented in IperfServer")
 
-    def generate_output(self, data: dict) -> common.BaseOutput:
+    def generate_output(self, data: str) -> common.BaseOutput:
         raise NotImplementedError("generate_output() not implemented in IperfServer")
 
 
@@ -161,11 +162,12 @@ class IperfClient(Task):
         self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
         self.exec_thread.start()
 
-    def generate_output(self, data: dict) -> IperfOutput:
+    def generate_output(self, data: str) -> IperfOutput:
+        parsed_data = json.loads(data)
         json_dump = IperfOutput(
             tft_metadata=self.ts.get_test_metadata(),
             command=self.cmd,
-            result=data,
+            result=parsed_data,
         )
         return json_dump
 
