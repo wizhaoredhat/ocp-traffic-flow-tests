@@ -75,7 +75,7 @@ class TrafficFlowTests:
         logger.info(
             f"Cleaning external containers {iperf.EXTERNAL_IPERF3_SERVER} (if present)"
         )
-        cmd = f"podman stop {iperf.EXTERNAL_IPERF3_SERVER}"
+        cmd = f"podman rm --force {iperf.EXTERNAL_IPERF3_SERVER}"
         self.lh.run(cmd)
 
     def _enable_measure_cpu_plugin(

@@ -6,6 +6,7 @@ from thread import ReturnValueThread
 from task import Task
 from host import Result
 from testSettings import TestSettings
+import time
 
 IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"
@@ -65,7 +66,7 @@ class IperfServer(Task):
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -itd --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s"
+            cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
         else:
             # Create the server pods
             super().setup()
@@ -243,12 +244,20 @@ class IperfClient(Task):
 
     def get_podman_ip(self, pod_name: str) -> str:
         cmd = "podman inspect --format '{{.NetworkSettings.IPAddress}}' " + pod_name
-        ret = self.lh.run(cmd)
-        logger.debug(f"get_podman_ip(): {ret.out}")
-        if ret.returncode != 0:
-            logger.error(f"Failed to inspect pod {pod_name} for IPAddress: {ret.err}")
-            raise Exception(f"get_podman_ip(): failed to get podman ip")
-        return ret.out.strip()
+
+        for _ in range(5):
+            ret = self.lh.run(cmd)
+            if ret.returncode == 0:
+                ip_address = ret.out.strip()
+                if ip_address:
+                    logger.debug(f"get_podman_ip({pod_name}) found: {ip_address}")
+                    return ip_address
+
+            time.sleep(2)
+
+        raise Exception(
+            f"get_podman_ip(): failed to get {pod_name} ip after 5 attempts"
+        )
 
     def iperf_error_occurred(self, data: dict) -> bool:
         return "error" in data
