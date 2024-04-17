@@ -12,7 +12,7 @@ from common import (
 from logger import logger
 from pathlib import Path
 from typing import List
-from common import serialize_enum, from_dict
+from common import serialize_enum, dataclass_from_dict
 
 
 @dataclass
@@ -92,7 +92,7 @@ class Evaluator:
 
         for run in runs:
             if "flow_test" in run and run["flow_test"] is not None:
-                run["flow_test"] = from_dict(IperfOutput, run["flow_test"])
+                run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
 
             self._eval_flow_test(run["flow_test"])
             for plugin in run["plugins"]:
