@@ -3,20 +3,21 @@ import sys
 from enum import Enum
 from logger import logger
 from k8sClient import K8sClient
-from yaml import safe_load, safe_dump
+from yaml import safe_load
 import io
 from common import TestType
 
 
 class ClusterMode(Enum):
-    SINGLE    = 1
-    DPU       = 3
+    SINGLE = 1
+    DPU = 3
 
-class TestConfig():
+
+class TestConfig:
     def __init__(self, config_path: str):
         self.mode = ClusterMode.SINGLE
 
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             contents = f.read()
             self.fullConfig = safe_load(io.StringIO(contents))
 
@@ -44,7 +45,9 @@ class TestConfig():
                 self.client_tenant = K8sClient(self.kubeconfig_tenant)
                 self.client_infra = K8sClient(self.kubeconfig_infra)
             else:
-                logger.error("Assuming DPU...Cannot Find Infrastructure Cluster Config.")
+                logger.error(
+                    "Assuming DPU...Cannot Find Infrastructure Cluster Config."
+                )
                 sys.exit(-1)
         else:
             logger.error("Cannot Find Kubeconfig.")
@@ -75,15 +78,15 @@ class TestConfig():
 
     def validate_pod_type(self, connection_server: dict):
         if "sriov" in connection_server:
-            if "true" in connection_server['sriov'].lower():
+            if "true" in connection_server["sriov"].lower():
                 return "sriov"
         return "normal"
 
     def validate_test_type(self, connection: dict) -> TestType:
-        if 'type' not in connection:
+        if "type" not in connection:
             return TestType.IPERF_TCP
 
-        input_ct = connection['type'].lower()
+        input_ct = connection["type"].lower()
         if "iperf" in input_ct:
             if "udp" in input_ct:
                 return TestType.IPERF_UDP
@@ -92,8 +95,10 @@ class TestConfig():
         elif "http" in input_ct:
             return TestType.HTTP
         else:
-            raise ValueError(f"Invalid connection type {connection['type']} provided. \
-                Supported connection types: iperf-tcp (default), iperf-udp, http") 
+            raise ValueError(
+                f"Invalid connection type {connection['type']} provided. \
+                Supported connection types: iperf-tcp (default), iperf-udp, http"
+            )
 
     def GetConfig(self):
         return self.fullConfig["tft"]

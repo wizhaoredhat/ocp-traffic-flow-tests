@@ -6,9 +6,6 @@ from thread import ReturnValueThread
 from task import Task
 from host import Result
 from testSettings import TestSettings
-from dataclasses import asdict
-import sys
-import yaml
 import json
 
 IPERF_EXE = "iperf3"
@@ -32,16 +29,26 @@ class IperfServer(Task):
             return
         if self.pod_type == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/sriov-pod-{self.node_name}-server.yaml"
-            self.template_args["pod_name"] = f"sriov-pod-{self.node_name}-server-{self.port}"
+            self.out_file_yaml = (
+                f"./manifests/yamls/sriov-pod-{self.node_name}-server.yaml"
+            )
+            self.template_args["pod_name"] = (
+                f"sriov-pod-{self.node_name}-server-{self.port}"
+            )
         elif self.pod_type == PodType.NORMAL:
             self.in_file_template = "./manifests/pod.yaml.j2"
             self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-server.yaml"
-            self.template_args["pod_name"] = f"normal-pod-{self.node_name}-server-{self.port}"
+            self.template_args["pod_name"] = (
+                f"normal-pod-{self.node_name}-server-{self.port}"
+            )
         elif self.pod_type == PodType.HOSTBACKED:
             self.in_file_template = "./manifests/host-pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/host-pod-{self.node_name}-server.yaml"
-            self.template_args["pod_name"] = f"host-pod-{self.node_name}-server-{self.port}"
+            self.out_file_yaml = (
+                f"./manifests/yamls/host-pod-{self.node_name}-server.yaml"
+            )
+            self.template_args["pod_name"] = (
+                f"host-pod-{self.node_name}-server-{self.port}"
+            )
 
         self.template_args["port"] = f"{self.port}"
 
@@ -84,11 +91,14 @@ class IperfServer(Task):
         logger.info(f"Stopping execution on {self.pod_name}")
         r = self.exec_thread.join()
         if r.returncode != 0:
-            logger.error(f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}")
+            logger.error(
+                f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}"
+            )
         logger.debug(f"IperfServer.stop(): {r.out}")
 
     def output(self, out: common.TftAggregateOutput):
         pass
+
 
 class IperfClient(Task):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: IperfServer):
@@ -103,18 +113,28 @@ class IperfClient(Task):
         self.reverse = ts.reverse
         self.cmd = ""
 
-        if self.pod_type  == PodType.SRIOV:
+        if self.pod_type == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/sriov-pod-{self.node_name}-client.yaml"
-            self.template_args["pod_name"] = f"sriov-pod-{self.node_name}-client-{self.port}"
-        elif self.pod_type  == PodType.NORMAL:
+            self.out_file_yaml = (
+                f"./manifests/yamls/sriov-pod-{self.node_name}-client.yaml"
+            )
+            self.template_args["pod_name"] = (
+                f"sriov-pod-{self.node_name}-client-{self.port}"
+            )
+        elif self.pod_type == PodType.NORMAL:
             self.in_file_template = "./manifests/pod.yaml.j2"
             self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-client.yaml"
-            self.template_args["pod_name"] = f"normal-pod-{self.node_name}-client-{self.port}"
-        elif self.pod_type  == PodType.HOSTBACKED:
+            self.template_args["pod_name"] = (
+                f"normal-pod-{self.node_name}-client-{self.port}"
+            )
+        elif self.pod_type == PodType.HOSTBACKED:
             self.in_file_template = "./manifests/host-pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/host-pod-{self.node_name}-client.yaml"
-            self.template_args["pod_name"] = f"host-pod-{self.node_name}-client-{self.port}"
+            self.out_file_yaml = (
+                f"./manifests/yamls/host-pod-{self.node_name}-client.yaml"
+            )
+            self.template_args["pod_name"] = (
+                f"host-pod-{self.node_name}-client-{self.port}"
+            )
 
         self.pod_name = self.template_args["pod_name"]
 
@@ -158,24 +178,25 @@ class IperfClient(Task):
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
         if self.iperf_error_occured(self._output.result):
-            logger.error("Encountered error while running test:\n"
+            logger.error(
+                "Encountered error while running test:\n"
                 f"  {self._output.result['error']}"
             )
             return
         if self.test_type == TestType.IPERF_TCP:
             self.print_tcp_results(self._output.result)
         if self.test_type == TestType.IPERF_UDP:
-            self.print_udp_results(self._output.result)     
+            self.print_udp_results(self._output.result)
 
     def print_tcp_results(self, data: dict):
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
 
-        transfer_sent = sum_sent["bytes"] / (1024 ** 3)
+        transfer_sent = sum_sent["bytes"] / (1024**3)
         bitrate_sent = sum_sent["bits_per_second"] / 1e9
-        transfer_received = sum_received["bytes"] / (1024 ** 3)
+        transfer_received = sum_received["bytes"] / (1024**3)
         bitrate_received = sum_received["bits_per_second"] / 1e9
-        mss = data['start']['tcp_mss_default']
+        mss = data["start"]["tcp_mss_default"]
 
         logger.info(
             f"\n  [ ID]   Interval              Transfer        Bitrate\n"
@@ -187,7 +208,7 @@ class IperfClient(Task):
     def print_udp_results(self, data: dict):
         sum_data = data["end"]["sum"]
 
-        total_gigabytes = sum_data["bytes"] / (1024 ** 3)
+        total_gigabytes = sum_data["bytes"] / (1024**3)
         average_gigabitrate = sum_data["bits_per_second"] / 1e9
         average_jitter = sum_data["jitter_ms"]
         total_lost_packets = sum_data["lost_packets"]
@@ -203,10 +224,14 @@ class IperfClient(Task):
 
     def get_target_ip(self) -> str:
         if self.connection_mode == ConnectionMode.CLUSTER_IP:
-            logger.debug(f"get_target_ip() ClusterIP connection to {self.server.cluster_ip_addr}")
+            logger.debug(
+                f"get_target_ip() ClusterIP connection to {self.server.cluster_ip_addr}"
+            )
             return self.server.cluster_ip_addr
         elif self.connection_mode == ConnectionMode.NODE_PORT_IP:
-            logger.debug(f"get_target_ip() NodePortIP connection to {self.server.nodeport_ip_addr}")
+            logger.debug(
+                f"get_target_ip() NodePortIP connection to {self.server.nodeport_ip_addr}"
+            )
             return self.server.nodeport_ip_addr
         elif self.connection_mode == ConnectionMode.EXTERNAL_IP:
             external_pod_ip = self.get_podman_ip(EXTERNAL_IPERF3_SERVER)

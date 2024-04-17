@@ -1,29 +1,45 @@
-from common import TestCaseType, PodType, ConnectionMode, NodeLocation, TestType, PodInfo, TestMetadata
-from pathlib import Path
+from common import (
+    TestCaseType,
+    PodType,
+    ConnectionMode,
+    NodeLocation,
+    TestType,
+    PodInfo,
+    TestMetadata,
+)
 
-class TestSettings():
+
+class TestSettings:
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
+
     def __init__(
-            self, connection_name: str,
-            test_case_id: TestCaseType,
-            node_server_name: str,
-            node_client_name: str,
-            server_pod_type: str,
-            client_pod_type: str,
-            index: int,
-            test_type: TestType,
-            reverse: bool = False
-        ):
+        self,
+        connection_name: str,
+        test_case_id: TestCaseType,
+        node_server_name: str,
+        node_client_name: str,
+        server_pod_type: str,
+        client_pod_type: str,
+        index: int,
+        test_type: TestType,
+        reverse: bool = False,
+    ):
         self.connection_name = connection_name
         self.test_case_id = test_case_id
-        self.node_server_name = self._determine_server_name(test_case_id, node_server_name, node_client_name)
+        self.node_server_name = self._determine_server_name(
+            test_case_id, node_server_name, node_client_name
+        )
         self.node_client_name = node_client_name
-        self.server_pod_type = self.server_test_to_pod_type(test_case_id, server_pod_type)
-        self.client_pod_type = self.client_test_to_pod_type(test_case_id, client_pod_type)
-        #TODO: Handle Case when client is not tenant
+        self.server_pod_type = self.server_test_to_pod_type(
+            test_case_id, server_pod_type
+        )
+        self.client_pod_type = self.client_test_to_pod_type(
+            test_case_id, client_pod_type
+        )
+        # TODO: Handle Case when client is not tenant
         self.client_is_tenant = True
         self.server_is_tenant = True
-        #TODO: Add task indexing
+        # TODO: Add task indexing
         self.server_index = index
         self.client_index = index
         self.test_type = test_type
@@ -77,18 +93,20 @@ class TestSettings():
                 name=self.node_server_name,
                 pod_type=self.server_pod_type.name,
                 is_tenant=self.server_is_tenant,
-                index=self.client_index
+                index=self.client_index,
             ),
             client=PodInfo(
                 name=self.node_client_name,
                 pod_type=self.client_pod_type.name,
                 is_tenant=self.client_is_tenant,
-                index=self.client_index
-            )
+                index=self.client_index,
+            ),
         )
         return json_dump
 
-    def _determine_server_name(self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str):
+    def _determine_server_name(
+        self, test_case_id: TestCaseType, node_server_name: str, node_client_name: str
+    ):
         """If conducting Same Node testing, the server node should be the client node"""
         if self._is_same_node_test(test_case_id):
             return node_client_name
@@ -98,7 +116,7 @@ class TestSettings():
         return test_id in (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23)
 
     def _server_test_to_persistent(self, test_id: int) -> bool:
-        #TODO: add logic to determine when this is required
+        # TODO: add logic to determine when this is required
         return False
 
     def server_test_to_pod_type(self, test_id: int, cfg_pod_type: str) -> PodType:

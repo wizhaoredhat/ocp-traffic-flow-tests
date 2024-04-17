@@ -1,6 +1,5 @@
 import sys
 import yaml
-import json
 import common
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -10,17 +9,18 @@ from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
 
+
 class Task(ABC):
     def __init__(self, tc: TestConfig, index: int, node_name: str, tenant: bool):
         self.template_args = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
-        self.exec_thread: Optional[ReturnValueThread] = None # type: ignore
+        self.exec_thread: Optional[ReturnValueThread] = None  # type: ignore
         self.lh = host.LocalHost()
 
-        self.template_args["name_space"] = 'default'
-        self.template_args["net_attach_def_name"] = 'default'
+        self.template_args["name_space"] = "default"
+        self.template_args["net_attach_def_name"] = "default"
         self.template_args["test_image"] = common.FT_BASE_IMG
         self.template_args["command"] = "/sbin/init"
         self.template_args["args"] = ""
@@ -64,7 +64,9 @@ class Task(ABC):
                 logger.info(r)
                 sys.exit(-1)
 
-        return self.run_oc("get service tft-clusterip-service -o=jsonpath='{.spec.clusterIP}'").out
+        return self.run_oc(
+            "get service tft-clusterip-service -o=jsonpath='{.spec.clusterIP}'"
+        ).out
 
     def create_node_port_service(self, nodeport: int) -> str:
         in_file_template = "./manifests/svc-node-port.yaml.j2"
@@ -79,7 +81,9 @@ class Task(ABC):
                 logger.info(r)
                 sys.exit(-1)
 
-        return self.run_oc("get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'").out
+        return self.run_oc(
+            "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'"
+        ).out
 
     def setup(self):
         # Check if pod already exists
@@ -102,17 +106,18 @@ class Task(ABC):
 
     @abstractmethod
     def run(self, duration: int):
-        raise NotImplementedError('Must implement run()')
+        raise NotImplementedError("Must implement run()")
 
     @abstractmethod
     def stop(self):
-        raise NotImplementedError('Must implement stop()')
-    
+        raise NotImplementedError("Must implement stop()")
+
     """
     output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the
     TftAggregateOutput Plugin fields. Additionally, this function should handle printing any required info/debug to the console. The results must
     be formated such that other modules can easily consume the output, such as a module to determine the success/failure/performance of a given run.
     """
+
     @abstractmethod
     def output(self, out: common.TftAggregateOutput):
-        raise NotImplementedError('Must implement output()')
+        raise NotImplementedError("Must implement output()")

@@ -4,14 +4,13 @@ import os
 import json
 import shlex
 import sys
-from typing import Optional
 from logger import logger
-import logging
 
 
 Result = namedtuple("Result", "out err returncode")
 
-class Host():
+
+class Host:
     def ipa(self) -> dict:
         return json.loads(self.run("ip -json a").out)
 
@@ -20,6 +19,7 @@ class Host():
 
     def all_ports(self) -> dict:
         return json.loads(self.run("ip -json link").out)
+
 
 class LocalHost(Host):
     def __init__(self):

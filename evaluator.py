@@ -1,10 +1,16 @@
 import argparse
-import os
 import sys
 import yaml
 import json
 from dataclasses import dataclass, asdict
-from common import TestCaseType, TestType, IperfOutput, TestMetadata, TftAggregateOutput, TFT_TESTS
+from common import (
+    TestCaseType,
+    TestType,
+    IperfOutput,
+    TestMetadata,
+    TftAggregateOutput,
+    TFT_TESTS,
+)
 from logger import logger
 from pathlib import Path
 
@@ -14,30 +20,35 @@ class Bitrate:
     tx: int
     rx: int
 
-#TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
+
+# TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
 # we can return a single "Status" from a test
 @dataclass
 class PassFailStatus:
-    '''Pass/Fail ratio and result from evaluating a full tft Flow Test result
+    """Pass/Fail ratio and result from evaluating a full tft Flow Test result
 
     Attributes:
         result: boolean representing whether the test was successful (100% passing)
         num_passed: int number of test cases passed
-        num_failed: int number of test cases failed'''
+        num_failed: int number of test cases failed"""
+
     result: bool
     num_passed: int
     num_failed: int
 
+
 @dataclass
-class TestResult():
-    '''Result of a single test case run
+class TestResult:
+    """Result of a single test case run
 
     Attributes:
         test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
         test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
         reverse: Specify whether test is client->server or reversed server->client
         success: boolean representing whether the test passed or failed
-        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps'''
+        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
+    """
+
     test_id: TestCaseType
     test_type: TestType
     reverse: bool
@@ -45,10 +56,9 @@ class TestResult():
     bitrate_gbps: Bitrate
 
 
-
-class Evaluator():
+class Evaluator:
     def __init__(self, config_path: str):
-        with open(config_path, encoding='utf-8') as file:
+        with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
         self.config = c
@@ -67,17 +77,18 @@ class Evaluator():
         bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
 
         result = TestResult(
-            test_id = md.test_case_id,
-            test_type = md.test_type,
-            reverse= md.reverse,
-            success = self.is_passing(bitrate_threshold, bitrate_gbps),
-            bitrate_gbps = bitrate_gbps)
+            test_id=md.test_case_id,
+            test_type=md.test_type,
+            reverse=md.reverse,
+            success=self.is_passing(bitrate_threshold, bitrate_gbps),
+            bitrate_gbps=bitrate_gbps,
+        )
         self.test_results.append(result)
 
     def eval_log(self, log_path: Path):
         try:
-            with open(log_path, 'r') as file:
-                runs = json.load(file)[TFT_TESTS]                
+            with open(log_path, "r") as file:
+                runs = json.load(file)[TFT_TESTS]
         except Exception as e:
             logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
@@ -85,7 +96,7 @@ class Evaluator():
         for run in runs:
             self._eval_flow_test(run)
             for plugin in run["plugins"]:
-                #TODO: add evaluation for plugins
+                # TODO: add evaluation for plugins
                 logger.debug(f'Reading result from plugin {plugin["name"]}')
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
@@ -95,7 +106,9 @@ class Evaluator():
         try:
             return self.config[test_type][TestCaseType[test_case_id].value]["threshold"]
         except KeyError as e:
-            logger.error(f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id}")
+            logger.error(
+                f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id}"
+            )
             raise Exception(f"get_threshold(): Failed to parse evaluator config")
 
     def calculate_gbps(self, result: dict, test_type: TestType) -> Bitrate:
@@ -106,7 +119,9 @@ class Evaluator():
         elif test_type == TestType.HTTP.name:
             return self.calculate_gbps_http(result)
         else:
-            logger.error(f"Error calculating bitrate, Test of type {test_type} is not supported")
+            logger.error(
+                f"Error calculating bitrate, Test of type {test_type} is not supported"
+            )
             raise Exception(f"calculate_gbps(): Invalid test_type {test_type} provided")
 
     def dump_to_json(self) -> str:
@@ -123,26 +138,29 @@ class Evaluator():
         # If an error occured, bitrate = 0
         if "error" in result:
             logger.error(f"An error occured during iperf test: {result['error']}")
-            return Bitrate(0,0)
+            return Bitrate(0, 0)
 
         try:
             sum_sent = result["end"]["sum_sent"]
             sum_received = result["end"]["sum_received"]
         except KeyError as e:
-            logger.error(f"KeyError: {e}. Malformed results when parsing iperf tcp for sum_sent/received")
-            raise Exception(f"calculate_gbps_iperf_tcp(): failed to parse iperf test results")
+            logger.error(
+                f"KeyError: {e}. Malformed results when parsing iperf tcp for sum_sent/received"
+            )
+            raise Exception(
+                f"calculate_gbps_iperf_tcp(): failed to parse iperf test results"
+            )
 
         bitrate_sent = sum_sent["bits_per_second"] / 1e9
         bitrate_received = sum_received["bits_per_second"] / 1e9
 
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_received:.5g}"))
 
-
     def calculate_gbps_iperf_udp(self, result: dict) -> Bitrate:
         # If an error occured, bitrate = 0
         if "error" in result:
             logger.error(f"An error occured during iperf test: {result['error']}")
-            return Bitrate(0,0)
+            return Bitrate(0, 0)
 
         sum_data = result["end"]["sum"]
 
@@ -150,9 +168,8 @@ class Evaluator():
         bitrate_sent = sum_data["bits_per_second"] / 1e9
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_sent:.5g}"))
 
-
     def calculate_gbps_http(self, result: dict) -> Bitrate:
-        #TODO: Add http traffic testing
+        # TODO: Add http traffic testing
         return -1
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
@@ -163,16 +180,26 @@ class Evaluator():
                 total_passing += 1
             else:
                 total_failing += 1
-        return PassFailStatus(result = total_failing == 0,
-                              num_passed = total_passing,
-                              num_failed = total_failing)
+        return PassFailStatus(
+            result=total_failing == 0,
+            num_passed=total_passing,
+            num_failed=total_failing,
+        )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Tool to evaluate TFT Flow test results')
-    parser.add_argument('config', metavar='config', type=str, help='Yaml file with tft test threshholds')
-    parser.add_argument('logs', type=str, help='Directory containing TFT log files to evaluate')
-    parser.add_argument('output', type=str, help='Output file to write evaluation results to')
+    parser = argparse.ArgumentParser(
+        description="Tool to evaluate TFT Flow test results"
+    )
+    parser.add_argument(
+        "config", metavar="config", type=str, help="Yaml file with tft test threshholds"
+    )
+    parser.add_argument(
+        "logs", type=str, help="Directory containing TFT log files to evaluate"
+    )
+    parser.add_argument(
+        "output", type=str, help="Output file to write evaluation results to"
+    )
 
     args = parser.parse_args()
 
@@ -185,6 +212,7 @@ def parse_args() -> argparse.Namespace:
         sys.exit(-1)
 
     return args
+
 
 def main():
     args = parse_args()
@@ -202,7 +230,10 @@ def main():
     logger.info(data)
 
     res = evaluator.evaluate_pass_fail_status()
-    logger.info(f"RESULT OF TEST: Success = {res.result}. Passed {res.num_passed}/{res.num_passed + res.num_failed}")
+    logger.info(
+        f"RESULT OF TEST: Success = {res.result}. Passed {res.num_passed}/{res.num_passed + res.num_failed}"
+    )
+
 
 if __name__ == "__main__":
     main()
