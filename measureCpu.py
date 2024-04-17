@@ -3,6 +3,7 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
+from host import Result
 import jc
 from typing import List, Dict, Any, cast
 
