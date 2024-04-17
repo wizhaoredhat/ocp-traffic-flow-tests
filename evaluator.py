@@ -13,6 +13,8 @@ from common import (
 )
 from logger import logger
 from pathlib import Path
+from typing import List
+from common import serialize_enum, dataclass_from_dict
 
 
 @dataclass
@@ -94,7 +96,10 @@ class Evaluator:
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
 
         for run in runs:
-            self._eval_flow_test(run)
+            if "flow_test" in run and run["flow_test"] is not None:
+                run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
+
+            self._eval_flow_test(run["flow_test"])
             for plugin in run["plugins"]:
                 # TODO: add evaluation for plugins
                 logger.debug(f'Reading result from plugin {plugin["name"]}')

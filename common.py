@@ -103,6 +103,14 @@ class TestMetadata:
     server: PodInfo
     client: PodInfo
 
+    def __post_init__(self) -> None:
+        self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
+        self.test_type = enum_convert(TestType, self.test_type)
+        if isinstance(self.server, dict):
+            self.server = dataclass_from_dict(PodInfo, self.server)
+        if isinstance(self.client, dict):
+            self.client = dataclass_from_dict(PodInfo, self.client)
+
 
 @dataclass
 class BaseOutput:
@@ -113,6 +121,12 @@ class BaseOutput:
 @dataclass
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
+
+    def __post_init__(self) -> None:
+        if isinstance(self.tft_metadata, dict):
+            self.tft_metadata = dataclass_from_dict(TestMetadata, self.tft_metadata)
+        elif not isinstance(self.tft_metadata, TestMetadata):
+            raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
 
 
 @dataclass
@@ -138,12 +152,16 @@ class TftAggregateOutput:
 
     def __post_init__(self) -> None:
         if isinstance(self.flow_test, dict):
-            self.flow_test = from_dict(IperfOutput, self.flow_test)
+            self.flow_test = dataclass_from_dict(IperfOutput, self.flow_test)
         elif self.flow_test is not None and not isinstance(self.flow_test, IperfOutput):
             raise ValueError("flow_test must be an IperfOutput instance or a dict")
 
         self.plugins = [
-            from_dict(PluginOutput, plugin) if isinstance(plugin, dict) else plugin
+            (
+                dataclass_from_dict(PluginOutput, plugin)
+                if isinstance(plugin, dict)
+                else plugin
+            )
             for plugin in self.plugins
         ]
 
@@ -155,3 +173,34 @@ def j2_render(in_file_name, out_file_name, kwargs):
     rendered = template.render(**kwargs)
     with open(out_file_name, "w") as outFile:
         outFile.write(rendered)
+
+
+def serialize_enum(
+    data: Union[Enum, Dict[Any, Any], List[Any], Any]
+) -> Union[str, Dict[Any, Any], List[Any], Any]:
+    if isinstance(data, Enum):
+        return data.name
+    elif isinstance(data, dict):
+        return {k: serialize_enum(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [serialize_enum(item) for item in data]
+    else:
+        return data
+
+
+T = TypeVar("T")
+
+
+def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    assert is_dataclass(
+        cls
+    ), "dataclass_from_dict() should only be used with dataclasses."
+    field_values = {}
+    for field in fields(cls):
+        field_name = field.name
+        field_type = field.type
+        if is_dataclass(field_type) and field_name in data:
+            field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
+        elif field_name in data:
+            field_values[field_name] = data[field_name]
+    return cast(T, cls(**field_values))
