@@ -36,7 +36,7 @@ class Task(ABC):
         self.template_args["node_name"] = self.node_name
         self.tc = tc
 
-    def run_oc(self, cmd: str) -> host.Result:
+    def run_oc(self, cmd: str) -> common.Result:
         if self.tenant:
             r = self.tc.client_tenant.oc(cmd)
         else:
@@ -105,7 +105,7 @@ class Task(ABC):
             sys.exit(-1)
 
     @abstractmethod
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         raise NotImplementedError("Must implement run()")
 
     def stop(self) -> None:
@@ -135,5 +135,5 @@ class Task(ABC):
         raise NotImplementedError("Must implement output()")
 
     @abstractmethod
-    def generate_output(self, data: dict) -> common.BaseOutput:
+    def generate_output(self, data: str) -> common.BaseOutput:
         raise NotImplementedError("Must implement generate_output()")

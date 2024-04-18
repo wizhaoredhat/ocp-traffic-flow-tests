@@ -1,4 +1,4 @@
-from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput
+from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput, Result
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
@@ -25,8 +25,8 @@ class MeasureCPU(Task):
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def stat(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def stat(self, cmd: str) -> Result:
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.

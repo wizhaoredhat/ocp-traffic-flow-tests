@@ -4,12 +4,10 @@ from common import (
     j2_render,
     TftAggregateOutput,
     PodType,
-    RxTxData,
-    BaseOutput,
+    Result,
 )
-from dataclasses import asdict
 from logger import logger
-from time import sleep
+import time
 from testConfig import TestConfig
 from iperf import IperfServer, IperfClient
 from thread import ReturnValueThread
@@ -37,7 +35,7 @@ class ValidateOffload(Task):
 
         self.pod_name = self.template_args["pod_name"]
         self._iperf_instance = iperf_instance
-        self.iperf_pod_name = iperf_instance.template_args["pod_name"]
+        self.iperf_pod_name = iperf_instance.pod_name
         self.iperf_pod_type = iperf_instance.pod_type
 
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
@@ -63,7 +61,7 @@ class ValidateOffload(Task):
         )
         return data["containers"][0]["podSandboxId"][:15]
 
-    def run_ethtool_cmd(self, vf_rep: str) -> (int, int):
+    def run_ethtool_cmd(self, vf_rep: str) -> Result:
         self.ethtool_cmd = (
             f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
         )
@@ -72,12 +70,11 @@ class ValidateOffload(Task):
             if r.returncode != 0:
                 if "already exists" not in r.err:
                     logger.info(r)
-                    sys.exit(-1)
+                    raise RuntimeError(
+                        f"ValidateOffload error: {r.err} returncode: {r.returncode}"
+                    )
 
-        ethtool_output = r.out
-        rxpacket = self.parse_out_packet(ethtool_output, "rx_packet")
-        txpacket = self.parse_out_packet(ethtool_output, "tx_packet")
-        return (rxpacket, txpacket)
+        return r
 
     def parse_out_packet(self, output: str, prefix: str) -> Optional[int]:
         for line in output.splitlines():
@@ -87,62 +84,62 @@ class ValidateOffload(Task):
 
         return None
 
-    def run_st(self) -> RxTxData:
+    def run_st(self) -> Result:
         vf_rep = self.extract_vf_rep()
-        (rxpacket_start, txpacket_start) = self.run_ethtool_cmd(vf_rep)
-        sleep(self._duration)
-        (rxpacket_end, txpacket_end) = self.run_ethtool_cmd(vf_rep)
+        r1 = self.run_ethtool_cmd(vf_rep)
+        time.sleep(self._duration)
+        r2 = self.run_ethtool_cmd(vf_rep)
 
-        return RxTxData(
-            rx_start=rxpacket_start,
-            tx_start=txpacket_start,
-            rx_end=rxpacket_end,
-            tx_end=txpacket_end,
+        combined_out = f"{r1.out}--DELIMIT--{r2.out}"
+        combined_err = f"R1: {r1.err} R2: {r2.err}"
+        combined_returncode = max(r1.returncode, r2.returncode)
+
+        return Result(
+            out=combined_out, err=combined_err, returncode=combined_returncode
         )
 
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         self.exec_thread = ReturnValueThread(target=self.run_st)
         self._duration = int(duration)
         self.exec_thread.start()
 
-    def stop(self):
-        logger.info(f"Stopping Get Vf Rep execution on {self.pod_name}")
-        r = self.exec_thread.join()
-
-        if self.iperf_pod_type == PodType.HOSTBACKED:
-            data = {}
-        else:
-            data = asdict(r)
-        self._output_ethtool = self.generate_output(data, self.ethtool_cmd)
-
     def output(self, out: TftAggregateOutput):
-        out.plugins.append(self._output_ethtool)
+        out.plugins.append(self._output)
 
         if self.iperf_pod_type == PodType.HOSTBACKED:
             if isinstance(self._iperf_instance, IperfClient):
                 logger.info(f"The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
                 logger.info(f"The server VF representor ovn-k8s-mp0_0 does not exist")
-        else:
-            # Print summary to console logs
-            rx_packet_start = self._output_ethtool.result["rx_start"]
-            tx_packet_start = self._output_ethtool.result["tx_start"]
-            rx_packet_end = self._output_ethtool.result["rx_end"]
-            tx_packet_end = self._output_ethtool.result["tx_end"]
 
-            logger.info(
-                "rx_packet_start: %d\n tx_packet_start: %d\n rx_packet_end: %d\n tx_packet_end: %d\n"
-                % (rx_packet_start, tx_packet_start, rx_packet_end, tx_packet_end)
-            )
+    def generate_output(self, data: str) -> PluginOutput:
+        split_data = data.split("--DELIMIT--")
+        parsed_data = {}
 
-    def generate_output(self, data, cmd: str) -> PluginOutput:
+        if len(split_data) >= 1:
+            parsed_data["rx_start"] = self.parse_out_packet(split_data[0], "rx_packet")
+            parsed_data["tx_start"] = self.parse_out_packet(split_data[0], "tx_packet")
+
+        if len(split_data) >= 2:
+            parsed_data["rx_end"] = self.parse_out_packet(split_data[1], "rx_packet")
+            parsed_data["tx_end"] = self.parse_out_packet(split_data[1], "tx_packet")
+
+        if len(split_data) >= 3:
+            parsed_data["additional_info"] = "--DELIMIT--".join(split_data[2:])
+
+        logger.info(
+            f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
+            f"tx_packet_start: {parsed_data.get('tx_start', 'N/A')}\n"
+            f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
+            f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
+        )
         return PluginOutput(
+            command=self.ethtool_cmd,
             plugin_metadata={
                 "name": "GetEthtoolStats",
                 "node_name": self.node_name,
                 "pod_name": self.pod_name,
             },
-            command=cmd,
-            result=data,
+            result=parsed_data,
             name="get_ethtool_stats",
         )

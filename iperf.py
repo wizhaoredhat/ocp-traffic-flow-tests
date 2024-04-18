@@ -4,7 +4,7 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
-from host import Result
+from common import Result
 from testSettings import TestSettings
 import json
 
@@ -74,7 +74,7 @@ class IperfServer(Task):
 
         logger.info(f"Running {cmd}")
 
-        def server(self, cmd: str):
+        def server(self, cmd: str) -> Result:
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
                 return self.lh.run(cmd)
             elif self.exec_persistent:
@@ -135,8 +135,8 @@ class IperfClient(Task):
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def client(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def client(self, cmd: str) -> Result:
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()

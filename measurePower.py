@@ -3,7 +3,7 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
-from host import Result
+from common import Result
 import re
 import time
 import json
@@ -27,7 +27,7 @@ class MeasurePower(Task):
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         def extract(r: Result) -> int:
             for e in r.out.split("\n"):
                 if "Instantaneous power reading" in e:
@@ -37,7 +37,7 @@ class MeasurePower(Task):
             logger.error(f"Could not find Instantaneous power reading: {e}.")
             return 0
 
-        def stat(self, cmd: str, duration: int):
+        def stat(self, cmd: str, duration: int) -> Result:
             end_time = time.time() + float(duration)
             total_pwr = 0
             iteration = 0
