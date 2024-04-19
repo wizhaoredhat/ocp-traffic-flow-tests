@@ -76,13 +76,18 @@ class ValidateOffload(Task):
 
         return r
 
-    def parse_out_packet(self, output: str, prefix: str) -> Optional[int]:
+    def parse_packets(self, output: str, packet_type: str) -> int:
+        total_packets = 0
+        prefix = f"{packet_type}_queue_"
+        packet_suffix = "_xdp_packets:"
+
         for line in output.splitlines():
             stripped_line = line.strip()
-            if stripped_line.startswith(prefix):
-                return int(stripped_line.split(":")[1])
-
-        return None
+            if prefix in stripped_line and packet_suffix in stripped_line:
+                packet_count = int(stripped_line.split(":")[1].strip())
+                total_packets += packet_count
+                
+        return total_packets
 
     def run_st(self) -> Result:
         vf_rep = self.extract_vf_rep()
@@ -117,12 +122,12 @@ class ValidateOffload(Task):
         parsed_data = {}
 
         if len(split_data) >= 1:
-            parsed_data["rx_start"] = self.parse_out_packet(split_data[0], "rx_packet")
-            parsed_data["tx_start"] = self.parse_out_packet(split_data[0], "tx_packet")
+            parsed_data["rx_start"] = self.parse_packets(split_data[0], "rx")
+            parsed_data["tx_start"] = self.parse_packets(split_data[0], "tx")
 
         if len(split_data) >= 2:
-            parsed_data["rx_end"] = self.parse_out_packet(split_data[1], "rx_packet")
-            parsed_data["tx_end"] = self.parse_out_packet(split_data[1], "tx_packet")
+            parsed_data["rx_end"] = self.parse_packets(split_data[1], "rx")
+            parsed_data["tx_end"] = self.parse_packets(split_data[1], "tx")
 
         if len(split_data) >= 3:
             parsed_data["additional_info"] = "--DELIMIT--".join(split_data[2:])
