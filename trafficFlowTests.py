@@ -113,7 +113,7 @@ class TrafficFlowTests:
             tasks.run(duration)
 
         for tasks in servers + clients + monitors:
-            tasks.stop()
+            tasks.stop(duration)
 
         for tasks in servers + clients + monitors:
             tasks.output(tft_aggregate_output)
