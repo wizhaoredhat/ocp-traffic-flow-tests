@@ -106,7 +106,9 @@ class Task(ABC):
 
     @abstractmethod
     def run(self, duration: int) -> None:
-        raise NotImplementedError("Must implement run()")
+        raise NotImplementedError(
+            "Must implement run(). Use SyncManager.wait_barrier()"
+        )
 
     def stop(self) -> None:
         class_name = self.__class__.__name__

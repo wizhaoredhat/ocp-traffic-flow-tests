@@ -7,6 +7,7 @@ from common import Result
 import re
 import time
 import json
+from syncManager import SyncManager
 
 
 class MeasurePower(Task):
@@ -37,29 +38,25 @@ class MeasurePower(Task):
             logger.error(f"Could not find Instantaneous power reading: {e}.")
             return 0
 
-        def stat(self, cmd: str, duration: int) -> Result:
-            end_time = time.time() + float(duration)
+        def stat(self, cmd: str) -> Result:
+            SyncManager.wait_on_barrier()
             total_pwr = 0
             iteration = 0
-            while True:
+            while SyncManager.client_not_finished():
                 r = self.run_oc(cmd)
                 if r.returncode != 0:
                     logger.error(f"Failed to get power {cmd}: {r}")
                 pwr = extract(r)
                 total_pwr += pwr
                 iteration += 1
-                # FIXME: Hardcode interval for now
-                time.sleep(2)
-                if time.time() > end_time:
-                    break
+                time.sleep(0.2)
+
             r = Result(f"{total_pwr/iteration}", "", 0)
             return r
 
         # 1 report at intervals defined by the duration in seconds.
-        self.cmd = f"exec {self.pod_name} -- ipmitool dcmi power reading"
-        self.exec_thread = ReturnValueThread(
-            target=stat, args=(self, self.cmd, duration)
-        )
+        self.cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
+        self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd))
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 

@@ -8,6 +8,8 @@ from common import Result
 from testSettings import TestSettings
 import json
 import time
+from syncManager import SyncManager
+import sys
 
 IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"
@@ -65,6 +67,23 @@ class IperfServer(Task):
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
+    def confirm_server_alive(self):
+        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+            # Podman scenario
+            end_time = time.monotonic() + 60
+            while time.monotonic() < end_time:
+                r = self.lh.run(f"podman ps --filter status=running --filter name={self.pod_name} --format '{{{{.Names}}}}'")
+                if self.pod_name in r.out:
+                    break
+                time.sleep(5)
+        else:
+            # Kubernetes/OpenShift scenario
+            r = self.run_oc(f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m")
+        if not r or r.returncode != 0:
+            logger.error(f"Failed to start server: {r.err}")
+            sys.exit(-1)
+        SyncManager.set_server_alive()
+
     def setup(self):
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
@@ -84,6 +103,7 @@ class IperfServer(Task):
 
         self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
         self.exec_thread.start()
+        self.confirm_server_alive()
 
     def run(self, duration: int) -> None:
         pass
@@ -138,7 +158,10 @@ class IperfClient(Task):
 
     def run(self, duration: int) -> None:
         def client(self, cmd: str) -> Result:
-            return self.run_oc(cmd)
+            SyncManager.wait_on_barrier()
+            r = self.run_oc(cmd)
+            SyncManager.set_client_finished()
+            return r
 
         server_ip = self.get_target_ip()
         self.cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
