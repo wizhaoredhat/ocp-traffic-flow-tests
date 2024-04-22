@@ -46,18 +46,17 @@ class ValidateOffload(Task):
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
 
-        self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=/host/run/crio/crio.sock ps -a --name={self.iperf_pod_name} -o json "'
+        self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.iperf_pod_name} -o json "'
         r = self.run_oc(self.get_vf_rep_cmd)
 
         if r.returncode != 0:
             if "already exists" not in r.err:
-                logger.info(r)
-                sys.exit(-1)
+                logger.error(f"Extract_vf_rep: {r.err}, {r.returncode}")
 
         vf_rep_json = r.out
         data = json.loads(vf_rep_json)
         logger.info(
-            f"The VF representor is: %s" % data["containers"][0]["podSandboxId"][:15]
+            f"The VF representor is: {data['containers'][0]['podSandboxId'][:15]}"
         )
         return data["containers"][0]["podSandboxId"][:15]
 
@@ -65,11 +64,12 @@ class ValidateOffload(Task):
         self.ethtool_cmd = (
             f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
         )
+        logger.info(f"Running {self.ethtool_cmd}")
         r = self.run_oc(self.ethtool_cmd)
         if self.iperf_pod_type != PodType.HOSTBACKED:
             if r.returncode != 0:
                 if "already exists" not in r.err:
-                    logger.info(r)
+                    logger.error(f"Run_ethtool_cmd: {r.err}, {r.returncode}")
                     raise RuntimeError(
                         f"ValidateOffload error: {r.err} returncode: {r.returncode}"
                     )
@@ -86,26 +86,24 @@ class ValidateOffload(Task):
             if prefix in stripped_line and packet_suffix in stripped_line:
                 packet_count = int(stripped_line.split(":")[1].strip())
                 total_packets += packet_count
-                
+
         return total_packets
 
-    def run_st(self) -> Result:
-        vf_rep = self.extract_vf_rep()
-        r1 = self.run_ethtool_cmd(vf_rep)
-        time.sleep(self._duration)
-        r2 = self.run_ethtool_cmd(vf_rep)
-
-        combined_out = f"{r1.out}--DELIMIT--{r2.out}"
-        combined_err = f"R1: {r1.err} R2: {r2.err}"
-        combined_returncode = max(r1.returncode, r2.returncode)
-
-        return Result(
-            out=combined_out, err=combined_err, returncode=combined_returncode
-        )
-
     def run(self, duration: int) -> None:
-        self.exec_thread = ReturnValueThread(target=self.run_st)
-        self._duration = int(duration)
+        def stat(self, duration: int) -> Result:
+            vf_rep = self.extract_vf_rep()
+            r1 = self.run_ethtool_cmd(vf_rep)
+            if r1.returncode != 0:
+                return r1
+            time.sleep(duration)
+            r2 = self.run_ethtool_cmd(vf_rep)
+
+            combined_out = f"{r1.out}--DELIMIT--{r2.out}"
+
+            return Result(
+                out=combined_out, err=r2.err, returncode=r2.returncode
+            )
+        self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
         self.exec_thread.start()
 
     def output(self, out: TftAggregateOutput):
@@ -116,6 +114,8 @@ class ValidateOffload(Task):
                 logger.info(f"The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
                 logger.info(f"The server VF representor ovn-k8s-mp0_0 does not exist")
+
+        logger.info(f"validateOffload results on {self.iperf_pod_name}: {self._output.result}")
 
     def generate_output(self, data: str) -> PluginOutput:
         split_data = data.split("--DELIMIT--")

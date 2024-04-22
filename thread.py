@@ -19,7 +19,7 @@ class ReturnValueThread(Thread):
         try:
             self.result = self._target(*self._args, **self._kwargs)
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Thread with target {self._target} experienced exception {e}")
 
     def join(self, *args: Any, **kwargs: Any) -> Result:
         super().join(*args, **kwargs)
