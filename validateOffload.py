@@ -9,7 +9,7 @@ from common import (
 from logger import logger
 import time
 from testConfig import TestConfig
-from iperf import IperfServer, IperfClient
+from iperf import IperfServer, IperfClient, EXTERNAL_IPERF3_SERVER
 from thread import ReturnValueThread
 from task import Task
 from typing import Optional, Union
@@ -45,6 +45,10 @@ class ValidateOffload(Task):
         if self.iperf_pod_type == PodType.HOSTBACKED:
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
+        
+        if self.iperf_pod_name == EXTERNAL_IPERF3_SERVER:
+            logger.info(f"There is no VF on an external server")
+            return "external"
 
         self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.iperf_pod_name} -o json "'
         r = self.run_oc(self.get_vf_rep_cmd)
@@ -60,12 +64,9 @@ class ValidateOffload(Task):
         )
         return data["containers"][0]["podSandboxId"][:15]
 
-    def run_ethtool_cmd(self, vf_rep: str) -> Result:
-        self.ethtool_cmd = (
-            f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
-        )
-        logger.info(f"Running {self.ethtool_cmd}")
-        r = self.run_oc(self.ethtool_cmd)
+    def run_ethtool_cmd(self, ethtool_cmd: str) -> Result:
+        logger.info(f"Running {ethtool_cmd}")
+        r = self.run_oc(ethtool_cmd)
         if self.iperf_pod_type != PodType.HOSTBACKED:
             if r.returncode != 0:
                 if "already exists" not in r.err:
@@ -92,11 +93,17 @@ class ValidateOffload(Task):
     def run(self, duration: int) -> None:
         def stat(self, duration: int) -> Result:
             vf_rep = self.extract_vf_rep()
-            r1 = self.run_ethtool_cmd(vf_rep)
+            self.ethtool_cmd = (
+                f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
+            )
+            if vf_rep == "external":
+                return Result(out="External Iperf Server", err="", returncode=0)
+
+            r1 = self.run_ethtool_cmd(self.ethtool_cmd)
             if r1.returncode != 0:
                 return r1
             time.sleep(duration)
-            r2 = self.run_ethtool_cmd(vf_rep)
+            r2 = self.run_ethtool_cmd(self.ethtool_cmd)
 
             combined_out = f"{r1.out}--DELIMIT--{r2.out}"
 
