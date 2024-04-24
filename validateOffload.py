@@ -96,6 +96,8 @@ class ValidateOffload(Task):
             self.ethtool_cmd = (
                 f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
             )
+            if vf_rep == "ovn-k8s-mp0":
+                return Result(out="Hostbacked pod", err="", returncode=0)
             if vf_rep == "external":
                 return Result(out="External Iperf Server", err="", returncode=0)
 
