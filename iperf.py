@@ -70,7 +70,7 @@ class IperfServer(Task):
         else:
             # Create the server pods
             super().setup()
-            cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
+            cmd = f"exec {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
 
         logger.info(f"Running {cmd}")
 
@@ -140,7 +140,7 @@ class IperfClient(Task):
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()
-        self.cmd = f"exec -t {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
+        self.cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
         if self.test_type == TestType.IPERF_UDP:
             self.cmd = f" {self.cmd} {IPERF_UDP_OPT}"
         if self.reverse:
