@@ -56,7 +56,7 @@ class MeasurePower(Task):
             return r
 
         # 1 report at intervals defined by the duration in seconds.
-        self.cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
+        self.cmd = f"exec {self.pod_name} -- ipmitool dcmi power reading"
         self.exec_thread = ReturnValueThread(
             target=stat, args=(self, self.cmd, duration)
         )

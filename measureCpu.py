@@ -30,7 +30,7 @@ class MeasureCPU(Task):
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
-        self.cmd = f"exec -t {self.pod_name} -- mpstat -P ALL {duration} 1"
+        self.cmd = f"exec {self.pod_name} -- mpstat -P ALL {duration} 1"
         self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd))
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
