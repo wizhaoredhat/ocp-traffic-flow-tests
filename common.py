@@ -8,6 +8,13 @@ TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
 
+@dataclass
+class Result:
+    out: str
+    err: str
+    returncode: int
+
+
 class TestType(Enum):
     IPERF_TCP = 1
     IPERF_UDP = 2
@@ -79,26 +86,20 @@ class TestMetadata:
 
 
 @dataclass
-class IperfOutput:
+class BaseOutput:
+    command: str
+    result: dict
+
+
+@dataclass
+class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
-    command: str
-    result: dict
 
 
 @dataclass
-class PluginOutput:
+class PluginOutput(BaseOutput):
     plugin_metadata: dict
-    command: str
-    result: dict
     name: str
-
-
-@dataclass
-class RxTxData:
-    rx_start: int
-    tx_start: int
-    rx_end: int
-    tx_end: int
 
 
 @dataclass

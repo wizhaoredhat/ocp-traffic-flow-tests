@@ -1,9 +1,10 @@
-from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput
+from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput, Result
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
 import jc
+from typing import List, Dict, Any, cast
 
 
 class MeasureCPU(Task):
@@ -24,8 +25,8 @@ class MeasureCPU(Task):
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def stat(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def stat(self, cmd: str) -> Result:
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
@@ -34,19 +35,11 @@ class MeasureCPU(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def stop(self):
-        logger.info(f"Stopping measureCPU execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.info(r)
-        logger.debug(f"measureCpu.stop(): {r.out}")
-        data = jc.parse("mpstat", r.out)
-        p_idle = data[0]["percent_idle"]
-        logger.info(f"Idle on {self.node_name} = {p_idle}%")
-        self._output = self.generate_output(data)
-
     def output(self, out: TftAggregateOutput):
         # Return machine-readable output to top level
+        assert isinstance(
+            self._output, PluginOutput
+        ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
         out.plugins.append(self._output)
 
         # Print summary to console logs
@@ -54,7 +47,9 @@ class MeasureCPU(Task):
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
     # TODO: We are currently only storing the "cpu: all" data from mpstat
-    def generate_output(self, data) -> PluginOutput:
+    def generate_output(self, data: str) -> PluginOutput:
+        # satisfy the linter. jc.parse returns a list of dicts in this case
+        parsed_data = cast(List[Dict[str, Any]], jc.parse("mpstat", data))
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasureCPU",
@@ -62,6 +57,6 @@ class MeasureCPU(Task):
                 "pod_name": self.pod_name,
             },
             command=self.cmd,
-            result=data[0],
+            result=parsed_data[0],
             name="measure_cpu",
         )

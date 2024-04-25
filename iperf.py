@@ -4,7 +4,7 @@ from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
-from host import Result
+from common import Result
 from testSettings import TestSettings
 import json
 
@@ -74,7 +74,7 @@ class IperfServer(Task):
 
         logger.info(f"Running {cmd}")
 
-        def server(self, cmd: str):
+        def server(self, cmd: str) -> Result:
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
                 return self.lh.run(cmd)
             elif self.exec_persistent:
@@ -84,20 +84,14 @@ class IperfServer(Task):
         self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
         self.exec_thread.start()
 
-    def run(self, duration: int):
+    def run(self, duration: int) -> None:
         pass
 
-    def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.error(
-                f"Error occured while stopping Iperf server: errcode: {r.returncode} err {r.err}"
-            )
-        logger.debug(f"IperfServer.stop(): {r.out}")
-
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         pass
+
+    def generate_output(self, data: str) -> common.BaseOutput:
+        return common.BaseOutput("", {})
 
 
 class IperfClient(Task):
@@ -141,8 +135,8 @@ class IperfClient(Task):
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
-    def run(self, duration: int):
-        def client(self, cmd: str):
+    def run(self, duration: int) -> None:
+        def client(self, cmd: str) -> Result:
             return self.run_oc(cmd)
 
         server_ip = self.get_target_ip()
@@ -154,25 +148,20 @@ class IperfClient(Task):
         self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
         self.exec_thread.start()
 
-    def stop(self):
-        logger.info(f"Stopping execution on {self.pod_name}")
-        r = self.exec_thread.join()
-        if r.returncode != 0:
-            logger.error(r)
-        logger.debug(f"IperfClient.stop(): {r.out}")
-        data = json.loads(r.out)
-        self._output = self.generate_output(data)
-
-    def generate_output(self, data: dict) -> IperfOutput:
+    def generate_output(self, data: str) -> IperfOutput:
+        parsed_data = json.loads(data)
         json_dump = IperfOutput(
             tft_metadata=self.ts.get_test_metadata(),
             command=self.cmd,
-            result=data,
+            result=parsed_data,
         )
         return json_dump
 
     def output(self, out: common.TftAggregateOutput):
         # Return machine-readable output to top level
+        assert isinstance(
+            self._output, IperfOutput
+        ), f"Expected variable to be of type IperfOutput, got {type(self._output)} instead."
         out.flow_test = self._output
 
         # Print summary to console logs

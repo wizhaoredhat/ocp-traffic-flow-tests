@@ -1,14 +1,10 @@
 import subprocess
-from collections import namedtuple
 import os
 import json
 import shlex
 import sys
 from logger import logger
-
-
-Result = namedtuple("Result", "out err returncode")
-
+from common import Result
 
 class Host:
     def ipa(self) -> dict:

@@ -1,6 +1,7 @@
 import kubernetes
 import yaml
 import host
+from common import Result
 from typing import List
 
 
@@ -23,6 +24,6 @@ class K8sClient:
             for e in self._client.list_node(label_selector=label_selector).items
         ]
 
-    def oc(self, cmd: str) -> host.Result:
+    def oc(self, cmd: str) -> Result:
         lh = host.LocalHost()
         return lh.run(f"oc --kubeconfig {self._kc} {cmd} ")

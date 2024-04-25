@@ -217,7 +217,7 @@ class TrafficFlowTests:
         self.tft_output.append(output)
 
     def _run_test_case(self, tests: dict, test_id: int):
-        duration = tests["duration"]
+        duration = int(tests["duration"])
         # TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests["connections"]:
             logger.info(f"Starting {connections['name']}")
