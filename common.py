@@ -14,6 +14,7 @@ class Result:
     err: str
     returncode: int
 
+
 E = TypeVar("E", bound=Enum)
 
 
@@ -98,10 +99,10 @@ class PodInfo:
 @dataclass
 class TestMetadata:
     reverse: bool
-    test_case_id: TestCaseType = field(default_factory=enum_factory(TestCaseType))
-    test_type: TestType = field(default_factory=enum_factory(TestType))
-    server: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
-    client: PodInfo = field(default_factory=lambda: from_dict(PodInfo, {}))
+    test_case_id: TestCaseType
+    test_type: TestType
+    server: PodInfo
+    client: PodInfo
 
     def __post_init__(self) -> None:
         self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
@@ -116,6 +117,7 @@ class TestMetadata:
 class BaseOutput:
     command: str
     result: dict
+
 
 @dataclass
 class IperfOutput(BaseOutput):
@@ -146,9 +148,7 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput] = field(
-        default_factory=lambda: from_dict(IperfOutput, {})
-    )
+    flow_test: Optional[IperfOutput] = None
     plugins: List[PluginOutput] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -204,4 +204,4 @@ def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
             field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
         elif field_name in data:
             field_values[field_name] = data[field_name]
-    return cls(**field_values)
+    return cast(T, cls(**field_values))
