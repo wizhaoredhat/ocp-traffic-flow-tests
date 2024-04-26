@@ -100,7 +100,7 @@ class IperfServer(Task):
 
         logger.info(f"Running {cmd}")
 
-        def server(self, cmd: str) -> Result:
+        def server(self: IperfServer, cmd: str) -> Result:
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
                 return self.lh.run(cmd)
             elif self.exec_persistent:
@@ -168,7 +168,7 @@ class IperfClient(Task):
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def client(self, cmd: str) -> Result:
+        def client(self: IperfClient, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             r = self.run_oc(cmd)
             SyncManager.set_client_finished()

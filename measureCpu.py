@@ -27,7 +27,7 @@ class MeasureCPU(Task):
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def stat(self, cmd: str) -> Result:
+        def stat(self: MeasureCPU, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             return self.run_oc(cmd)
 

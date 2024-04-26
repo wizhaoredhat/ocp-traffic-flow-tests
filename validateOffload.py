@@ -93,7 +93,7 @@ class ValidateOffload(Task):
         return total_packets
 
     def run(self, duration: int) -> None:
-        def stat(self, duration: int) -> Result:
+        def stat(self: ValidateOffload, duration: int) -> Result:
             SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = (
