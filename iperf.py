@@ -59,7 +59,7 @@ class IperfServer(Task):
 
         if self.exec_persistent:
             self.template_args["command"] = IPERF_EXE
-            self.template_args["args"] = ["-s", "-p", f"{self.port}"]
+            self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
 
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
@@ -72,13 +72,17 @@ class IperfServer(Task):
             # Podman scenario
             end_time = time.monotonic() + 60
             while time.monotonic() < end_time:
-                r = self.lh.run(f"podman ps --filter status=running --filter name={self.pod_name} --format '{{{{.Names}}}}'")
+                r = self.lh.run(
+                    f"podman ps --filter status=running --filter name={self.pod_name} --format '{{{{.Names}}}}'"
+                )
                 if self.pod_name in r.out:
                     break
                 time.sleep(5)
         else:
             # Kubernetes/OpenShift scenario
-            r = self.run_oc(f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m")
+            r = self.run_oc(
+                f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m"
+            )
         if not r or r.returncode != 0:
             logger.error(f"Failed to start server: {r.err}")
             sys.exit(-1)
@@ -103,7 +107,12 @@ class IperfServer(Task):
                 return Result("Server is persistent.", "", 0)
             return self.run_oc(cmd)
 
-        self.exec_thread = ReturnValueThread(target=server, args=(self, cmd), cleanup_action=server, cleanup_args=(self, cleanup_cmd))
+        self.exec_thread = ReturnValueThread(
+            target=server,
+            args=(self, cmd),
+            cleanup_action=server,
+            cleanup_args=(self, cleanup_cmd),
+        )
         self.exec_thread.start()
         self.confirm_server_alive()
 

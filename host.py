@@ -7,6 +7,7 @@ from logger import logger
 from common import Result
 from abc import ABC, abstractmethod
 
+
 class Host(ABC):
     def ipa(self) -> dict:
         return json.loads(self.run("ip -json a").out)

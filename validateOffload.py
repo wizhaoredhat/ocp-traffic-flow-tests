@@ -47,7 +47,7 @@ class ValidateOffload(Task):
         if self.iperf_pod_type == PodType.HOSTBACKED:
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
-        
+
         if self.iperf_pod_name == EXTERNAL_IPERF3_SERVER:
             logger.info(f"There is no VF on an external server")
             return "external"
@@ -113,9 +113,8 @@ class ValidateOffload(Task):
 
             combined_out = f"{r1.out}--DELIMIT--{r2.out}"
 
-            return Result(
-                out=combined_out, err=r2.err, returncode=r2.returncode
-            )
+            return Result(out=combined_out, err=r2.err, returncode=r2.returncode)
+
         self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
         self.exec_thread.start()
 
