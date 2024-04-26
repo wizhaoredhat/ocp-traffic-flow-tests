@@ -39,6 +39,7 @@ class ValidateOffload(Task):
         self._iperf_instance = iperf_instance
         self.iperf_pod_name = iperf_instance.pod_name
         self.iperf_pod_type = iperf_instance.pod_type
+        self.ethtool_cmd = ""
 
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
@@ -118,7 +119,10 @@ class ValidateOffload(Task):
         self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
         self.exec_thread.start()
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
+        assert isinstance(
+            self._output, PluginOutput
+        ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
         out.plugins.append(self._output)
 
         if self.iperf_pod_type == PodType.HOSTBACKED:
@@ -133,7 +137,7 @@ class ValidateOffload(Task):
 
     def generate_output(self, data: str) -> PluginOutput:
         split_data = data.split("--DELIMIT--")
-        parsed_data = {}
+        parsed_data: dict[str, Union[str, int]] = {}
 
         if len(split_data) >= 1:
             parsed_data["rx_start"] = self.parse_packets(split_data[0], "rx")

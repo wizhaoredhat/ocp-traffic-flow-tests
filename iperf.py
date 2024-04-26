@@ -67,7 +67,7 @@ class IperfServer(Task):
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
-    def confirm_server_alive(self):
+    def confirm_server_alive(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             # Podman scenario
             end_time = time.monotonic() + 60
@@ -88,7 +88,7 @@ class IperfServer(Task):
             sys.exit(-1)
         SyncManager.set_server_alive()
 
-    def setup(self):
+    def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
