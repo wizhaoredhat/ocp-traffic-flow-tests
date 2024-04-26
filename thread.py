@@ -33,7 +33,7 @@ class ReturnValueThread(Thread):
         except Exception as e:
             logger.error(f"Thread with target {self._target} experienced exception {e}")
 
-    def force_terminate(self):
+    def force_terminate(self) -> None:
         logger.info("Force terminate called")
         try:
             if self._cleanup_action:
@@ -48,7 +48,7 @@ class ReturnValueThread(Thread):
         except Exception as e:
             logger.info(f"Exception during cleanup_action execution: {e}")
 
-    def join(self, timeout: Optional[float] = None) -> Result:
+    def join_with_result(self, timeout: Optional[float] = None) -> Optional[Result]:
         super().join(timeout)
         if self.is_alive():
             logger.info(f"Thread did not terminate within the timeout time: {timeout}")

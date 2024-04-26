@@ -116,7 +116,7 @@ class Task(ABC):
     def stop(self, timeout: float) -> None:
         class_name = self.__class__.__name__
         logger.info(f"Stopping execution on {class_name}")
-        self.exec_thread.join(timeout=timeout * 1.5)
+        self.exec_thread.join_with_result(timeout=timeout * 1.5)
         if self.exec_thread.result is not None:
             r = self.exec_thread.result
             if r.returncode != 0:
