@@ -80,7 +80,7 @@ class TestConfig:
 
         return output
 
-    def pod_type_to_enum(self, connection_server: Dict[str, str]) -> PodType:
+    def pod_type_from_config(self, connection_server: Dict[str, str]) -> PodType:
         if "sriov" in connection_server:
             if "true" in connection_server["sriov"].lower():
                 return PodType.SRIOV
