@@ -192,6 +192,8 @@ def serialize_enum(
 T = TypeVar("T")
 
 
+# Takes a dataclass and the dict you want to convert from
+# If your dataclass has a dataclass member, it handles that recursively
 def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
     assert is_dataclass(
         cls
