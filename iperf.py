@@ -68,10 +68,12 @@ class IperfServer(Task):
     def setup(self):
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
+            cleanup_cmd = f"podman rm --force {self.pod_name}"
         else:
             # Create the server pods
             super().setup()
             cmd = f"exec {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
+            cleanup_cmd = f"exec -t {self.pod_name} -- killall {IPERF_EXE}"
 
         logger.info(f"Running {cmd}")
 
@@ -82,7 +84,7 @@ class IperfServer(Task):
                 return Result("Server is persistent.", "", 0)
             return self.run_oc(cmd)
 
-        self.exec_thread = ReturnValueThread(target=server, args=(self, cmd))
+        self.exec_thread = ReturnValueThread(target=server, args=(self, cmd), cleanup_action=server, cleanup_args=(self, cleanup_cmd))
         self.exec_thread.start()
 
     def run(self, duration: int) -> None:

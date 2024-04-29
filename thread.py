@@ -1,16 +1,28 @@
 from threading import Thread
 from logger import logger
+from typing import Callable, Optional
 from common import Result
-from typing import Callable, Any, Optional
 
 
 class ReturnValueThread(Thread):
-    def __init__(self, *args: Any, **kwargs: Any):
-        self._target: Callable[..., Result] = None
+    def __init__(
+        self,
+        target: Optional[Callable[..., Result]],
+        args: tuple = (),
+        kwargs: dict = {},
+        cleanup_action: Optional[Callable[..., Result]] = None,
+        cleanup_args: tuple = (),
+        cleanup_kwargs: dict = {},
+    ):
+        super().__init__()
+        self._target = target
         self._args = args
         self._kwargs = kwargs
-        super().__init__(*args, **kwargs)
+        self._cleanup_action = cleanup_action
+        self._cleanup_args = cleanup_args
+        self._cleanup_kwargs = cleanup_kwargs
         self.result: Optional[Result] = None
+        self.cleanup_result: Optional[Result] = None
 
     def run(self) -> None:
         if self._target is None:
@@ -21,6 +33,24 @@ class ReturnValueThread(Thread):
         except Exception as e:
             logger.error(f"Thread with target {self._target} experienced exception {e}")
 
-    def join(self, *args: Any, **kwargs: Any) -> Result:
-        super().join(*args, **kwargs)
+    def force_terminate(self):
+        logger.info("Force terminate called")
+        try:
+            if self._cleanup_action:
+                cleanup_result = self._cleanup_action(
+                    *self._cleanup_args, **self._cleanup_kwargs
+                )
+                logger.info(
+                    f"Cleanup result:{cleanup_result.out}, errcode:{cleanup_result.returncode}, err:{cleanup_result.err}"
+                )
+            else:
+                logger.info("No cleanup_action provided")
+        except Exception as e:
+            logger.info(f"Exception during cleanup_action execution: {e}")
+
+    def join(self, timeout: Optional[float] = None) -> Result:
+        super().join(timeout)
+        if self.is_alive():
+            logger.info(f"Thread did not terminate within the timeout time: {timeout}")
+            self.force_terminate()
         return self.result
