@@ -2,6 +2,8 @@ import threading
 from threading import Barrier, Event
 
 
+# Singleton class, synchronizes threads using barriers and events
+# https://docs.python.org/3/library/threading.html
 class SyncManager:
     _instance = None
     _lock = threading.RLock()
@@ -21,17 +23,12 @@ class SyncManager:
 
     @classmethod
     def reset(cls, barrier_size):
+        assert barrier_size >= 0, "barrier_size must be non-negative"
         with cls._lock:
-            if barrier_size >= 0:
-                if cls._instance is None:
-                    cls.__new__(cls, barrier_size)
-                else:
-                    cls._initialize(barrier_size)
-
-    @classmethod
-    def client_finished(cls):
-        if cls._instance:
-            return cls._instance.client_finished
+            if cls._instance is None:
+                cls.__new__(cls, barrier_size)
+            else:
+                cls._initialize(barrier_size)
 
     @classmethod
     def set_client_finished(cls):
@@ -43,6 +40,8 @@ class SyncManager:
         if cls._instance:
             cls._instance.server_alive.set()
 
+    # .wait() on a barrier decrements it
+    # once the barrier hits 0, all waiting threads are simultaneously unblocked
     @classmethod
     def wait_on_barrier(cls):
         if cls._instance and cls._instance.start_barrier:
