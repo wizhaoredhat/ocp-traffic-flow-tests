@@ -15,6 +15,7 @@ from task import Task
 from typing import Optional, Union
 import sys
 import json
+from syncManager import SyncManager
 
 
 class ValidateOffload(Task):
@@ -92,6 +93,7 @@ class ValidateOffload(Task):
 
     def run(self, duration: int) -> None:
         def stat(self, duration: int) -> Result:
+            SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = (
                 f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
@@ -104,7 +106,8 @@ class ValidateOffload(Task):
             r1 = self.run_ethtool_cmd(self.ethtool_cmd)
             if r1.returncode != 0:
                 return r1
-            time.sleep(duration)
+
+            SyncManager.wait_on_client_finish()
             r2 = self.run_ethtool_cmd(self.ethtool_cmd)
 
             combined_out = f"{r1.out}--DELIMIT--{r2.out}"
@@ -124,7 +127,9 @@ class ValidateOffload(Task):
             else:
                 logger.info(f"The server VF representor ovn-k8s-mp0_0 does not exist")
 
-        logger.info(f"validateOffload results on {self.iperf_pod_name}: {self._output.result}")
+        logger.info(
+            f"validateOffload results on {self.iperf_pod_name}: {self._output.result}"
+        )
 
     def generate_output(self, data: str) -> PluginOutput:
         split_data = data.split("--DELIMIT--")

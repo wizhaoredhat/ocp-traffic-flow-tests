@@ -18,6 +18,7 @@ from evaluator import Evaluator
 from typing import List
 import datetime
 from dataclasses import asdict
+from syncManager import SyncManager
 
 
 class TrafficFlowTests:
@@ -109,8 +110,12 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.setup()
 
+        SyncManager.wait_on_server_alive()
+
         for tasks in servers + clients + monitors:
             tasks.run(duration)
+
+        SyncManager.wait_on_client_finish()
 
         for tasks in servers + clients + monitors:
             tasks.stop(duration)
@@ -213,6 +218,7 @@ class TrafficFlowTests:
                         monitors, iperf_server, iperf_client, True
                     )
 
+        SyncManager.reset(len(clients) + len(monitors))
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)
 

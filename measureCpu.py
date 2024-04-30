@@ -5,6 +5,7 @@ from thread import ReturnValueThread
 from task import Task
 import jc
 from typing import List, Dict, Any, cast
+from syncManager import SyncManager
 
 
 class MeasureCPU(Task):
@@ -27,6 +28,7 @@ class MeasureCPU(Task):
 
     def run(self, duration: int) -> None:
         def stat(self, cmd: str) -> Result:
+            SyncManager.wait_on_barrier()
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
