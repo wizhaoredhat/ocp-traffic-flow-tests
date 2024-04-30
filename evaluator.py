@@ -64,16 +64,25 @@ class Evaluator:
         with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
-        self.config = {
-            "IPERF_TCP": {item["id"]: item["threshold"] for item in c["IPERF_TCP"]},
-            "IPERF_UDP": {item["id"]: item["threshold"] for item in c["IPERF_UDP"]},
-        }
+            self.config = {
+                test_type: {
+                    int(item["id"]): {
+                        False: item["Normal"]["threshold"],
+                        True: item["Reverse"]["threshold"],
+                    }
+                    for item in test_cases
+                }
+                for test_type, test_cases in c.items()
+            }
+
         self.test_results: List[TestResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
 
-        bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
+        bitrate_threshold = self.get_threshold(
+            md.test_case_id, md.test_type, md.reverse
+        )
         bitrate_gbps = self.calculate_gbps(run.result, md.test_type)
 
         result = TestResult(
@@ -100,17 +109,20 @@ class Evaluator:
             self._eval_flow_test(run["flow_test"])
             for plugin in run["plugins"]:
                 # TODO: add evaluation for plugins
-                logger.debug(f'Reading result from plugin {plugin["name"]}')
+                # logger.debug(f'Reading result from plugin {plugin["name"]}')
+                pass
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
         return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
 
-    def get_threshold(self, test_case_id: TestCaseType, test_type: TestType) -> int:
+    def get_threshold(
+        self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
+    ) -> int:
         try:
-            return self.config[test_type.name][test_case_id.value]
+            return self.config[test_type.name][test_case_id.value][is_reverse]
         except KeyError as e:
             logger.error(
-                f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id}"
+                f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"
             )
             raise Exception(f"get_threshold(): Failed to parse evaluator config")
 
