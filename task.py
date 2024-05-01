@@ -8,15 +8,18 @@ from testConfig import TestConfig
 from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
+from typing import Dict, Union, List
 
 
 class Task(ABC):
-    def __init__(self, tc: TestConfig, index: int, node_name: str, tenant: bool):
-        self.template_args = {}
+    def __init__(
+        self, tc: TestConfig, index: int, node_name: str, tenant: bool
+    ) -> None:
+        self.template_args: Dict[str, str] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
-        self.exec_thread: Optional[ReturnValueThread] = None  # type: ignore
+        self.exec_thread: ReturnValueThread
         self.lh = host.LocalHost()
 
         self.template_args["name_space"] = "default"
@@ -43,7 +46,7 @@ class Task(ABC):
             r = self.tc.client_infra.oc(cmd)
         return r
 
-    def get_pod_ip(self):
+    def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml")
         if r.returncode != 0:
             logger.info(r)
@@ -85,7 +88,7 @@ class Task(ABC):
             "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'"
         ).out
 
-    def setup(self):
+    def setup(self) -> None:
         # Check if pod already exists
         r = self.run_oc(f"get pod {self.pod_name} --output=json")
         if r.returncode != 0:
@@ -113,7 +116,7 @@ class Task(ABC):
     def stop(self, timeout: float) -> None:
         class_name = self.__class__.__name__
         logger.info(f"Stopping execution on {class_name}")
-        self.exec_thread.join(timeout=timeout * 1.5)
+        self.exec_thread.join_with_result(timeout=timeout * 1.5)
         if self.exec_thread.result is not None:
             r = self.exec_thread.result
             if r.returncode != 0:
@@ -133,7 +136,7 @@ class Task(ABC):
     """
 
     @abstractmethod
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         raise NotImplementedError("Must implement output()")
 
     @abstractmethod

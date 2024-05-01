@@ -1,9 +1,9 @@
 import logging
+from typing import Optional, TextIO
 
 
-def configure_logger(lvl):
+def configure_logger(lvl: int) -> None:
     global logger
-    logger = logging.getLogger("CDA")
     logger.setLevel(lvl)
 
     fmt = "%(asctime)s %(levelname)s: %(message)s"
@@ -21,6 +21,6 @@ def configure_logger(lvl):
     logger.addHandler(handler)
 
 
-prev_handler = None
-logger = None
+prev_handler: Optional["logging.StreamHandler[TextIO]"] = None
+logger = logging.getLogger("CDA")
 configure_logger(logging.DEBUG)

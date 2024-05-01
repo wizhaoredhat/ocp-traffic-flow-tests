@@ -38,7 +38,7 @@ class MeasurePower(Task):
             logger.error(f"Could not find Instantaneous power reading: {e}.")
             return 0
 
-        def stat(self, cmd: str) -> Result:
+        def stat(self: MeasurePower, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             total_pwr = 0
             iteration = 0

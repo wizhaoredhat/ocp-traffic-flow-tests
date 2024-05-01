@@ -27,7 +27,7 @@ class MeasureCPU(Task):
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def stat(self, cmd: str) -> Result:
+        def stat(self: MeasureCPU, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             return self.run_oc(cmd)
 
@@ -37,7 +37,7 @@ class MeasureCPU(Task):
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, PluginOutput

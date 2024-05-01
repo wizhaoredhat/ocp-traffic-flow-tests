@@ -6,13 +6,14 @@ from common import (
     PodType,
     Result,
 )
+from dataclasses import asdict, is_dataclass
 from logger import logger
 import time
 from testConfig import TestConfig
 from iperf import IperfServer, IperfClient, EXTERNAL_IPERF3_SERVER
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 import sys
 import json
 from syncManager import SyncManager
@@ -38,6 +39,7 @@ class ValidateOffload(Task):
         self._iperf_instance = iperf_instance
         self.iperf_pod_name = iperf_instance.pod_name
         self.iperf_pod_type = iperf_instance.pod_type
+        self.ethtool_cmd = ""
 
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
@@ -46,7 +48,7 @@ class ValidateOffload(Task):
         if self.iperf_pod_type == PodType.HOSTBACKED:
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
-        
+
         if self.iperf_pod_name == EXTERNAL_IPERF3_SERVER:
             logger.info(f"There is no VF on an external server")
             return "external"
@@ -92,7 +94,7 @@ class ValidateOffload(Task):
         return total_packets
 
     def run(self, duration: int) -> None:
-        def stat(self, duration: int) -> Result:
+        def stat(self: ValidateOffload, duration: int) -> Result:
             SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = (
@@ -112,13 +114,15 @@ class ValidateOffload(Task):
 
             combined_out = f"{r1.out}--DELIMIT--{r2.out}"
 
-            return Result(
-                out=combined_out, err=r2.err, returncode=r2.returncode
-            )
+            return Result(out=combined_out, err=r2.err, returncode=r2.returncode)
+
         self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
         self.exec_thread.start()
 
-    def output(self, out: TftAggregateOutput):
+    def output(self, out: TftAggregateOutput) -> None:
+        assert isinstance(
+            self._output, PluginOutput
+        ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
         out.plugins.append(self._output)
 
         if self.iperf_pod_type == PodType.HOSTBACKED:
@@ -133,7 +137,7 @@ class ValidateOffload(Task):
 
     def generate_output(self, data: str) -> PluginOutput:
         split_data = data.split("--DELIMIT--")
-        parsed_data = {}
+        parsed_data: dict[str, Union[str, int]] = {}
 
         if len(split_data) >= 1:
             parsed_data["rx_start"] = self.parse_packets(split_data[0], "rx")

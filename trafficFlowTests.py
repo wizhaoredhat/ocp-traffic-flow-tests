@@ -1,12 +1,16 @@
 from common import (
     TestType,
+    TestCaseType,
     TftAggregateOutput,
     TFT_TESTS,
+    BaseOutput,
+    serialize_enum,
 )
 from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
 import iperf
+from task import Task
 from iperf import IperfServer, IperfClient
 from validateOffload import ValidateOffload
 from measureCpu import MeasureCPU
@@ -19,20 +23,21 @@ from typing import List
 import datetime
 from dataclasses import asdict
 from syncManager import SyncManager
+from typing import Tuple, Optional
 
 
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig):
-        self._tc = tc
-        self.test_settings = None
+        self._tc: TestConfig = tc
+        self.test_settings: TestSettings
         self.lh = LocalHost()
-        self.log_path = Path("ft-logs")
-        self.log_file = None
+        self.log_path: Path = Path("ft-logs")
+        self.log_file: Path
         self.tft_output: List[TftAggregateOutput] = []
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
-    ) -> (IperfServer, IperfClient):
+    ) -> Tuple[IperfServer, IperfClient]:
         logger.info(
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -41,7 +46,7 @@ class TrafficFlowTests:
         c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
         return (s, c)
 
-    def _configure_namespace(self, namespace: str):
+    def _configure_namespace(self, namespace: str) -> None:
         logger.info(f"Configuring namespace {namespace}")
         r = self._tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
@@ -55,7 +60,7 @@ class TrafficFlowTests:
             )
         logger.info(f"Configured namespace {namespace}")
 
-    def _cleanup_previous_testspace(self, namespace: str):
+    def _cleanup_previous_testspace(self, namespace: str) -> None:
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
         r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
@@ -76,7 +81,7 @@ class TrafficFlowTests:
 
     def _enable_measure_cpu_plugin(
         self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
-    ):
+    ) -> None:
         s = MeasureCPU(self._tc, node_server_name, tenant)
         c = MeasureCPU(self._tc, node_client_name, tenant)
         monitors.append(s)
@@ -84,7 +89,7 @@ class TrafficFlowTests:
 
     def _enable_measure_power_plugin(
         self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
-    ):
+    ) -> None:
         s = MeasurePower(self._tc, node_server_name, tenant)
         c = MeasurePower(self._tc, node_client_name, tenant)
         monitors.append(s)
@@ -96,14 +101,18 @@ class TrafficFlowTests:
         iperf_server: IperfServer,
         iperf_client: IperfClient,
         tenant: bool,
-    ):
+    ) -> None:
         s = ValidateOffload(self._tc, iperf_server, tenant)
         c = ValidateOffload(self._tc, iperf_client, tenant)
         monitors.append(s)
         monitors.append(c)
 
     def _run_tests(
-        self, servers, clients, monitors, duration: int
+        self,
+        servers: List[IperfServer],
+        clients: List[IperfClient],
+        monitors: List[Task],
+        duration: int,
     ) -> TftAggregateOutput:
         tft_aggregate_output = TftAggregateOutput()
 
@@ -125,7 +134,7 @@ class TrafficFlowTests:
 
         return tft_aggregate_output
 
-    def _create_log_paths_from_tests(self, tests: dict):
+    def _create_log_paths_from_tests(self, tests: dict) -> None:
         if "logs" in tests:
             self.log_path = Path(tests["logs"])
         self.log_path.mkdir(parents=True, exist_ok=True)
@@ -133,14 +142,14 @@ class TrafficFlowTests:
         self.log_file = self.log_path / f"{timestamp}.json"
         logger.info(f"Logs will be written to {self.log_file}")
 
-    def _dump_result_to_log(self):
+    def _dump_result_to_log(self) -> None:
         # Dump test outputs into log file
         log = self.log_file
-        json_out = {TFT_TESTS: []}
+        json_out: dict = {TFT_TESTS: []}
         for out in self.tft_output:
             json_out[TFT_TESTS].append(asdict(out))
         with open(log, "w") as output_file:
-            json.dump(json_out, output_file)
+            json.dump(serialize_enum(json_out), output_file)
 
     def evaluate_run_success(self) -> bool:
         # For the result of every test run, check the status of each run log to ensure all test passed
@@ -171,14 +180,14 @@ class TrafficFlowTests:
         self,
         connections: dict,
         test_type: TestType,
-        test_id: int,
+        test_id: TestCaseType,
         index: int,
         duration: int,
         reverse: bool = False,
-    ):
-        servers = []
-        clients = []
-        monitors = []
+    ) -> None:
+        servers: List[IperfServer] = []
+        clients: List[IperfClient] = []
+        monitors: List[Task] = []
         node_server_name = connections["server"][0]["name"]
         node_client_name = connections["client"][0]["name"]
 
@@ -188,8 +197,8 @@ class TrafficFlowTests:
                 test_case_id=test_id,
                 node_server_name=node_server_name,
                 node_client_name=node_client_name,
-                server_pod_type=self._tc.validate_pod_type(connections["server"][0]),
-                client_pod_type=self._tc.validate_pod_type(connections["client"][0]),
+                server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
+                client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
                 index=index,
                 test_type=test_type,
                 reverse=reverse,
@@ -222,7 +231,7 @@ class TrafficFlowTests:
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict, test_id: int):
+    def _run_test_case(self, tests: dict, test_id: TestCaseType) -> None:
         duration = int(tests["duration"])
         # TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests["connections"]:
@@ -251,7 +260,7 @@ class TrafficFlowTests:
                     )
                 self._cleanup_previous_testspace(tests["namespace"])
 
-    def run(self, tests: dict, eval_config: str) -> Path:
+    def run(self, tests: dict, eval_config: str) -> None:
         self.eval_config = eval_config
         self._configure_namespace(tests["namespace"])
         self._cleanup_previous_testspace(tests["namespace"])

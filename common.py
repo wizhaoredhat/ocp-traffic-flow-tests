@@ -1,7 +1,7 @@
 import jinja2
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import List
+from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
 FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -13,6 +13,26 @@ class Result:
     out: str
     err: str
     returncode: int
+
+
+E = TypeVar("E", bound=Enum)
+
+
+def enum_convert(enum_type: Type[E], value: Union[E, str, int]) -> E:
+    if isinstance(value, enum_type):
+        return value
+    elif isinstance(value, str):
+        try:
+            return enum_type[value]
+        except KeyError:
+            raise ValueError(f"Cannot convert {value} to {enum_type}")
+    elif isinstance(value, int):
+        try:
+            return enum_type(value)
+        except ValueError:
+            raise ValueError(f"Cannot convert {value} to {enum_type}")
+    else:
+        raise ValueError(f"Invalid type for conversion to {enum_type}")
 
 
 class TestType(Enum):
@@ -71,18 +91,26 @@ class NodeLocation(Enum):
 @dataclass
 class PodInfo:
     name: str
-    pod_type: str
+    pod_type: PodType
     is_tenant: bool
     index: int
 
 
 @dataclass
 class TestMetadata:
-    test_case_id: str
-    test_type: str
     reverse: bool
+    test_case_id: TestCaseType
+    test_type: TestType
     server: PodInfo
     client: PodInfo
+
+    def __post_init__(self) -> None:
+        self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
+        self.test_type = enum_convert(TestType, self.test_type)
+        if isinstance(self.server, dict):
+            self.server = dataclass_from_dict(PodInfo, self.server)
+        if isinstance(self.client, dict):
+            self.client = dataclass_from_dict(PodInfo, self.client)
 
 
 @dataclass
@@ -94,6 +122,12 @@ class BaseOutput:
 @dataclass
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
+
+    def __post_init__(self) -> None:
+        if isinstance(self.tft_metadata, dict):
+            self.tft_metadata = dataclass_from_dict(TestMetadata, self.tft_metadata)
+        elif not isinstance(self.tft_metadata, TestMetadata):
+            raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
 
 
 @dataclass
@@ -114,14 +148,62 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: IperfOutput = None
+    flow_test: Optional[IperfOutput] = None
     plugins: List[PluginOutput] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        if isinstance(self.flow_test, dict):
+            self.flow_test = dataclass_from_dict(IperfOutput, self.flow_test)
+        elif self.flow_test is not None and not isinstance(self.flow_test, IperfOutput):
+            raise ValueError("flow_test must be an IperfOutput instance or a dict")
 
-def j2_render(in_file_name, out_file_name, kwargs):
+        self.plugins = [
+            (
+                dataclass_from_dict(PluginOutput, plugin)
+                if isinstance(plugin, dict)
+                else plugin
+            )
+            for plugin in self.plugins
+        ]
+
+
+def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
     rendered = template.render(**kwargs)
     with open(out_file_name, "w") as outFile:
         outFile.write(rendered)
+
+
+def serialize_enum(
+    data: Union[Enum, Dict[Any, Any], List[Any], Any]
+) -> Union[str, Dict[Any, Any], List[Any], Any]:
+    if isinstance(data, Enum):
+        return data.name
+    elif isinstance(data, dict):
+        return {k: serialize_enum(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [serialize_enum(item) for item in data]
+    else:
+        return data
+
+
+T = TypeVar("T")
+
+
+# Takes a dataclass and the dict you want to convert from
+# If your dataclass has a dataclass member, it handles that recursively
+def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    assert is_dataclass(
+        cls
+    ), "dataclass_from_dict() should only be used with dataclasses."
+    field_values = {}
+    for field in fields(cls):
+        field_name = field.name
+        field_type = field.type
+        if is_dataclass(field_type) and field_name in data:
+            field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
+        elif field_name in data:
+            field_values[field_name] = data[field_name]
+    return cast(T, cls(**field_values))

@@ -9,16 +9,19 @@ from common import (
     IperfOutput,
     TestMetadata,
     TftAggregateOutput,
+    PluginOutput,
     TFT_TESTS,
 )
 from logger import logger
 from pathlib import Path
+from typing import List
+from common import serialize_enum, dataclass_from_dict
 
 
 @dataclass
 class Bitrate:
-    tx: int
-    rx: int
+    tx: float
+    rx: float
 
 
 # TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
@@ -61,20 +64,17 @@ class Evaluator:
         with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
-        self.config = c
-        self.test_results = []
+        self.config = {
+            "IPERF_TCP": {item["id"]: item["threshold"] for item in c["IPERF_TCP"]},
+            "IPERF_UDP": {item["id"]: item["threshold"] for item in c["IPERF_UDP"]},
+        }
+        self.test_results: List[TestResult] = []
 
-    def _eval_flow_test(self, run):
-        try:
-            run = TftAggregateOutput(**run)
-            data = IperfOutput(**run.flow_test)
-            md = TestMetadata(**data.tft_metadata)
-        except Exception as e:
-            logger.error(f"Exception: {e}. Malformed log handed to _eval()")
-            raise Exception(f"_eval(): error parsing data for expected fields")
+    def _eval_flow_test(self, run: IperfOutput) -> None:
+        md = run.tft_metadata
 
         bitrate_threshold = self.get_threshold(md.test_case_id, md.test_type)
-        bitrate_gbps = self.calculate_gbps(data.result, md.test_type)
+        bitrate_gbps = self.calculate_gbps(run.result, md.test_type)
 
         result = TestResult(
             test_id=md.test_case_id,
@@ -85,7 +85,7 @@ class Evaluator:
         )
         self.test_results.append(result)
 
-    def eval_log(self, log_path: Path):
+    def eval_log(self, log_path: Path) -> None:
         try:
             with open(log_path, "r") as file:
                 runs = json.load(file)[TFT_TESTS]
@@ -94,7 +94,10 @@ class Evaluator:
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
 
         for run in runs:
-            self._eval_flow_test(run)
+            if "flow_test" in run and run["flow_test"] is not None:
+                run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
+
+            self._eval_flow_test(run["flow_test"])
             for plugin in run["plugins"]:
                 # TODO: add evaluation for plugins
                 logger.debug(f'Reading result from plugin {plugin["name"]}')
@@ -104,7 +107,7 @@ class Evaluator:
 
     def get_threshold(self, test_case_id: TestCaseType, test_type: TestType) -> int:
         try:
-            return self.config[test_type][TestCaseType[test_case_id].value]["threshold"]
+            return self.config[test_type.name][test_case_id.value]
         except KeyError as e:
             logger.error(
                 f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id}"
@@ -112,11 +115,11 @@ class Evaluator:
             raise Exception(f"get_threshold(): Failed to parse evaluator config")
 
     def calculate_gbps(self, result: dict, test_type: TestType) -> Bitrate:
-        if test_type == TestType.IPERF_TCP.name:
+        if test_type == TestType.IPERF_TCP:
             return self.calculate_gbps_iperf_tcp(result)
-        elif test_type == TestType.IPERF_UDP.name:
+        elif test_type == TestType.IPERF_UDP:
             return self.calculate_gbps_iperf_udp(result)
-        elif test_type == TestType.HTTP.name:
+        elif test_type == TestType.HTTP:
             return self.calculate_gbps_http(result)
         else:
             logger.error(
@@ -125,19 +128,16 @@ class Evaluator:
             raise Exception(f"calculate_gbps(): Invalid test_type {test_type} provided")
 
     def dump_to_json(self) -> str:
-        passing = []
-        failing = []
-        for result in self.test_results:
-            if result.success == True:
-                passing.append(asdict(result))
-            else:
-                failing.append(asdict(result))
-        return json.dumps({"passing": passing, "failing": failing})
+        passing = [asdict(result) for result in self.test_results if result.success]
+        failing = [asdict(result) for result in self.test_results if not result.success]
+        return json.dumps(
+            {"passing": serialize_enum(passing), "failing": serialize_enum(failing)}
+        )
 
     def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
-        # If an error occured, bitrate = 0
+        # If an error occurred, bitrate = 0
         if "error" in result:
-            logger.error(f"An error occured during iperf test: {result['error']}")
+            logger.error(f"An error occurred during iperf test: {result['error']}")
             return Bitrate(0, 0)
 
         try:
@@ -157,9 +157,9 @@ class Evaluator:
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_received:.5g}"))
 
     def calculate_gbps_iperf_udp(self, result: dict) -> Bitrate:
-        # If an error occured, bitrate = 0
+        # If an error occurred, bitrate = 0
         if "error" in result:
-            logger.error(f"An error occured during iperf test: {result['error']}")
+            logger.error(f"An error occurred during iperf test: {result['error']}")
             return Bitrate(0, 0)
 
         sum_data = result["end"]["sum"]
@@ -170,7 +170,8 @@ class Evaluator:
 
     def calculate_gbps_http(self, result: dict) -> Bitrate:
         # TODO: Add http traffic testing
-        return -1
+        raise NotImplementedError("calculate_gbps_http is not yet implemented")
+        return -1  # type: ignore
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
         total_passing = 0
@@ -214,7 +215,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main():
+def main() -> None:
     args = parse_args()
     evaluator = Evaluator(args.config)
 

@@ -59,7 +59,7 @@ class IperfServer(Task):
 
         if self.exec_persistent:
             self.template_args["command"] = IPERF_EXE
-            self.template_args["args"] = ["-s", "-p", f"{self.port}"]
+            self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
 
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
@@ -67,24 +67,28 @@ class IperfServer(Task):
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
-    def confirm_server_alive(self):
+    def confirm_server_alive(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             # Podman scenario
             end_time = time.monotonic() + 60
             while time.monotonic() < end_time:
-                r = self.lh.run(f"podman ps --filter status=running --filter name={self.pod_name} --format '{{{{.Names}}}}'")
+                r = self.lh.run(
+                    f"podman ps --filter status=running --filter name={self.pod_name} --format '{{{{.Names}}}}'"
+                )
                 if self.pod_name in r.out:
                     break
                 time.sleep(5)
         else:
             # Kubernetes/OpenShift scenario
-            r = self.run_oc(f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m")
+            r = self.run_oc(
+                f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m"
+            )
         if not r or r.returncode != 0:
             logger.error(f"Failed to start server: {r.err}")
             sys.exit(-1)
         SyncManager.set_server_alive()
 
-    def setup(self):
+    def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
@@ -96,14 +100,19 @@ class IperfServer(Task):
 
         logger.info(f"Running {cmd}")
 
-        def server(self, cmd: str) -> Result:
+        def server(self: IperfServer, cmd: str) -> Result:
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
                 return self.lh.run(cmd)
             elif self.exec_persistent:
                 return Result("Server is persistent.", "", 0)
             return self.run_oc(cmd)
 
-        self.exec_thread = ReturnValueThread(target=server, args=(self, cmd), cleanup_action=server, cleanup_args=(self, cleanup_cmd))
+        self.exec_thread = ReturnValueThread(
+            target=server,
+            args=(self, cmd),
+            cleanup_action=server,
+            cleanup_args=(self, cleanup_cmd),
+        )
         self.exec_thread.start()
         self.confirm_server_alive()
 
@@ -159,7 +168,7 @@ class IperfClient(Task):
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def client(self, cmd: str) -> Result:
+        def client(self: IperfClient, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             r = self.run_oc(cmd)
             SyncManager.set_client_finished()
@@ -183,7 +192,7 @@ class IperfClient(Task):
         )
         return json_dump
 
-    def output(self, out: common.TftAggregateOutput):
+    def output(self, out: common.TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, IperfOutput
@@ -192,7 +201,7 @@ class IperfClient(Task):
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occured(self._output.result):
+        if self.iperf_error_occurred(self._output.result):
             logger.error(
                 "Encountered error while running test:\n"
                 f"  {self._output.result['error']}"
@@ -203,7 +212,7 @@ class IperfClient(Task):
         if self.test_type == TestType.IPERF_UDP:
             self.print_udp_results(self._output.result)
 
-    def print_tcp_results(self, data: dict):
+    def print_tcp_results(self, data: dict) -> None:
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
 
@@ -220,7 +229,7 @@ class IperfClient(Task):
             f"  MSS = {mss}"
         )
 
-    def print_udp_results(self, data: dict):
+    def print_udp_results(self, data: dict) -> None:
         sum_data = data["end"]["sum"]
 
         total_gigabytes = sum_data["bytes"] / (1024**3)
@@ -273,5 +282,5 @@ class IperfClient(Task):
             f"get_podman_ip(): failed to get {pod_name} ip after 5 attempts"
         )
 
-    def iperf_error_occured(self, data: dict) -> bool:
+    def iperf_error_occurred(self, data: dict) -> bool:
         return "error" in data

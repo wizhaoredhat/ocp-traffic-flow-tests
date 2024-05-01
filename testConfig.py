@@ -5,7 +5,8 @@ from logger import logger
 from k8sClient import K8sClient
 from yaml import safe_load
 import io
-from common import TestType
+from common import TestType, TestCaseType, enum_convert, PodType
+from typing import List, Dict
 
 
 class ClusterMode(Enum):
@@ -14,21 +15,19 @@ class ClusterMode(Enum):
 
 
 class TestConfig:
-    def __init__(self, config_path: str):
-        self.mode = ClusterMode.SINGLE
+    kubeconfig_tenant: str = "/root/kubeconfig.tenantcluster"
+    kubeconfig_infra: str = "/root/kubeconfig.infracluster"
+    kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
+    kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
+    mode: ClusterMode = ClusterMode.SINGLE
+    client_tenant: K8sClient
+    client_infra: K8sClient
+    full_config: dict
 
+    def __init__(self, config_path: str):
         with open(config_path, "r") as f:
             contents = f.read()
-            self.fullConfig = safe_load(io.StringIO(contents))
-
-        self.kubeconfig_tenant = "/root/kubeconfig.tenantcluster"
-        self.kubeconfig_infra = "/root/kubeconfig.infracluster"
-        self.kubeconfig_single = "/root/kubeconfig.nicmodecluster"
-        self.kubeconfig_cx = "/root/kubeconfig.smartniccluster"
-        self.client_tenant = None
-        self.client_infra = None
-        self.server_node = None
-        self.client_node = None
+            self.full_config = safe_load(io.StringIO(contents))
 
         lh = host.LocalHost()
 
@@ -55,8 +54,8 @@ class TestConfig:
 
         logger.info(self.GetConfig())
 
-    def parse_test_cases(self, input_str: str):
-        output = []
+    def parse_test_cases(self, input_str: str) -> List[TestCaseType]:
+        output: List[TestCaseType] = []
         parts = input_str.split(",")
 
         for part in parts:
@@ -68,19 +67,24 @@ class TestConfig:
                 if "-" in part:
                     try:
                         start, end = map(int, part.split("-"))
-                        output.extend(range(start, end + 1))
+                        output.extend(
+                            [
+                                enum_convert(TestCaseType, i)
+                                for i in range(start, end + 1)
+                            ]
+                        )
                     except ValueError:
                         raise ValueError(f"Invalid test case id: {part}")
                 else:
-                    output.append(int(part))
+                    output.append(enum_convert(TestCaseType, int(part)))
 
         return output
 
-    def validate_pod_type(self, connection_server: dict):
+    def pod_type_from_config(self, connection_server: Dict[str, str]) -> PodType:
         if "sriov" in connection_server:
             if "true" in connection_server["sriov"].lower():
-                return "sriov"
-        return "normal"
+                return PodType.SRIOV
+        return PodType.NORMAL
 
     def validate_test_type(self, connection: dict) -> TestType:
         if "type" not in connection:
@@ -100,5 +104,5 @@ class TestConfig:
                 Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
-    def GetConfig(self):
-        return self.fullConfig["tft"]
+    def GetConfig(self) -> List[dict]:
+        return self.full_config["tft"]
