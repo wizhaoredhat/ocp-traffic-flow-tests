@@ -67,8 +67,8 @@ class Evaluator:
             self.config = {
                 test_type: {
                     int(item["id"]): {
-                        False: item["Normal"]["threshold"],
-                        True: item["Reverse"]["threshold"],
+                        "normal": item["Normal"]["threshold"],
+                        "reverse": item["Reverse"]["threshold"],
                     }
                     for item in test_cases
                 }
@@ -118,8 +118,9 @@ class Evaluator:
     def get_threshold(
         self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
     ) -> int:
+        traffic_direction = "reverse" if is_reverse else "normal"
         try:
-            return self.config[test_type.name][test_case_id.value][is_reverse]
+            return self.config[test_type.name][test_case_id.value][traffic_direction]
         except KeyError as e:
             logger.error(
                 f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"

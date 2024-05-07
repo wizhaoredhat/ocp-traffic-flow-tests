@@ -124,12 +124,12 @@ IPERF_TCP:
     Normal:
       threshold: 18
     Reverse:
-      threshold: 18
+      threshold: 10
   - id: 26 # HOST_TO_EXTERNAL
     Normal:
       threshold: 18
     Reverse:
-      threshold: 18
+      threshold: 10
 IPERF_UDP:
   - id: 1 # POD_TO_POD_SAME_NODE
     Normal:
