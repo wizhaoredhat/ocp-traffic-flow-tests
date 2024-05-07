@@ -1,106 +1,264 @@
+# Can use `updated-eval-config` for a more accurate template.
 IPERF_TCP:
   - id: 1 # POD_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 2 # POD_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 3 # POD_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 4 # POD_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 5 # POD_TO_CLUSTER_IP_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 6 # POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 7 # POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 8 # POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 9 # POD_TO_NODE_PORT_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 10 # POD_TO_NODE_PORT_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 11 # POD_TO_NODE_PORT_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 12 # POD_TO_NODE_PORT_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 13 # HOST_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 14 # HOST_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 15 # HOST_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 16 # HOST_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 17 # HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 18 # HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 19 # HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 20 # HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 21 # HOST_TO_NODE_PORT_TO_POD_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 22 # HOST_TO_NODE_PORT_TO_POD_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 23 # HOST_TO_NODE_PORT_TO_HOST_SAME_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 24 # HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 25 # POD_TO_EXTERNAL
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
   - id: 26 # HOST_TO_EXTERNAL
-    threshold: 18
+    Normal:
+      threshold: 18
+    Reverse:
+      threshold: 18
 IPERF_UDP:
   - id: 1 # POD_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 2 # POD_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 3 # POD_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 4 # POD_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 5 # POD_TO_CLUSTER_IP_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 6 # POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 7 # POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 8 # POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 9 # POD_TO_NODE_PORT_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 10 # POD_TO_NODE_PORT_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 11 # POD_TO_NODE_PORT_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 12 # POD_TO_NODE_PORT_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 13 # HOST_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 14 # HOST_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 15 # HOST_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 16 # HOST_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 17 # HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 18 # HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 19 # HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 20 # HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 21 # HOST_TO_NODE_PORT_TO_POD_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 22 # HOST_TO_NODE_PORT_TO_POD_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 23 # HOST_TO_NODE_PORT_TO_HOST_SAME_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 24 # HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 25 # POD_TO_EXTERNAL
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
   - id: 26 # HOST_TO_EXTERNAL
-    threshold: 5
+    Normal:
+      threshold: 5
+    Reverse:
+      threshold: 5
+
