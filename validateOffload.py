@@ -107,6 +107,7 @@ class ValidateOffload(Task):
 
             r1 = self.run_ethtool_cmd(self.ethtool_cmd)
             if r1.returncode != 0:
+                logger.error("Ethtool command failed")
                 return r1
 
             SyncManager.wait_on_client_finish()
@@ -164,5 +165,5 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             result=parsed_data,
-            name="get_ethtool_stats",
+            name="validate_offload",
         )

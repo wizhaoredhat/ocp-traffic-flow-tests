@@ -168,13 +168,16 @@ class TrafficFlowTests:
             file.write(data)
 
         # Return PassFailStatus
-        pfstatus = evaluator.evaluate_pass_fail_status()
-
+        res = evaluator.evaluate_pass_fail_status()
+        logger.info(f"RESULT: Success = {res.result}.")
         logger.info(
-            f"RESULT: Success = {pfstatus.result}. Passed {pfstatus.num_passed}/{pfstatus.num_passed + pfstatus.num_failed}"
+            f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
+        )
+        logger.info(
+            f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
         )
 
-        return pfstatus.result
+        return res.result
 
     def _run(
         self,
