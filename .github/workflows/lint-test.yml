@@ -25,7 +25,7 @@ jobs:
     - name: Check code formatting with Black
       run: |
        black --version
-       black --check .
+       black --check --diff .
     - name: Type check with Mypy
       run: |
        mypy --version
