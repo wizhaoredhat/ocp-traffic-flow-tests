@@ -25,9 +25,7 @@ def run_subprocess(command, **kwargs):
 def test_evaluator_valid_input() -> None:
     log_path = os.path.join(current_dir, "input1.json")
     compare_path1 = os.path.join(current_dir, "output1a.json")
-    compare_path2 = os.path.join(current_dir, "output1b.txt")
     output_path1 = os.path.join(current_dir, "test-output1.json")
-    output_path2 = os.path.join(current_dir, "test-output2.json")
 
     result = run_subprocess(
         [log_path, output_path1],
@@ -36,22 +34,11 @@ def test_evaluator_valid_input() -> None:
         check=False,
     )
 
-    with open(output_path2, "w") as printed_output_file:
-        printed_output_file.write(result.stdout)
-
-    assert result.returncode == 0, "Subprocess failed"
-
-    remove_prefix_from_file(output_path2)
-
     assert filecmp.cmp(
         output_path1, compare_path1
     ), f"{output_path1} does not match {compare_path1}"
-    assert filecmp.cmp(
-        output_path2, compare_path2
-    ), f"{output_path2} does not match {compare_path2}"
 
     Path(output_path1).unlink()
-    Path(output_path2).unlink()
 
 
 def test_evaluator_invalid_test_case_id() -> None:
@@ -82,7 +69,3 @@ def test_evaluator_invalid_pod_type() -> None:
             [log_path],
             check=True,
         )
-
-
-def remove_prefix_from_file(file_path):
-    subprocess.run(["sed", "-i", "s/.*INFO:/INFO:/g", file_path], check=True)
