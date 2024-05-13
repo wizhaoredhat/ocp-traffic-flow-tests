@@ -265,13 +265,13 @@ class Evaluator:
         return -1  # type: ignore
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
-        total_passing = 0
-        total_failing = 0
+        tft_passing = 0
+        tft_failing = 0
         for result in self.test_results:
             if result.success:
-                total_passing += 1
+                tft_passing += 1
             else:
-                total_failing += 1
+                tft_failing += 1
 
         plugin_passing = 0
         plugin_failing = 0
@@ -282,9 +282,9 @@ class Evaluator:
                 plugin_failing += 1
 
         return PassFailStatus(
-            result=total_failing + plugin_failing == 0,
-            num_tft_passed=total_passing,
-            num_tft_failed=total_failing,
+            result=tft_failing + plugin_failing == 0,
+            num_tft_passed=tft_passing,
+            num_tft_failed=tft_failing,
             num_plugin_passed=plugin_passing,
             num_plugin_failed=plugin_failing,
         )
