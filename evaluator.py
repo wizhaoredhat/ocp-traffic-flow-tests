@@ -11,6 +11,7 @@ from common import (
     TftAggregateOutput,
     PluginOutput,
     TFT_TESTS,
+    VALIDATE_OFFLOAD_PLUGIN,
 )
 from logger import logger
 from pathlib import Path
@@ -164,7 +165,7 @@ class Evaluator:
             for plugin_output in run["plugins"]:
                 # TODO: add evaluation for measure_cpu and measure_power plugins
                 plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
-                if plugin_output.name == "validate_offload":
+                if plugin_output.name == VALIDATE_OFFLOAD_PLUGIN:
                     self._eval_validate_offload(
                         plugin_output, run["flow_test"].tft_metadata
                     )

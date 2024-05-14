@@ -5,6 +5,9 @@ from common import (
     TFT_TESTS,
     BaseOutput,
     serialize_enum,
+    VALIDATE_OFFLOAD_PLUGIN,
+    MEASURE_POWER_PLUGIN,
+    MEASURE_CPU_PLUGIN,
 )
 from testSettings import TestSettings
 from testConfig import TestConfig
@@ -214,15 +217,15 @@ class TrafficFlowTests:
             raise Exception("http connections not currently supported")
         if connections["plugins"]:
             for plugins in connections["plugins"]:
-                if plugins["name"] == "measure_cpu":
+                if plugins["name"] == MEASURE_CPU_PLUGIN:
                     self._enable_measure_cpu_plugin(
                         monitors, node_server_name, node_client_name, True
                     )
-                if plugins["name"] == "measure_power":
+                if plugins["name"] == MEASURE_POWER_PLUGIN:
                     self._enable_measure_power_plugin(
                         monitors, node_server_name, node_client_name, True
                     )
-                if plugins["name"] == "validate_offload":
+                if plugins["name"] == VALIDATE_OFFLOAD_PLUGIN:
                     # TODO allow this to run on each individual server + client pairs.
                     iperf_server = servers[-1]
                     iperf_client = clients[-1]

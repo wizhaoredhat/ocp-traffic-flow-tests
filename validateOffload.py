@@ -5,6 +5,7 @@ from common import (
     TftAggregateOutput,
     PodType,
     Result,
+    VALIDATE_OFFLOAD_PLUGIN,
 )
 from dataclasses import asdict, is_dataclass
 from logger import logger
@@ -177,5 +178,5 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             result=parsed_data,
-            name="validate_offload",
+            name=VALIDATE_OFFLOAD_PLUGIN,
         )

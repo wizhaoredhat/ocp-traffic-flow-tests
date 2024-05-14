@@ -1,4 +1,10 @@
-from common import j2_render, TFT_TOOLS_IMG, PluginOutput, TftAggregateOutput
+from common import (
+    j2_render,
+    TFT_TOOLS_IMG,
+    PluginOutput,
+    TftAggregateOutput,
+    MEASURE_POWER_PLUGIN,
+)
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
@@ -80,5 +86,5 @@ class MeasurePower(Task):
             },
             command=self.cmd,
             result=parsed_data,
-            name="measure_power",
+            name=MEASURE_POWER_PLUGIN,
         )

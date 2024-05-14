@@ -1,4 +1,11 @@
-from common import TFT_TOOLS_IMG, PluginOutput, j2_render, TftAggregateOutput, Result
+from common import (
+    TFT_TOOLS_IMG,
+    PluginOutput,
+    j2_render,
+    TftAggregateOutput,
+    Result,
+    MEASURE_CPU_PLUGIN,
+)
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
@@ -60,5 +67,5 @@ class MeasureCPU(Task):
             },
             command=self.cmd,
             result=parsed_data[0],
-            name="measure_cpu",
+            name=MEASURE_CPU_PLUGIN,
         )
