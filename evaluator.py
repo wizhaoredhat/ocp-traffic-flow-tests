@@ -11,6 +11,7 @@ from common import (
     TftAggregateOutput,
     PluginOutput,
     TFT_TESTS,
+    VALIDATE_OFFLOAD_PLUGIN,
 )
 from logger import logger
 from pathlib import Path
@@ -24,8 +25,6 @@ class Bitrate:
     rx: float
 
 
-# TODO: We made need to extend this to include results from other plugins (i.e. is HWOL working) such that
-# we can return a single "Status" from a test
 @dataclass
 class PassFailStatus:
     """Pass/Fail ratio and result from evaluating a full tft Flow Test result
@@ -36,8 +35,10 @@ class PassFailStatus:
         num_failed: int number of test cases failed"""
 
     result: bool
-    num_passed: int
-    num_failed: int
+    num_tft_passed: int
+    num_tft_failed: int
+    num_plugin_passed: int
+    num_plugin_failed: int
 
 
 @dataclass
@@ -59,6 +60,26 @@ class TestResult:
     bitrate_gbps: Bitrate
 
 
+@dataclass
+class PluginResult:
+    """Result of a single plugin from a given run
+
+    Attributes:
+        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
+        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        reverse: Specify whether test is client->server or reversed server->client
+        success: boolean representing whether the test passed or failed
+    """
+
+    test_id: TestCaseType
+    test_type: TestType
+    reverse: bool
+    success: bool
+
+
+VF_REP_TRAFFIC_THRESHOLD = 1000
+
+
 class Evaluator:
     def __init__(self, config_path: str):
         with open(config_path, encoding="utf-8") as file:
@@ -76,6 +97,7 @@ class Evaluator:
             }
 
         self.test_results: List[TestResult] = []
+        self.plugin_results: List[PluginResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
@@ -94,6 +116,39 @@ class Evaluator:
         )
         self.test_results.append(result)
 
+    def _eval_validate_offload(
+        self, plugin_output: PluginOutput, md: TestMetadata
+    ) -> None:
+        rx_start = plugin_output.result.get("rx_start")
+        tx_start = plugin_output.result.get("tx_start")
+        rx_end = plugin_output.result.get("rx_end")
+        tx_end = plugin_output.result.get("tx_end")
+
+        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
+            logger.error(
+                f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
+            )
+            success = False
+        else:
+            assert isinstance(rx_start, int)
+            assert isinstance(tx_start, int)
+            assert isinstance(rx_end, int)
+            assert isinstance(tx_end, int)
+            success = self.no_traffic_on_vf_rep(
+                rx_start=rx_start,
+                tx_start=tx_start,
+                rx_end=rx_end,
+                tx_end=tx_end,
+            )
+
+        result = PluginResult(
+            test_id=md.test_case_id,
+            test_type=md.test_type,
+            reverse=md.reverse,
+            success=success,
+        )
+        self.plugin_results.append(result)
+
     def eval_log(self, log_path: Path) -> None:
         try:
             with open(log_path, "r") as file:
@@ -107,13 +162,25 @@ class Evaluator:
                 run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
 
             self._eval_flow_test(run["flow_test"])
-            for plugin in run["plugins"]:
-                # TODO: add evaluation for plugins
-                # logger.debug(f'Reading result from plugin {plugin["name"]}')
-                pass
+            for plugin_output in run["plugins"]:
+                # TODO: add evaluation for measure_cpu and measure_power plugins
+                plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
+                if plugin_output.name == VALIDATE_OFFLOAD_PLUGIN:
+                    self._eval_validate_offload(
+                        plugin_output, run["flow_test"].tft_metadata
+                    )
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
         return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
+
+    def no_traffic_on_vf_rep(
+        self, rx_start: int, tx_start: int, rx_end: int, tx_end: int
+    ) -> bool:
+
+        return (
+            rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
+            and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
+        )
 
     def get_threshold(
         self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
@@ -143,8 +210,20 @@ class Evaluator:
     def dump_to_json(self) -> str:
         passing = [asdict(result) for result in self.test_results if result.success]
         failing = [asdict(result) for result in self.test_results if not result.success]
+        plugin_passing = [
+            asdict(result) for result in self.plugin_results if result.success
+        ]
+        plugin_failing = [
+            asdict(result) for result in self.plugin_results if not result.success
+        ]
+
         return json.dumps(
-            {"passing": serialize_enum(passing), "failing": serialize_enum(failing)}
+            {
+                "passing": serialize_enum(passing),
+                "failing": serialize_enum(failing),
+                "plugin_passing": serialize_enum(plugin_passing),
+                "plugin_failing": serialize_enum(plugin_failing),
+            }
         )
 
     def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
@@ -187,17 +266,28 @@ class Evaluator:
         return -1  # type: ignore
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
-        total_passing = 0
-        total_failing = 0
+        tft_passing = 0
+        tft_failing = 0
         for result in self.test_results:
             if result.success:
-                total_passing += 1
+                tft_passing += 1
             else:
-                total_failing += 1
+                tft_failing += 1
+
+        plugin_passing = 0
+        plugin_failing = 0
+        for plugin_result in self.plugin_results:
+            if plugin_result.success:
+                plugin_passing += 1
+            else:
+                plugin_failing += 1
+
         return PassFailStatus(
-            result=total_failing == 0,
-            num_passed=total_passing,
-            num_failed=total_failing,
+            result=tft_failing + plugin_failing == 0,
+            num_tft_passed=tft_passing,
+            num_tft_failed=tft_failing,
+            num_plugin_passed=plugin_passing,
+            num_plugin_failed=plugin_failing,
         )
 
 
@@ -244,8 +334,12 @@ def main() -> None:
     logger.info(data)
 
     res = evaluator.evaluate_pass_fail_status()
+    logger.info(f"RESULT OF TEST: Success = {res.result}.")
     logger.info(
-        f"RESULT OF TEST: Success = {res.result}. Passed {res.num_passed}/{res.num_passed + res.num_failed}"
+        f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
+    )
+    logger.info(
+        f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
     )
 
 

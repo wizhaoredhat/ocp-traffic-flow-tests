@@ -5,6 +5,7 @@ from common import (
     TftAggregateOutput,
     PodType,
     Result,
+    VALIDATE_OFFLOAD_PLUGIN,
 )
 from dataclasses import asdict, is_dataclass
 from logger import logger
@@ -81,6 +82,14 @@ class ValidateOffload(Task):
         return r
 
     def parse_packets(self, output: str, packet_type: str) -> int:
+        # Case1: Try to parse rx_packets and tx_packets from ethtool output
+        prefix = f"{packet_type}_packets"
+        if prefix in output:
+            for line in output.splitlines():
+                stripped_line = line.strip()
+                if stripped_line.startswith(prefix):
+                    return int(stripped_line.split(":")[1])
+        # Case2: Ethtool output does not provide these fields, so we need to sum the queues manually
         total_packets = 0
         prefix = f"{packet_type}_queue_"
         packet_suffix = "_xdp_packets:"
@@ -107,6 +116,7 @@ class ValidateOffload(Task):
 
             r1 = self.run_ethtool_cmd(self.ethtool_cmd)
             if r1.returncode != 0:
+                logger.error("Ethtool command failed")
                 return r1
 
             SyncManager.wait_on_client_finish()
@@ -136,6 +146,10 @@ class ValidateOffload(Task):
         )
 
     def generate_output(self, data: str) -> PluginOutput:
+        # Different behavior has been seen from the ethtool output depending on the driver in question
+        # Log the output of ethtool temporarily until this is more stable.
+        # TODO: switch to debug
+        logger.info(f"generate hwol output from data: {data}")
         split_data = data.split("--DELIMIT--")
         parsed_data: dict[str, Union[str, int]] = {}
 
@@ -164,5 +178,5 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             result=parsed_data,
-            name="get_ethtool_stats",
+            name=VALIDATE_OFFLOAD_PLUGIN,
         )

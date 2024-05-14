@@ -7,6 +7,10 @@ FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
+MEASURE_POWER_PLUGIN = "measure_power"
+MEASURE_CPU_PLUGIN = "measure_cpu"
+VALIDATE_OFFLOAD_PLUGIN = "validate_offload"
+
 
 @dataclass
 class Result:
