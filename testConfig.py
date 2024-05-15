@@ -86,6 +86,11 @@ class TestConfig:
                 return PodType.SRIOV
         return PodType.NORMAL
 
+    def default_network_from_config(self, connection: Dict[str, str]) -> str:
+        if "default-network" in connection:
+            return connection["default-network"]
+        return "default/default"
+
     def validate_test_type(self, connection: dict) -> TestType:
         if "type" not in connection:
             return TestType.IPERF_TCP

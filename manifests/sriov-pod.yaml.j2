@@ -4,7 +4,7 @@ metadata:
   namespace: {{ name_space }}
   name: {{ pod_name }}
   annotations:
-    v1.multus-cni.io/default-network: default/{{ net_attach_def_name }}
+    v1.multus-cni.io/default-network: {{ default_network }}
   labels:
     tft-tests: "{{ index }}"
     tft-port: "{{ port }}"

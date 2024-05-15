@@ -205,6 +205,12 @@ class TrafficFlowTests:
                 node_client_name=node_client_name,
                 server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
                 client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
+                server_default_network=self._tc.default_network_from_config(
+                    connections["server"][0]
+                ),
+                client_default_network=self._tc.default_network_from_config(
+                    connections["client"][0]
+                ),
                 index=index,
                 test_type=test_type,
                 reverse=reverse,

@@ -27,6 +27,7 @@ class IperfServer(Task):
         self.pod_type = ts.server_pod_type
         self.connection_mode = ts.connection_mode
 
+        self.template_args["default_network"] = ts.server_default_network
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             self.pod_name = EXTERNAL_IPERF3_SERVER
             return
@@ -139,6 +140,7 @@ class IperfClient(Task):
         self.reverse = ts.reverse
         self.cmd = ""
 
+        self.template_args["default_network"] = ts.client_default_network
         if self.pod_type == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
             self.out_file_yaml = (
