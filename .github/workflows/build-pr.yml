@@ -27,5 +27,5 @@ jobs:
         docker buildx build \
           --file ./images/Containerfile \
           --platform linux/arm64,linux/amd64\
-          --tag quay.io/wizhao/tft-tools:pr_test \
+          --tag quay.io/wizhao/tft-tools:pr-${{ github.event.number }} \
           --push .
