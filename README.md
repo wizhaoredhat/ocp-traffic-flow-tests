@@ -32,14 +32,14 @@ tft:
           - name: "(8)"
             persistent: "(9)"
             sriov: "(10)"
+            default-network: "(11)"
         client:
-          - name: "(11)"
-            sriov: "(12)"
+          - name: "(12)"
+            sriov: "(13)"
+            default-network: "(14)"
         plugins:
-          - name: capture_flows
-          - name: measure_cpu
-          - name: measure_power
-          - name: validate_offload
+          - name: (15)
+          - name: (15)
 ```
 
 1. "name" - This is the name of the test. Any string value to identify the test.
@@ -80,9 +80,11 @@ tft:
 8. "name" - The node name of the server.
 9. "persistent" - Whether to have the server pod persist after the test. Takes in "true/false"
 10. "sriov" - Whether SRIOV should be used for the server pod. Takes in "true/false"
-11. "name" - The node name of the client.
-12. "sriov" - Whether SRIOV should be used for the client pod. Takes in "true/false"
-13. "name" - list of plugin names
+11. "default-network" - (Optional) The name of the default network that the sriov pod would use.
+12. "name" - The node name of the client.
+13. "sriov" - Whether SRIOV should be used for the client pod. Takes in "true/false"
+14. "default-network" - (Optional) The name of the default network that the sriov pod would use.
+15. "name" - (Optional) list of plugin names
     | Name             | Description          |
     | ---------------- | -------------------- |
     | capture_flows    | Capture OvS Flows    |

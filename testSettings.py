@@ -20,6 +20,8 @@ class TestSettings:
         node_client_name: str,
         server_pod_type: PodType,
         client_pod_type: PodType,
+        server_default_network: str,
+        client_default_network: str,
         index: int,
         test_type: TestType,
         reverse: bool = False,
@@ -36,6 +38,8 @@ class TestSettings:
         self.client_pod_type = self.client_test_to_pod_type(
             test_case_id, client_pod_type
         )
+        self.server_default_network = server_default_network
+        self.client_default_network = client_default_network
         # TODO: Handle Case when client is not tenant
         self.client_is_tenant = True
         self.server_is_tenant = True
