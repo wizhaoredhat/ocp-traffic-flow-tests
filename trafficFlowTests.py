@@ -15,6 +15,7 @@ from logger import logger
 import iperf
 from task import Task
 from iperf import IperfServer, IperfClient
+import perf
 from validateOffload import ValidateOffload
 from measureCpu import MeasureCPU
 from measurePower import MeasurePower
@@ -77,9 +78,9 @@ class TrafficFlowTests:
             raise Exception(f"cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
-            f"Cleaning external containers {iperf.EXTERNAL_IPERF3_SERVER} (if present)"
+            f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"
         )
-        cmd = f"podman stop --time 10 {iperf.EXTERNAL_IPERF3_SERVER}; podman rm --time 10 {iperf.EXTERNAL_IPERF3_SERVER}"
+        cmd = f"podman stop --time 10 {perf.EXTERNAL_PERF_SERVER}; podman rm --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
 
     def _enable_measure_cpu_plugin(
