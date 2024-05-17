@@ -11,7 +11,8 @@ from dataclasses import asdict, is_dataclass
 from logger import logger
 import time
 from testConfig import TestConfig
-from iperf import IperfServer, IperfClient, EXTERNAL_IPERF3_SERVER
+from iperf import IperfServer, IperfClient
+import perf
 from thread import ReturnValueThread
 from task import Task
 from typing import Optional, Union, Tuple
@@ -50,7 +51,7 @@ class ValidateOffload(Task):
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
 
-        if self.iperf_pod_name == EXTERNAL_IPERF3_SERVER:
+        if self.iperf_pod_name == perf.EXTERNAL_PERF_SERVER:
             logger.info(f"There is no VF on an external server")
             return "external"
 
