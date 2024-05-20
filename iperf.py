@@ -22,7 +22,7 @@ IPERF_REV_OPT = "-R"
 class IperfServer(perf.PerfServer):
     def __init__(self, tc: TestConfig, ts: TestSettings):
 
-        if self.exec_persistent:
+        if ts.server_is_persistent:
             self.template_args["command"] = IPERF_EXE
             self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
 
