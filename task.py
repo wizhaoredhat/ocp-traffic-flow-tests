@@ -23,7 +23,7 @@ class Task(ABC):
         self.lh = host.LocalHost()
 
         self.template_args["name_space"] = "default"
-        self.template_args["test_image"] = common.FT_BASE_IMG
+        self.template_args["test_image"] = common.TFT_TOOLS_IMG
         self.template_args["command"] = "/sbin/init"
         self.template_args["args"] = ""
         self.template_args["index"] = f"{index}"
