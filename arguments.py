@@ -8,7 +8,7 @@ from pathlib import Path
 def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
-        description="Build a custom image and store in the specified repository"
+        description="test Traffic Flows in an OVN-Kubernetes cluster."
     )
     parser.add_argument(
         "config",
