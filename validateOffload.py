@@ -25,10 +25,10 @@ class ValidateOffload(Task):
     def __init__(
         self,
         tft: TestConfig,
-        iperf_instance: Union[IperfServer, IperfClient],
+        perf_instance: Union[perf.PerfServer, perf.PerfClient],
         tenant: bool,
     ):
-        super().__init__(tft, 0, iperf_instance.node_name, tenant)
+        super().__init__(tft, 0, perf_instance.node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (
@@ -38,24 +38,24 @@ class ValidateOffload(Task):
         self.template_args["test_image"] = TFT_TOOLS_IMG
 
         self.pod_name = self.template_args["pod_name"]
-        self._iperf_instance = iperf_instance
-        self.iperf_pod_name = iperf_instance.pod_name
-        self.iperf_pod_type = iperf_instance.pod_type
+        self._perf_instance = perf_instance
+        self.perf_pod_name = perf_instance.pod_name
+        self.perf_pod_type = perf_instance.pod_type
         self.ethtool_cmd = ""
 
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def extract_vf_rep(self) -> str:
-        if self.iperf_pod_type == PodType.HOSTBACKED:
+        if self.perf_pod_type == PodType.HOSTBACKED:
             logger.info(f"The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
 
-        if self.iperf_pod_name == perf.EXTERNAL_PERF_SERVER:
+        if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
             logger.info(f"There is no VF on an external server")
             return "external"
 
-        self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.iperf_pod_name} -o json "'
+        self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json "'
         r = self.run_oc(self.get_vf_rep_cmd)
 
         if r.returncode != 0:
@@ -72,7 +72,7 @@ class ValidateOffload(Task):
     def run_ethtool_cmd(self, ethtool_cmd: str) -> Result:
         logger.info(f"Running {ethtool_cmd}")
         r = self.run_oc(ethtool_cmd)
-        if self.iperf_pod_type != PodType.HOSTBACKED:
+        if self.perf_pod_type != PodType.HOSTBACKED:
             if r.returncode != 0:
                 if "already exists" not in r.err:
                     logger.error(f"Run_ethtool_cmd: {r.err}, {r.returncode}")
@@ -136,14 +136,14 @@ class ValidateOffload(Task):
         ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
         out.plugins.append(self._output)
 
-        if self.iperf_pod_type == PodType.HOSTBACKED:
-            if isinstance(self._iperf_instance, IperfClient):
+        if self.perf_pod_type == PodType.HOSTBACKED:
+            if isinstance(self._perf_instance, perf.PerfClient):
                 logger.info(f"The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
                 logger.info(f"The server VF representor ovn-k8s-mp0_0 does not exist")
 
         logger.info(
-            f"validateOffload results on {self.iperf_pod_name}: {self._output.result}"
+            f"validateOffload results on {self.perf_pod_name}: {self._output.result}"
         )
 
     def generate_output(self, data: str) -> PluginOutput:

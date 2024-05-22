@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "evaluator_config",
+        nargs="?",
         metavar="evaluator_config",
         type=str,
         help="Yaml file with configuration for scoring test results (see eval-config.yaml)",
@@ -44,9 +45,5 @@ def parse_args() -> argparse.Namespace:
 
     if not Path(args.config).exists():
         raise ValueError("Must provide a valid config.yaml file (see config.yaml)")
-    if not Path(args.evaluator_config).exists():
-        raise ValueError(
-            "Must provide a valid config file to evaluate results (see eval-config.yaml)"
-        )
 
     return args

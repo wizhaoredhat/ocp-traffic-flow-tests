@@ -22,7 +22,8 @@ IPERF_REV_OPT = "-R"
 class IperfServer(perf.PerfServer):
     def __init__(self, tc: TestConfig, ts: TestSettings):
 
-        if ts.server_is_persistent:
+        self.exec_persistent = ts.server_is_persistent
+        if self.exec_persistent:
             self.template_args["command"] = IPERF_EXE
             self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
 
@@ -30,7 +31,7 @@ class IperfServer(perf.PerfServer):
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.FT_BASE_IMG} -s --one-off"
+            cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {common.TFT_TOOLS_IMG} -s --one-off"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
         else:
             # Create the server pods

@@ -15,6 +15,7 @@ from logger import logger
 import iperf
 from task import Task
 from iperf import IperfServer, IperfClient
+from netperf import NetPerfServer, NetPerfClient
 import perf
 from validateOffload import ValidateOffload
 from measureCpu import MeasureCPU
@@ -41,13 +42,24 @@ class TrafficFlowTests:
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
-    ) -> Tuple[IperfServer, IperfClient]:
+    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
 
         s = IperfServer(tc=self._tc, ts=self.test_settings)
         c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
+        return (s, c)
+
+    def _create_netperf_server_client(
+        self, test_settings: TestSettings
+    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
+        logger.info(
+            f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
+        )
+
+        s = NetPerfServer(tc=self._tc, ts=self.test_settings)
+        c = NetPerfClient(tc=self._tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def _configure_namespace(self, namespace: str) -> None:
@@ -102,19 +114,19 @@ class TrafficFlowTests:
     def enable_validate_offload_plugin(
         self,
         monitors: list,
-        iperf_server: IperfServer,
-        iperf_client: IperfClient,
+        perf_server: perf.PerfServer,
+        perf_client: perf.PerfClient,
         tenant: bool,
     ) -> None:
-        s = ValidateOffload(self._tc, iperf_server, tenant)
-        c = ValidateOffload(self._tc, iperf_client, tenant)
+        s = ValidateOffload(self._tc, perf_server, tenant)
+        c = ValidateOffload(self._tc, perf_client, tenant)
         monitors.append(s)
         monitors.append(c)
 
     def _run_tests(
         self,
-        servers: List[IperfServer],
-        clients: List[IperfClient],
+        servers: List[perf.PerfServer],
+        clients: List[perf.PerfClient],
         monitors: List[Task],
         duration: int,
     ) -> TftAggregateOutput:
@@ -192,31 +204,38 @@ class TrafficFlowTests:
         duration: int,
         reverse: bool = False,
     ) -> None:
-        servers: List[IperfServer] = []
-        clients: List[IperfClient] = []
+        servers: List[perf.PerfServer] = []
+        clients: List[perf.PerfClient] = []
         monitors: List[Task] = []
         node_server_name = connections["server"][0]["name"]
         node_client_name = connections["client"][0]["name"]
 
+        self.test_settings = TestSettings(
+            connection_name=connections["name"],
+            test_case_id=test_id,
+            node_server_name=node_server_name,
+            node_client_name=node_client_name,
+            server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
+            client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
+            server_default_network=self._tc.default_network_from_config(
+                connections["server"][0]
+            ),
+            client_default_network=self._tc.default_network_from_config(
+                connections["client"][0]
+            ),
+            index=index,
+            test_type=test_type,
+            reverse=reverse,
+        )
         if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
-            self.test_settings = TestSettings(
-                connection_name=connections["name"],
-                test_case_id=test_id,
-                node_server_name=node_server_name,
-                node_client_name=node_client_name,
-                server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
-                client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
-                server_default_network=self._tc.default_network_from_config(
-                    connections["server"][0]
-                ),
-                client_default_network=self._tc.default_network_from_config(
-                    connections["client"][0]
-                ),
-                index=index,
-                test_type=test_type,
-                reverse=reverse,
-            )
             s, c = self._create_iperf_server_client(self.test_settings)
+            servers.append(s)
+            clients.append(c)
+        elif (
+            test_type == TestType.NETPERF_TCP_STREAM
+            or test_type == TestType.NETPERF_TCP_RR
+        ):
+            s, c = self._create_netperf_server_client(self.test_settings)
             servers.append(s)
             clients.append(c)
         else:

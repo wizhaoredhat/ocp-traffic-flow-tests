@@ -261,4 +261,3 @@ IPERF_UDP:
       threshold: 5
     Reverse:
       threshold: 5
-

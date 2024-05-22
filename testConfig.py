@@ -101,6 +101,11 @@ class TestConfig:
                 return TestType.IPERF_UDP
             else:
                 return TestType.IPERF_TCP
+        if "netperf" in input_ct:
+            if "tcp-stream" in input_ct:
+                return TestType.NETPERF_TCP_STREAM
+            else:
+                return TestType.NETPERF_TCP_RR
         elif "http" in input_ct:
             return TestType.HTTP
         else:

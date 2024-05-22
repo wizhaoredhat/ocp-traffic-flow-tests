@@ -3,7 +3,6 @@ from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
 
-FT_BASE_IMG = "quay.io/wizhao/ft-base-image:0.9"
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
@@ -43,6 +42,8 @@ class TestType(Enum):
     IPERF_TCP = 1
     IPERF_UDP = 2
     HTTP = 3
+    NETPERF_TCP_STREAM = 4
+    NETPERF_TCP_RR = 5
 
 
 class PodType(Enum):
