@@ -1,8 +1,10 @@
 # Traffic Flow Test Scripts
 
-This repository contains the yaml files, docker files, and test scripts to test Traffic Flows in an OVN-Kubernetes cluster.
+This repository contains the yaml files, docker files, and test scripts to test Traffic Flows in an OVN-Kubernetes k8s cluster.
 
 ## Setting up the environment
+
+The package "kubectl" should be installed.
 
 The recommended python version is 3.11 for running the Traffic Flow tests
 
@@ -75,7 +77,7 @@ tft:
     | 26 | HOST_TO_EXTERNAL |
 4. "duration" - The duration that each individual test will run for.
 5. "name" - This is the connection name. Any string value to identify the connection.
-6. "type" - Supported types of connections are iperf-tcp and iperf-udp.
+6. "type" - Supported types of connections are iperf-tcp, iperf-udp, netperf-tcp-stream, netperf-tcp-rr
 7. "instances" - The number of instances that would be created. Default is "1"
 8. "name" - The node name of the server.
 9. "persistent" - Whether to have the server pod persist after the test. Takes in "true/false"
@@ -91,3 +93,11 @@ tft:
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
+
+## Running the tests
+
+Simply run the python application as so:
+
+```
+python main.py config.yaml
+```
