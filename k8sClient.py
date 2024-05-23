@@ -26,4 +26,4 @@ class K8sClient:
 
     def oc(self, cmd: str) -> Result:
         lh = host.LocalHost()
-        return lh.run(f"oc --kubeconfig {self._kc} {cmd} ")
+        return lh.run(f"kubectl --kubeconfig {self._kc} {cmd} ")

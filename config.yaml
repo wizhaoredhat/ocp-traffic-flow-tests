@@ -8,7 +8,7 @@ tft:
     # logs: "/tmp/ft-logs"
     connections:
       - name: "Connection_1"
-        # supported types: iperf-tcp, iperf-udp
+        # supported types: iperf-tcp, iperf-udp, netperf-tcp-stream, netperf-tcp-rr
         type: "iperf-tcp"
         instances: 1
         server:
