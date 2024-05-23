@@ -4,6 +4,6 @@ RUN curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://do
 
 RUN curl -L -o /etc/yum.repos.d/benchmark:openSUSE_Factory.repo https://download.opensuse.org/repositories/benchmark/openSUSE_Factory/benchmark.repo
 
-RUN INSTALL_PKGS="vim wget jq python3 git cri-tools net-tools iptables iproute pciutils ethtool httpd iperf3 tcpdump sysstat ipmitool util-linux netperf" && yum install -y ${INSTALL_PKGS}
+RUN INSTALL_PKGS="vim wget jq python3 git cri-tools net-tools iptables iproute pciutils ethtool httpd iperf3 tcpdump sysstat ipmitool util-linux netperf nc iputils" && yum install -y ${INSTALL_PKGS}
 
 CMD ["/bin/bash"]
