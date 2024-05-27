@@ -74,7 +74,7 @@ def test_iperf_output() -> None:
         server=server,
         client=client,
     )
-    output_dict = IperfOutput(command="command", result=dict(), tft_metadata=metadata)
+    IperfOutput(command="command", result=dict(), tft_metadata=metadata)
 
     with pytest.raises(ValueError):
         IperfOutput(command="command", result=dict(), tft_metadata="string")

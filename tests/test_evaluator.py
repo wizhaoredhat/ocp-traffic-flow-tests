@@ -26,7 +26,7 @@ def test_evaluator_valid_input() -> None:
     compare_path1 = os.path.join(current_dir, "output1a.json")
     output_path1 = os.path.join(current_dir, "test-output1.json")
 
-    result = run_subprocess(
+    run_subprocess(
         [log_path, output_path1],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
