@@ -1,21 +1,20 @@
 # Hack to import stuff from parent directory
 import sys
 import os
+import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import pytest
-
-from common import ConnectionMode
-from common import enum_convert
-from common import IperfOutput
-from common import NodeLocation
-from common import PodInfo
-from common import PodType
-from common import serialize_enum
-from common import TestCaseType
-from common import TestMetadata
-from common import TestType
+from common import ConnectionMode  # noqa: E402
+from common import enum_convert  # noqa: E402
+from common import IperfOutput  # noqa: E402
+from common import NodeLocation  # noqa: E402
+from common import PodInfo  # noqa: E402
+from common import PodType  # noqa: E402
+from common import serialize_enum  # noqa: E402
+from common import TestCaseType  # noqa: E402
+from common import TestMetadata  # noqa: E402
+from common import TestType  # noqa: E402
 
 
 def test_enum_convert() -> None:
