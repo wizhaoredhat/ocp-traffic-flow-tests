@@ -204,9 +204,9 @@ def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
         cls
     ), "dataclass_from_dict() should only be used with dataclasses."
     field_values = {}
-    for field in fields(cls):
-        field_name = field.name
-        field_type = field.type
+    for f in fields(cls):
+        field_name = f.name
+        field_type = f.type
         if is_dataclass(field_type) and field_name in data:
             field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
         elif field_name in data:
