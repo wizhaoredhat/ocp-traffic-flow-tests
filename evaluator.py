@@ -8,7 +8,6 @@ from common import (
     TestType,
     IperfOutput,
     TestMetadata,
-    TftAggregateOutput,
     PluginOutput,
     TFT_TESTS,
     VALIDATE_OFFLOAD_PLUGIN,

@@ -3,7 +3,6 @@ from common import (
     TestCaseType,
     TftAggregateOutput,
     TFT_TESTS,
-    BaseOutput,
     serialize_enum,
     VALIDATE_OFFLOAD_PLUGIN,
     MEASURE_POWER_PLUGIN,
@@ -12,7 +11,6 @@ from common import (
 from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
-import iperf
 from task import Task
 from iperf import IperfServer, IperfClient
 from netperf import NetPerfServer, NetPerfClient
@@ -28,7 +26,7 @@ from typing import List
 import datetime
 from dataclasses import asdict
 from syncManager import SyncManager
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 class TrafficFlowTests:

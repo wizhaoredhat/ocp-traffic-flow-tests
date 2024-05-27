@@ -7,16 +7,12 @@ from common import (
     Result,
     VALIDATE_OFFLOAD_PLUGIN,
 )
-from dataclasses import asdict, is_dataclass
 from logger import logger
-import time
 from testConfig import TestConfig
-from iperf import IperfServer, IperfClient
 import perf
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union, Tuple
-import sys
+from typing import Union
 import json
 from syncManager import SyncManager
 

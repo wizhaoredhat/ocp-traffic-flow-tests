@@ -1,8 +1,6 @@
 from testConfig import TestConfig
 from trafficFlowTests import TrafficFlowTests
 import arguments
-import sys
-from pathlib import Path
 
 
 def main() -> None:

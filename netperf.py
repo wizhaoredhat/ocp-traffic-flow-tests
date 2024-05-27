@@ -1,15 +1,11 @@
 import common
-from common import PodType, ConnectionMode, TestType, IperfOutput
+from common import ConnectionMode, TestType, IperfOutput
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
-from task import Task
 from common import Result
 from testSettings import TestSettings
-import json
-import time
 from syncManager import SyncManager
-import sys
 import perf
 
 NETPERF_SERVER_EXE = "netserver"

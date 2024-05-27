@@ -1,4 +1,3 @@
-import os
 from logger import configure_logger
 import logging
 import argparse
