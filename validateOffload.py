@@ -15,6 +15,7 @@ from task import Task
 from typing import Union
 import json
 from syncManager import SyncManager
+import typing
 
 
 class ValidateOffload(Task):
@@ -63,7 +64,7 @@ class ValidateOffload(Task):
         logger.info(
             f"The VF representor is: {data['containers'][0]['podSandboxId'][:15]}"
         )
-        return data["containers"][0]["podSandboxId"][:15]
+        return typing.cast(str, data["containers"][0]["podSandboxId"][:15])
 
     def run_ethtool_cmd(self, ethtool_cmd: str) -> Result:
         logger.info(f"Running {ethtool_cmd}")

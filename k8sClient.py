@@ -1,4 +1,4 @@
-import kubernetes
+import kubernetes  # type: ignore
 import yaml
 import host
 from common import Result

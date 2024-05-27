@@ -6,20 +6,25 @@ import sys
 from logger import logger
 from common import Result
 from abc import ABC, abstractmethod
+from typing import Any
+import typing
 
 
 class Host(ABC):
-    def ipa(self) -> dict:
-        return json.loads(self.run("ip -json a").out)
+    def ipa(self) -> list[dict[str, Any]]:
+        r = json.loads(self.run("ip -json a").out)
+        return typing.cast(list[dict[str, Any]], r)
 
-    def ipr(self) -> dict:
-        return json.loads(self.run("ip -json r").out)
+    def ipr(self) -> list[dict[str, Any]]:
+        r = json.loads(self.run("ip -json r").out)
+        return typing.cast(list[dict[str, Any]], r)
 
-    def all_ports(self) -> dict:
-        return json.loads(self.run("ip -json link").out)
+    def all_ports(self) -> list[dict[str, Any]]:
+        r = json.loads(self.run("ip -json link").out)
+        return typing.cast(list[dict[str, Any]], r)
 
     @abstractmethod
-    def run(self, cmd: str, env: dict = os.environ.copy()) -> Result:
+    def run(self, cmd: str, env: dict[str, str] = os.environ.copy()) -> Result:
         pass
 
 
@@ -27,7 +32,7 @@ class LocalHost(Host):
     def __init__(self) -> None:
         pass
 
-    def run(self, cmd: str, env: dict = os.environ.copy()) -> Result:
+    def run(self, cmd: str, env: dict[str, str] = os.environ.copy()) -> Result:
         args = shlex.split(cmd)
         pipe = subprocess.PIPE
         with subprocess.Popen(args, stdout=pipe, stderr=pipe, env=env) as proc:

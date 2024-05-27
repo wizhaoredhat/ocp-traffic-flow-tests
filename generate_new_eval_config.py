@@ -4,6 +4,7 @@ import yaml
 import math
 import sys
 from common import TestCaseType
+from typing import Any
 
 
 # can implement custom rounding if you want
@@ -12,7 +13,9 @@ def custom_floor(value: float) -> int:
     return base - 2
 
 
-def process_test_cases(test_cases: dict, test_config_map: dict) -> None:
+def process_test_cases(
+    test_cases: list[dict[str, Any]], test_config_map: dict[tuple[str, int], Any]
+) -> None:
     for item in test_cases:
         test_id_desc = item["test_id"]
         test_type = item["test_type"]
@@ -46,7 +49,7 @@ with open(results_json_path, "r") as json_file:
     result_json = json.load(json_file)
 
 # Create a test configuration map for easy access to threshold data
-test_config_map = {}
+test_config_map: dict[tuple[str, int], Any] = {}
 for test_type, tests in eval_config.items():
     for test in tests:
         test_config_map[(test_type, test["id"])] = test

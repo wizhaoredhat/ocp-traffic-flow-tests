@@ -2,6 +2,7 @@ import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
 from typing import Optional, Any, Dict, List, Union, Type, TypeVar, cast
+from typing import Mapping
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
@@ -121,7 +122,7 @@ class TestMetadata:
 @dataclass
 class BaseOutput:
     command: str
-    result: dict
+    result: Mapping[str, Union[str, int]]
 
 
 @dataclass
@@ -137,7 +138,7 @@ class IperfOutput(BaseOutput):
 
 @dataclass
 class PluginOutput(BaseOutput):
-    plugin_metadata: dict
+    plugin_metadata: dict[str, str]
     name: str
 
 

@@ -6,7 +6,9 @@ from k8sClient import K8sClient
 from yaml import safe_load
 import io
 from common import TestType, TestCaseType, enum_convert, PodType
+from typing import Any
 from typing import List, Dict
+import typing
 
 
 class ClusterMode(Enum):
@@ -22,7 +24,7 @@ class TestConfig:
     mode: ClusterMode = ClusterMode.SINGLE
     client_tenant: K8sClient
     client_infra: K8sClient
-    full_config: dict
+    full_config: dict[str, Any]
 
     def __init__(self, config_path: str):
         with open(config_path, "r") as f:
@@ -91,7 +93,7 @@ class TestConfig:
             return connection["default-network"]
         return "default/default"
 
-    def validate_test_type(self, connection: dict) -> TestType:
+    def validate_test_type(self, connection: dict[str, str]) -> TestType:
         if "type" not in connection:
             return TestType.IPERF_TCP
 
@@ -114,5 +116,5 @@ class TestConfig:
                 Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
-    def GetConfig(self) -> List[dict]:
-        return self.full_config["tft"]
+    def GetConfig(self) -> List[dict[str, Any]]:
+        return typing.cast(list[dict[str, Any]], self.full_config["tft"])
