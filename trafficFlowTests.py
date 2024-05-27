@@ -81,13 +81,13 @@ class TrafficFlowTests:
         r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
-            raise Exception(f"cleanup_previous_testspace(): Failed to delete pods")
+            raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
         r = self._tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
-            raise Exception(f"cleanup_previous_testspace(): Failed to delete services")
+            raise Exception("cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
             f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"

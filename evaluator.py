@@ -192,7 +192,7 @@ class Evaluator:
             logger.error(
                 f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"
             )
-            raise Exception(f"get_threshold(): Failed to parse evaluator config")
+            raise Exception("get_threshold(): Failed to parse evaluator config")
 
     def calculate_gbps(self, result: dict, test_type: TestType) -> Bitrate:
         if test_type == TestType.IPERF_TCP:
@@ -240,7 +240,7 @@ class Evaluator:
                 f"KeyError: {e}. Malformed results when parsing iperf tcp for sum_sent/received"
             )
             raise Exception(
-                f"calculate_gbps_iperf_tcp(): failed to parse iperf test results"
+                "calculate_gbps_iperf_tcp(): failed to parse iperf test results"
             )
 
         bitrate_sent = sum_sent["bits_per_second"] / 1e9

@@ -73,7 +73,7 @@ class NetPerfClient(perf.PerfClient):
             self.cmd = f"exec {self.pod_name} -- {NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_RR -l {duration}"
 
         if self.reverse:
-            logger.info(f"Reverse is not supported by Netperf")
+            logger.info("Reverse is not supported by Netperf")
 
         logger.info(f"Running {self.cmd}")
 

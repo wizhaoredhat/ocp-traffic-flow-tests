@@ -56,7 +56,7 @@ class Task(ABC):
 
     def create_cluster_ip_service(self) -> str:
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
-        out_file_yaml = f"./manifests/yamls/svc-cluster-ip.yaml"
+        out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
         common.j2_render(in_file_template, out_file_yaml, self.template_args)
         logger.info(f"Creating Cluster IP Service {out_file_yaml}")
@@ -72,7 +72,7 @@ class Task(ABC):
 
     def create_node_port_service(self, nodeport: int) -> str:
         in_file_template = "./manifests/svc-node-port.yaml.j2"
-        out_file_yaml = f"./manifests/yamls/svc-node-port.yaml"
+        out_file_yaml = "./manifests/yamls/svc-node-port.yaml"
         self.template_args["nodeport_svc_port"] = f"{nodeport}"
 
         common.j2_render(in_file_template, out_file_yaml, self.template_args)
