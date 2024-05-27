@@ -22,10 +22,15 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install black mypy pytest
         python -m pip install -r requirements.txt
+        python -m pip install flake8
     - name: Check code formatting with Black
       run: |
        black --version
        black --check --diff .
+    - name: flake8
+      run: |
+       flake8 --version
+       flake8
     - name: Type check with Mypy
       run: |
        mypy --version
