@@ -5,7 +5,17 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
-from common import *
+
+from common import ConnectionMode
+from common import enum_convert
+from common import IperfOutput
+from common import NodeLocation
+from common import PodInfo
+from common import PodType
+from common import serialize_enum
+from common import TestCaseType
+from common import TestMetadata
+from common import TestType
 
 
 def test_enum_convert() -> None:
