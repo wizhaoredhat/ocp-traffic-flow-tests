@@ -1,15 +1,11 @@
 import common
-from common import PodType, ConnectionMode, TestType, IperfOutput
+from common import ConnectionMode, TestType, IperfOutput
 from logger import logger
 from testConfig import TestConfig
 from thread import ReturnValueThread
-from task import Task
 from common import Result
 from testSettings import TestSettings
-import json
-import time
 from syncManager import SyncManager
-import sys
 import perf
 
 NETPERF_SERVER_EXE = "netserver"
@@ -73,7 +69,7 @@ class NetPerfClient(perf.PerfClient):
             self.cmd = f"exec {self.pod_name} -- {NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_RR -l {duration}"
 
         if self.reverse:
-            logger.info(f"Reverse is not supported by Netperf")
+            logger.info("Reverse is not supported by Netperf")
 
         logger.info(f"Running {self.cmd}")
 

@@ -3,7 +3,6 @@ from common import (
     TestCaseType,
     TftAggregateOutput,
     TFT_TESTS,
-    BaseOutput,
     serialize_enum,
     VALIDATE_OFFLOAD_PLUGIN,
     MEASURE_POWER_PLUGIN,
@@ -12,7 +11,6 @@ from common import (
 from testSettings import TestSettings
 from testConfig import TestConfig
 from logger import logger
-import iperf
 from task import Task
 from iperf import IperfServer, IperfClient
 from netperf import NetPerfServer, NetPerfClient
@@ -28,7 +26,7 @@ from typing import List
 import datetime
 from dataclasses import asdict
 from syncManager import SyncManager
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 class TrafficFlowTests:
@@ -81,13 +79,13 @@ class TrafficFlowTests:
         r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
-            raise Exception(f"cleanup_previous_testspace(): Failed to delete pods")
+            raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
         r = self._tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
-            raise Exception(f"cleanup_previous_testspace(): Failed to delete services")
+            raise Exception("cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
             f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"

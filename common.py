@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import List, Optional, Any, Dict, List, Union, Type, TypeVar, Generic, cast
+from typing import Optional, Any, Dict, List, Union, Type, TypeVar, cast
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
@@ -204,9 +204,9 @@ def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
         cls
     ), "dataclass_from_dict() should only be used with dataclasses."
     field_values = {}
-    for field in fields(cls):
-        field_name = field.name
-        field_type = field.type
+    for f in fields(cls):
+        field_name = f.name
+        field_type = f.type
         if is_dataclass(field_type) and field_name in data:
             field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
         elif field_name in data:

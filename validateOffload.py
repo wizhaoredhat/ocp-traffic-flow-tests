@@ -7,16 +7,12 @@ from common import (
     Result,
     VALIDATE_OFFLOAD_PLUGIN,
 )
-from dataclasses import asdict, is_dataclass
 from logger import logger
-import time
 from testConfig import TestConfig
-from iperf import IperfServer, IperfClient
 import perf
 from thread import ReturnValueThread
 from task import Task
-from typing import Optional, Union, Tuple
-import sys
+from typing import Union
 import json
 from syncManager import SyncManager
 
@@ -48,11 +44,11 @@ class ValidateOffload(Task):
 
     def extract_vf_rep(self) -> str:
         if self.perf_pod_type == PodType.HOSTBACKED:
-            logger.info(f"The VF representor is: ovn-k8s-mp0")
+            logger.info("The VF representor is: ovn-k8s-mp0")
             return "ovn-k8s-mp0"
 
         if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
-            logger.info(f"There is no VF on an external server")
+            logger.info("There is no VF on an external server")
             return "external"
 
         self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json "'
@@ -138,9 +134,9 @@ class ValidateOffload(Task):
 
         if self.perf_pod_type == PodType.HOSTBACKED:
             if isinstance(self._perf_instance, perf.PerfClient):
-                logger.info(f"The client VF representor ovn-k8s-mp0_0 does not exist")
+                logger.info("The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
-                logger.info(f"The server VF representor ovn-k8s-mp0_0 does not exist")
+                logger.info("The server VF representor ovn-k8s-mp0_0 does not exist")
 
         logger.info(
             f"validateOffload results on {self.perf_pod_name}: {self._output.result}"
