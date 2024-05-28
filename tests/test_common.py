@@ -57,8 +57,8 @@ def test_test_metadata() -> None:
     # Test with dictionary input
     metadata_dict = TestMetadata(
         reverse=True,
-        test_case_id="POD_TO_POD_DIFF_NODE",
-        test_type="IPERF_UDP",
+        test_case_id=TestCaseType.POD_TO_POD_DIFF_NODE,
+        test_type=TestType.IPERF_UDP,
         server=server.__dict__,
         client=client.__dict__,
     )
@@ -78,15 +78,15 @@ def test_iperf_output() -> None:
     )
     metadata = TestMetadata(
         reverse=False,
-        test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
-        test_type=TestType.IPERF_TCP,
-        server=server,
-        client=client,
+        test_case_id="POD_TO_POD_SAME_NODE",
+        test_type="IPERF_TCP",
+        server=server.__dict__,
+        client=client.__dict__,
     )
     IperfOutput(command="command", result={}, tft_metadata=metadata)
 
     with pytest.raises(ValueError):
-        IperfOutput(command="command", result={}, tft_metadata="string")
+        IperfOutput(command="command", result={}, tft_metadata="string")  # type: ignore
 
 
 def test_serialize_enum() -> None:

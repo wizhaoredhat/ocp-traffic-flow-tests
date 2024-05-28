@@ -110,30 +110,53 @@ class TestMetadata:
     server: PodInfo
     client: PodInfo
 
-    def __post_init__(self) -> None:
-        self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
-        self.test_type = enum_convert(TestType, self.test_type)
-        if isinstance(self.server, dict):
-            self.server = dataclass_from_dict(PodInfo, self.server)
-        if isinstance(self.client, dict):
-            self.client = dataclass_from_dict(PodInfo, self.client)
+    def __init__(
+        self,
+        reverse: bool,
+        test_case_id: TestCaseType | str | int,
+        test_type: TestType | str | int,
+        server: PodInfo | dict[str, Any],
+        client: PodInfo | dict[str, Any],
+    ):
+        if isinstance(server, dict):
+            server = dataclass_from_dict(PodInfo, server)
+        if isinstance(client, dict):
+            client = dataclass_from_dict(PodInfo, client)
+        self.reverse = reverse
+        self.test_case_id = enum_convert(TestCaseType, test_case_id)
+        self.test_type = enum_convert(TestType, test_type)
+        self.server = server
+        self.client = client
 
 
 @dataclass
 class BaseOutput:
     command: str
-    result: Mapping[str, Union[str, int]]
+    result: dict[str, Union[str, int]]
+
+    def __init__(self, command: str, result: Mapping[str, str | int]):
+        if not isinstance(result, dict):
+            result = dict(result)
+        self.command = command
+        self.result = result
 
 
 @dataclass
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
-    def __post_init__(self) -> None:
-        if isinstance(self.tft_metadata, dict):
-            self.tft_metadata = dataclass_from_dict(TestMetadata, self.tft_metadata)
-        elif not isinstance(self.tft_metadata, TestMetadata):
+    def __init__(
+        self,
+        command: str,
+        result: Mapping[str, Union[str, int]],
+        tft_metadata: TestMetadata | dict[str, Any],
+    ):
+        if isinstance(tft_metadata, dict):
+            tft_metadata = dataclass_from_dict(TestMetadata, tft_metadata)
+        elif not isinstance(tft_metadata, TestMetadata):
             raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
+        super().__init__(command, result)
+        self.tft_metadata = tft_metadata
 
 
 @dataclass
