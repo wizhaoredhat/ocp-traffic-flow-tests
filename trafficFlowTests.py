@@ -22,11 +22,9 @@ from host import LocalHost
 import json
 from pathlib import Path
 from evaluator import Evaluator
-from typing import List
 import datetime
 from dataclasses import asdict
 from syncManager import SyncManager
-from typing import Tuple
 from typing import Any
 
 
@@ -37,11 +35,11 @@ class TrafficFlowTests:
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
-        self.tft_output: List[TftAggregateOutput] = []
+        self.tft_output: list[TftAggregateOutput] = []
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
-    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
+    ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -52,7 +50,7 @@ class TrafficFlowTests:
 
     def _create_netperf_server_client(
         self, test_settings: TestSettings
-    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
+    ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
             f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -132,9 +130,9 @@ class TrafficFlowTests:
 
     def _run_tests(
         self,
-        servers: List[perf.PerfServer],
-        clients: List[perf.PerfClient],
-        monitors: List[Task],
+        servers: list[perf.PerfServer],
+        clients: list[perf.PerfClient],
+        monitors: list[Task],
         duration: int,
     ) -> TftAggregateOutput:
         tft_aggregate_output = TftAggregateOutput()
@@ -211,9 +209,9 @@ class TrafficFlowTests:
         duration: int,
         reverse: bool = False,
     ) -> None:
-        servers: List[perf.PerfServer] = []
-        clients: List[perf.PerfClient] = []
-        monitors: List[Task] = []
+        servers: list[perf.PerfServer] = []
+        clients: list[perf.PerfClient] = []
+        monitors: list[Task] = []
         node_server_name = connections["server"][0]["name"]
         node_client_name = connections["client"][0]["name"]
 

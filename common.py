@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import Optional, Any, Dict, List, Union, Type, TypeVar, cast
+from typing import Optional, Any, Union, Type, TypeVar, cast
 from typing import Mapping
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -178,7 +178,7 @@ class TftAggregateOutput:
         resulting output to."""
 
     flow_test: Optional[IperfOutput] = None
-    plugins: List[PluginOutput] = field(default_factory=list)
+    plugins: list[PluginOutput] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if isinstance(self.flow_test, dict):
@@ -196,7 +196,7 @@ class TftAggregateOutput:
         ]
 
 
-def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
+def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> None:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
@@ -206,8 +206,8 @@ def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> 
 
 
 def serialize_enum(
-    data: Union[Enum, Dict[Any, Any], List[Any], Any]
-) -> Union[str, Dict[Any, Any], List[Any], Any]:
+    data: Union[Enum, dict[Any, Any], list[Any], Any]
+) -> Union[str, dict[Any, Any], list[Any], Any]:
     if isinstance(data, Enum):
         return data.name
     elif isinstance(data, dict):
@@ -223,7 +223,7 @@ T = TypeVar("T")
 
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
-def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
     assert is_dataclass(
         cls
     ), "dataclass_from_dict() should only be used with dataclasses."

@@ -14,7 +14,6 @@ from common import (
 )
 from logger import logger
 from pathlib import Path
-from typing import List
 from common import serialize_enum, dataclass_from_dict
 from typing import Any
 from typing import Mapping
@@ -98,8 +97,8 @@ class Evaluator:
                 for test_type, test_cases in c.items()
             }
 
-        self.test_results: List[TestResult] = []
-        self.plugin_results: List[PluginResult] = []
+        self.test_results: list[TestResult] = []
+        self.plugin_results: list[PluginResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
