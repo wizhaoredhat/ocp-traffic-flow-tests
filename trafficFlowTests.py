@@ -22,11 +22,10 @@ from host import LocalHost
 import json
 from pathlib import Path
 from evaluator import Evaluator
-from typing import List
 import datetime
 from dataclasses import asdict
 from syncManager import SyncManager
-from typing import Tuple
+from typing import Any
 
 
 class TrafficFlowTests:
@@ -36,11 +35,11 @@ class TrafficFlowTests:
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
-        self.tft_output: List[TftAggregateOutput] = []
+        self.tft_output: list[TftAggregateOutput] = []
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
-    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
+    ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -51,7 +50,7 @@ class TrafficFlowTests:
 
     def _create_netperf_server_client(
         self, test_settings: TestSettings
-    ) -> Tuple[perf.PerfServer, perf.PerfClient]:
+    ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
             f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
         )
@@ -94,7 +93,11 @@ class TrafficFlowTests:
         self.lh.run(cmd)
 
     def _enable_measure_cpu_plugin(
-        self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
+        self,
+        monitors: list[Task],
+        node_server_name: str,
+        node_client_name: str,
+        tenant: bool,
     ) -> None:
         s = MeasureCPU(self._tc, node_server_name, tenant)
         c = MeasureCPU(self._tc, node_client_name, tenant)
@@ -102,7 +105,11 @@ class TrafficFlowTests:
         monitors.append(c)
 
     def _enable_measure_power_plugin(
-        self, monitors: list, node_server_name: str, node_client_name: str, tenant: bool
+        self,
+        monitors: list[Task],
+        node_server_name: str,
+        node_client_name: str,
+        tenant: bool,
     ) -> None:
         s = MeasurePower(self._tc, node_server_name, tenant)
         c = MeasurePower(self._tc, node_client_name, tenant)
@@ -111,7 +118,7 @@ class TrafficFlowTests:
 
     def enable_validate_offload_plugin(
         self,
-        monitors: list,
+        monitors: list[Task],
         perf_server: perf.PerfServer,
         perf_client: perf.PerfClient,
         tenant: bool,
@@ -123,9 +130,9 @@ class TrafficFlowTests:
 
     def _run_tests(
         self,
-        servers: List[perf.PerfServer],
-        clients: List[perf.PerfClient],
-        monitors: List[Task],
+        servers: list[perf.PerfServer],
+        clients: list[perf.PerfClient],
+        monitors: list[Task],
         duration: int,
     ) -> TftAggregateOutput:
         tft_aggregate_output = TftAggregateOutput()
@@ -148,7 +155,7 @@ class TrafficFlowTests:
 
         return tft_aggregate_output
 
-    def _create_log_paths_from_tests(self, tests: dict) -> None:
+    def _create_log_paths_from_tests(self, tests: dict[str, str]) -> None:
         if "logs" in tests:
             self.log_path = Path(tests["logs"])
         self.log_path.mkdir(parents=True, exist_ok=True)
@@ -159,7 +166,7 @@ class TrafficFlowTests:
     def _dump_result_to_log(self) -> None:
         # Dump test outputs into log file
         log = self.log_file
-        json_out: dict = {TFT_TESTS: []}
+        json_out: dict[str, list[dict[str, Any]]] = {TFT_TESTS: []}
         for out in self.tft_output:
             json_out[TFT_TESTS].append(asdict(out))
         with open(log, "w") as output_file:
@@ -195,16 +202,16 @@ class TrafficFlowTests:
 
     def _run(
         self,
-        connections: dict,
+        connections: dict[str, Any],
         test_type: TestType,
         test_id: TestCaseType,
         index: int,
         duration: int,
         reverse: bool = False,
     ) -> None:
-        servers: List[perf.PerfServer] = []
-        clients: List[perf.PerfClient] = []
-        monitors: List[Task] = []
+        servers: list[perf.PerfServer] = []
+        clients: list[perf.PerfClient] = []
+        monitors: list[Task] = []
         node_server_name = connections["server"][0]["name"]
         node_client_name = connections["client"][0]["name"]
 
@@ -261,7 +268,7 @@ class TrafficFlowTests:
         output = self._run_tests(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict, test_id: TestCaseType) -> None:
+    def _run_test_case(self, tests: dict[str, Any], test_id: TestCaseType) -> None:
         duration = int(tests["duration"])
         # TODO Allow for multiple connections / instances to run simultaneously
         for connections in tests["connections"]:
@@ -290,7 +297,7 @@ class TrafficFlowTests:
                     )
                 self._cleanup_previous_testspace(tests["namespace"])
 
-    def run(self, tests: dict, eval_config: str) -> None:
+    def run(self, tests: dict[str, Any], eval_config: str) -> None:
         self.eval_config = eval_config
         self._configure_namespace(tests["namespace"])
         self._cleanup_previous_testspace(tests["namespace"])

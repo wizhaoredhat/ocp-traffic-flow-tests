@@ -14,8 +14,10 @@ from common import (
 )
 from logger import logger
 from pathlib import Path
-from typing import List
 from common import serialize_enum, dataclass_from_dict
+from typing import Any
+from typing import Mapping
+import typing
 
 
 @dataclass
@@ -95,8 +97,8 @@ class Evaluator:
                 for test_type, test_cases in c.items()
             }
 
-        self.test_results: List[TestResult] = []
-        self.plugin_results: List[PluginResult] = []
+        self.test_results: list[TestResult] = []
+        self.plugin_results: list[PluginResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
@@ -186,14 +188,18 @@ class Evaluator:
     ) -> int:
         traffic_direction = "reverse" if is_reverse else "normal"
         try:
-            return self.config[test_type.name][test_case_id.value][traffic_direction]
+            return typing.cast(
+                int, self.config[test_type.name][test_case_id.value][traffic_direction]
+            )
         except KeyError as e:
             logger.error(
                 f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"
             )
             raise Exception("get_threshold(): Failed to parse evaluator config")
 
-    def calculate_gbps(self, result: dict, test_type: TestType) -> Bitrate:
+    def calculate_gbps(
+        self, result: Mapping[str, str | int], test_type: TestType
+    ) -> Bitrate:
         if test_type == TestType.IPERF_TCP:
             return self.calculate_gbps_iperf_tcp(result)
         elif test_type == TestType.IPERF_UDP:
@@ -225,7 +231,7 @@ class Evaluator:
             }
         )
 
-    def calculate_gbps_iperf_tcp(self, result: dict) -> Bitrate:
+    def calculate_gbps_iperf_tcp(self, result: Mapping[str, Any]) -> Bitrate:
         # If an error occurred, bitrate = 0
         if "error" in result:
             logger.error(f"An error occurred during iperf test: {result['error']}")
@@ -247,7 +253,7 @@ class Evaluator:
 
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_received:.5g}"))
 
-    def calculate_gbps_iperf_udp(self, result: dict) -> Bitrate:
+    def calculate_gbps_iperf_udp(self, result: Mapping[str, Any]) -> Bitrate:
         # If an error occurred, bitrate = 0
         if "error" in result:
             logger.error(f"An error occurred during iperf test: {result['error']}")
@@ -259,10 +265,9 @@ class Evaluator:
         bitrate_sent = sum_data["bits_per_second"] / 1e9
         return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_sent:.5g}"))
 
-    def calculate_gbps_http(self, result: dict) -> Bitrate:
+    def calculate_gbps_http(self, result: Mapping[str, Any]) -> Bitrate:
         # TODO: Add http traffic testing
         raise NotImplementedError("calculate_gbps_http is not yet implemented")
-        return -1  # type: ignore
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
         tft_passing = 0

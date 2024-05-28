@@ -137,7 +137,10 @@ class TestSettings:
     def client_test_to_pod_type(
         self, test_id: TestCaseType, cfg_pod_type: PodType
     ) -> PodType:
-        if test_id in range(13, 25) or test_id.value == 26:
+        if (
+            test_id.value >= TestCaseType.HOST_TO_HOST_SAME_NODE.value
+            and test_id.value <= TestCaseType.HOST_TO_EXTERNAL.value
+        ):
             return PodType.HOSTBACKED
 
         if cfg_pod_type == PodType.SRIOV:

@@ -3,6 +3,7 @@ import pytest
 import subprocess
 from pathlib import Path
 import filecmp
+from typing import Any
 
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
@@ -13,7 +14,9 @@ evaluator_file = os.path.join(parent_dir, "evaluator.py")
 COMMON_COMMAND = ["python", evaluator_file, config_path]
 
 
-def run_subprocess(command, **kwargs):
+def run_subprocess(
+    command: list[str], **kwargs: Any
+) -> subprocess.CompletedProcess[str]:
     full_command = COMMON_COMMAND + command
     result = subprocess.run(full_command, text=True, **kwargs)
     print("STDOUT:", result.stdout)

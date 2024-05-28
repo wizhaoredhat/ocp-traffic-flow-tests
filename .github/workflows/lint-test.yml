@@ -21,6 +21,8 @@ jobs:
         python -m pip install black mypy pytest
         python -m pip install -r requirements.txt
         python -m pip install flake8
+        python -m pip install types-PyYAML
+        python -m pip install jc
     - name: Check code formatting with Black
       run: |
        black --version
@@ -32,7 +34,7 @@ jobs:
     - name: Type check with Mypy
       run: |
        mypy --version
-       mypy --install-types --non-interactive --disallow-untyped-defs --ignore-missing-imports .
+       mypy --strict --config-file mypy.ini .
     - name: Run tests with Pytest
       run: | 
        pytest --version

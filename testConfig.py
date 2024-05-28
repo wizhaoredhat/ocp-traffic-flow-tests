@@ -6,7 +6,8 @@ from k8sClient import K8sClient
 from yaml import safe_load
 import io
 from common import TestType, TestCaseType, enum_convert, PodType
-from typing import List, Dict
+from typing import Any
+import typing
 
 
 class ClusterMode(Enum):
@@ -22,7 +23,7 @@ class TestConfig:
     mode: ClusterMode = ClusterMode.SINGLE
     client_tenant: K8sClient
     client_infra: K8sClient
-    full_config: dict
+    full_config: dict[str, Any]
 
     def __init__(self, config_path: str):
         with open(config_path, "r") as f:
@@ -54,8 +55,8 @@ class TestConfig:
 
         logger.info(self.GetConfig())
 
-    def parse_test_cases(self, input_str: str) -> List[TestCaseType]:
-        output: List[TestCaseType] = []
+    def parse_test_cases(self, input_str: str) -> list[TestCaseType]:
+        output: list[TestCaseType] = []
         parts = input_str.split(",")
 
         for part in parts:
@@ -80,18 +81,18 @@ class TestConfig:
 
         return output
 
-    def pod_type_from_config(self, connection_server: Dict[str, str]) -> PodType:
+    def pod_type_from_config(self, connection_server: dict[str, str]) -> PodType:
         if "sriov" in connection_server:
             if "true" in connection_server["sriov"].lower():
                 return PodType.SRIOV
         return PodType.NORMAL
 
-    def default_network_from_config(self, connection: Dict[str, str]) -> str:
+    def default_network_from_config(self, connection: dict[str, str]) -> str:
         if "default-network" in connection:
             return connection["default-network"]
         return "default/default"
 
-    def validate_test_type(self, connection: dict) -> TestType:
+    def validate_test_type(self, connection: dict[str, str]) -> TestType:
         if "type" not in connection:
             return TestType.IPERF_TCP
 
@@ -114,5 +115,5 @@ class TestConfig:
                 Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
-    def GetConfig(self) -> List[dict]:
-        return self.full_config["tft"]
+    def GetConfig(self) -> list[dict[str, Any]]:
+        return typing.cast(list[dict[str, Any]], self.full_config["tft"])

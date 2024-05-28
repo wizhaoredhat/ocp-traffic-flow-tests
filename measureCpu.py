@@ -11,7 +11,7 @@ from testConfig import TestConfig
 from thread import ReturnValueThread
 from task import Task
 import jc
-from typing import List, Dict, Any, cast
+from typing import Any, cast
 from syncManager import SyncManager
 
 
@@ -58,7 +58,7 @@ class MeasureCPU(Task):
     # TODO: We are currently only storing the "cpu: all" data from mpstat
     def generate_output(self, data: str) -> PluginOutput:
         # satisfy the linter. jc.parse returns a list of dicts in this case
-        parsed_data = cast(List[Dict[str, Any]], jc.parse("mpstat", data))
+        parsed_data = cast(list[dict[str, Any]], jc.parse("mpstat", data))
         return PluginOutput(
             plugin_metadata={
                 "name": "MeasureCPU",

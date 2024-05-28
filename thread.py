@@ -1,5 +1,6 @@
 from threading import Thread
 from logger import logger
+from typing import Any
 from typing import Callable, Optional
 from common import Result
 
@@ -8,11 +9,11 @@ class ReturnValueThread(Thread):
     def __init__(
         self,
         target: Optional[Callable[..., Result]],
-        args: tuple = (),
-        kwargs: dict = {},
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] = {},
         cleanup_action: Optional[Callable[..., Result]] = None,
-        cleanup_args: tuple = (),
-        cleanup_kwargs: dict = {},
+        cleanup_args: tuple[Any, ...] = (),
+        cleanup_kwargs: dict[str, Any] = {},
     ) -> None:
         super().__init__()
         self._target = target

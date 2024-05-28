@@ -1,8 +1,7 @@
-import kubernetes
+import kubernetes  # type: ignore
 import yaml
 import host
 from common import Result
-from typing import List
 
 
 class K8sClient:
@@ -15,10 +14,10 @@ class K8sClient:
 
     def get_nodes(
         self,
-    ) -> List[str]:
+    ) -> list[str]:
         return [e.metadata.name for e in self._client.list_node().items]
 
-    def get_nodes_with_label(self, label_selector: str) -> List[str]:
+    def get_nodes_with_label(self, label_selector: str) -> list[str]:
         return [
             e.metadata.name
             for e in self._client.list_node(label_selector=label_selector).items

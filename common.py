@@ -1,7 +1,8 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import Optional, Any, Dict, List, Union, Type, TypeVar, cast
+from typing import Optional, Any, Type, TypeVar, cast
+from typing import Mapping
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
@@ -21,7 +22,7 @@ class Result:
 E = TypeVar("E", bound=Enum)
 
 
-def enum_convert(enum_type: Type[E], value: Union[E, str, int]) -> E:
+def enum_convert(enum_type: Type[E], value: E | str | int) -> E:
     if isinstance(value, enum_type):
         return value
     elif isinstance(value, str):
@@ -109,35 +110,58 @@ class TestMetadata:
     server: PodInfo
     client: PodInfo
 
-    def __post_init__(self) -> None:
-        self.test_case_id = enum_convert(TestCaseType, self.test_case_id)
-        self.test_type = enum_convert(TestType, self.test_type)
-        if isinstance(self.server, dict):
-            self.server = dataclass_from_dict(PodInfo, self.server)
-        if isinstance(self.client, dict):
-            self.client = dataclass_from_dict(PodInfo, self.client)
+    def __init__(
+        self,
+        reverse: bool,
+        test_case_id: TestCaseType | str | int,
+        test_type: TestType | str | int,
+        server: PodInfo | dict[str, Any],
+        client: PodInfo | dict[str, Any],
+    ):
+        if isinstance(server, dict):
+            server = dataclass_from_dict(PodInfo, server)
+        if isinstance(client, dict):
+            client = dataclass_from_dict(PodInfo, client)
+        self.reverse = reverse
+        self.test_case_id = enum_convert(TestCaseType, test_case_id)
+        self.test_type = enum_convert(TestType, test_type)
+        self.server = server
+        self.client = client
 
 
 @dataclass
 class BaseOutput:
     command: str
-    result: dict
+    result: dict[str, str | int]
+
+    def __init__(self, command: str, result: Mapping[str, str | int]):
+        if not isinstance(result, dict):
+            result = dict(result)
+        self.command = command
+        self.result = result
 
 
 @dataclass
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
-    def __post_init__(self) -> None:
-        if isinstance(self.tft_metadata, dict):
-            self.tft_metadata = dataclass_from_dict(TestMetadata, self.tft_metadata)
-        elif not isinstance(self.tft_metadata, TestMetadata):
+    def __init__(
+        self,
+        command: str,
+        result: Mapping[str, str | int],
+        tft_metadata: TestMetadata | dict[str, Any],
+    ):
+        if isinstance(tft_metadata, dict):
+            tft_metadata = dataclass_from_dict(TestMetadata, tft_metadata)
+        elif not isinstance(tft_metadata, TestMetadata):
             raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
+        super().__init__(command, result)
+        self.tft_metadata = tft_metadata
 
 
 @dataclass
 class PluginOutput(BaseOutput):
-    plugin_metadata: dict
+    plugin_metadata: dict[str, str]
     name: str
 
 
@@ -154,7 +178,7 @@ class TftAggregateOutput:
         resulting output to."""
 
     flow_test: Optional[IperfOutput] = None
-    plugins: List[PluginOutput] = field(default_factory=list)
+    plugins: list[PluginOutput] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if isinstance(self.flow_test, dict):
@@ -172,7 +196,7 @@ class TftAggregateOutput:
         ]
 
 
-def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> None:
+def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> None:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
@@ -182,8 +206,8 @@ def j2_render(in_file_name: str, out_file_name: str, kwargs: Dict[str, Any]) -> 
 
 
 def serialize_enum(
-    data: Union[Enum, Dict[Any, Any], List[Any], Any]
-) -> Union[str, Dict[Any, Any], List[Any], Any]:
+    data: Enum | dict[Any, Any] | list[Any] | Any
+) -> str | dict[Any, Any] | list[Any] | Any:
     if isinstance(data, Enum):
         return data.name
     elif isinstance(data, dict):
@@ -199,7 +223,7 @@ T = TypeVar("T")
 
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
-def dataclass_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
     assert is_dataclass(
         cls
     ), "dataclass_from_dict() should only be used with dataclasses."

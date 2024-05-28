@@ -8,6 +8,8 @@ from testSettings import TestSettings
 import json
 from syncManager import SyncManager
 import perf
+from typing import Any
+from typing import Mapping
 
 IPERF_EXE = "iperf3"
 IPERF_UDP_OPT = "-u -b 25G"
@@ -104,7 +106,7 @@ class IperfClient(perf.PerfClient):
         if self.test_type == TestType.IPERF_UDP:
             self.print_udp_results(self._output.result)
 
-    def print_tcp_results(self, data: dict) -> None:
+    def print_tcp_results(self, data: Mapping[str, Any]) -> None:
         sum_sent = data["end"]["sum_sent"]
         sum_received = data["end"]["sum_received"]
 
@@ -121,7 +123,7 @@ class IperfClient(perf.PerfClient):
             f"  MSS = {mss}"
         )
 
-    def print_udp_results(self, data: dict) -> None:
+    def print_udp_results(self, data: Mapping[str, Any]) -> None:
         sum_data = data["end"]["sum"]
 
         total_gigabytes = sum_data["bytes"] / (1024**3)
@@ -138,5 +140,5 @@ class IperfClient(perf.PerfClient):
             f"  Total Lost Percent: {total_lost_percent:.2f}%"
         )
 
-    def iperf_error_occurred(self, data: dict) -> bool:
+    def iperf_error_occurred(self, data: Mapping[str, Any]) -> bool:
         return "error" in data

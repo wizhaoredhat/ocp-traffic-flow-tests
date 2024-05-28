@@ -7,14 +7,14 @@ from testConfig import TestConfig
 from testConfig import ClusterMode
 from thread import ReturnValueThread
 import host
-from typing import Dict
+import typing
 
 
 class Task(ABC):
     def __init__(
         self, tc: TestConfig, index: int, node_name: str, tenant: bool
     ) -> None:
-        self.template_args: Dict[str, str] = {}
+        self.template_args: dict[str, str] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
@@ -51,7 +51,7 @@ class Task(ABC):
             sys.exit(-1)
 
         y = yaml.safe_load(r.out)
-        return y["status"]["podIP"]
+        return typing.cast(str, y["status"]["podIP"])
 
     def create_cluster_ip_service(self) -> str:
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
