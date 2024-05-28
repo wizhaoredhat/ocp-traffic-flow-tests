@@ -12,7 +12,6 @@ from testConfig import TestConfig
 import perf
 from thread import ReturnValueThread
 from task import Task
-from typing import Union
 import json
 from syncManager import SyncManager
 import typing
@@ -22,7 +21,7 @@ class ValidateOffload(Task):
     def __init__(
         self,
         tft: TestConfig,
-        perf_instance: Union[perf.PerfServer, perf.PerfClient],
+        perf_instance: perf.PerfServer | perf.PerfClient,
         tenant: bool,
     ):
         super().__init__(tft, 0, perf_instance.node_name, tenant)
@@ -149,7 +148,7 @@ class ValidateOffload(Task):
         # TODO: switch to debug
         logger.info(f"generate hwol output from data: {data}")
         split_data = data.split("--DELIMIT--")
-        parsed_data: dict[str, Union[str, int]] = {}
+        parsed_data: dict[str, str | int] = {}
 
         if len(split_data) >= 1:
             parsed_data["rx_start"] = self.parse_packets(split_data[0], "rx")

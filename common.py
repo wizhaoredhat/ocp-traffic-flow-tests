@@ -1,7 +1,7 @@
 import jinja2
 from dataclasses import dataclass, fields, field, is_dataclass
 from enum import Enum
-from typing import Optional, Any, Union, Type, TypeVar, cast
+from typing import Optional, Any, Type, TypeVar, cast
 from typing import Mapping
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -22,7 +22,7 @@ class Result:
 E = TypeVar("E", bound=Enum)
 
 
-def enum_convert(enum_type: Type[E], value: Union[E, str, int]) -> E:
+def enum_convert(enum_type: Type[E], value: E | str | int) -> E:
     if isinstance(value, enum_type):
         return value
     elif isinstance(value, str):
@@ -132,7 +132,7 @@ class TestMetadata:
 @dataclass
 class BaseOutput:
     command: str
-    result: dict[str, Union[str, int]]
+    result: dict[str, str | int]
 
     def __init__(self, command: str, result: Mapping[str, str | int]):
         if not isinstance(result, dict):
@@ -148,7 +148,7 @@ class IperfOutput(BaseOutput):
     def __init__(
         self,
         command: str,
-        result: Mapping[str, Union[str, int]],
+        result: Mapping[str, str | int],
         tft_metadata: TestMetadata | dict[str, Any],
     ):
         if isinstance(tft_metadata, dict):
@@ -206,8 +206,8 @@ def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> 
 
 
 def serialize_enum(
-    data: Union[Enum, dict[Any, Any], list[Any], Any]
-) -> Union[str, dict[Any, Any], list[Any], Any]:
+    data: Enum | dict[Any, Any] | list[Any] | Any
+) -> str | dict[Any, Any] | list[Any] | Any:
     if isinstance(data, Enum):
         return data.name
     elif isinstance(data, dict):
