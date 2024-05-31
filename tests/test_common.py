@@ -20,6 +20,8 @@ from common import TestType  # noqa: E402
 def test_enum_convert() -> None:
     assert enum_convert(TestType, "IPERF_TCP") == TestType.IPERF_TCP
     assert enum_convert(PodType, 1) == PodType.NORMAL
+    assert enum_convert(PodType, "1 ") == PodType.NORMAL
+    assert enum_convert(PodType, " normal") == PodType.NORMAL
     with pytest.raises(ValueError):
         enum_convert(TestType, "Not_in_enum")
     with pytest.raises(ValueError):
