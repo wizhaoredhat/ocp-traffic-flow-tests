@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import testConfig  # noqa: E402
 
 from common import TestCaseType  # noqa: E402
+from common import TestType  # noqa: E402
 
 
 def test_parse_test_cases() -> None:
@@ -66,3 +67,14 @@ def test_parse_test_cases() -> None:
         TestCaseType.POD_TO_POD_DIFF_NODE,
         *all_cases,
     ]
+
+
+def test_validate_test_type() -> None:
+    def _t(input_str: str) -> TestType:
+        return testConfig.TestConfig.validate_test_type({"type": input_str})
+
+    assert _t("iperf-tcp") == TestType.IPERF_TCP
+    assert _t("iperf-udp") == TestType.IPERF_UDP
+    assert _t("IPERF_UDP") == TestType.IPERF_UDP
+    assert _t("http ") == TestType.HTTP
+    assert _t("HTTP") == TestType.HTTP

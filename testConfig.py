@@ -8,6 +8,7 @@ import io
 import common
 from common import TestType, TestCaseType, PodType
 from typing import Any
+from typing import Mapping
 import typing
 
 
@@ -71,27 +72,14 @@ class TestConfig:
             return connection["default-network"]
         return "default/default"
 
-    def validate_test_type(self, connection: dict[str, str]) -> TestType:
-        if "type" not in connection:
-            return TestType.IPERF_TCP
-
-        input_ct = connection["type"].lower()
-        if "iperf" in input_ct:
-            if "udp" in input_ct:
-                return TestType.IPERF_UDP
-            else:
-                return TestType.IPERF_TCP
-        if "netperf" in input_ct:
-            if "tcp-stream" in input_ct:
-                return TestType.NETPERF_TCP_STREAM
-            else:
-                return TestType.NETPERF_TCP_RR
-        elif "http" in input_ct:
-            return TestType.HTTP
-        else:
+    @staticmethod
+    def validate_test_type(connection: Mapping[str, Any]) -> TestType:
+        input_ct = connection.get("type")
+        try:
+            return common.enum_convert(TestType, input_ct, default=TestType.IPERF_TCP)
+        except Exception:
             raise ValueError(
-                f"Invalid connection type {connection['type']} provided. \
-                Supported connection types: iperf-tcp (default), iperf-udp, http"
+                f"Invalid connection type {input_ct} provided. Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
     def GetConfig(self) -> list[dict[str, Any]]:

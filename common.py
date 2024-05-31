@@ -22,8 +22,16 @@ class Result:
 E = TypeVar("E", bound=Enum)
 
 
-def enum_convert(enum_type: Type[E], value: E | str | int) -> E:
-    if isinstance(value, enum_type):
+def enum_convert(
+    enum_type: Type[E],
+    value: None | E | str | int,
+    default: Optional[E] = None,
+) -> E:
+
+    if value is None:
+        if default is not None:
+            return default
+    elif isinstance(value, enum_type):
         return value
     elif isinstance(value, int):
         try:
@@ -45,8 +53,9 @@ def enum_convert(enum_type: Type[E], value: E | str | int) -> E:
         except Exception:
             pass
 
-        # Finally, try again with all upper case.
-        v2 = v.upper()
+        # Finally, try again with all upper case. Also, all "-" are replaced
+        # with "_"
+        v2 = v.upper().replace("-", "_")
         for e in enum_type:
             if e.name.upper() == v2:
                 return e
