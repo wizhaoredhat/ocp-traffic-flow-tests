@@ -28,7 +28,7 @@ from tftbase import TftAggregateOutput
 
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig):
-        self._tc: TestConfig = tc
+        self.tc = tc
         self.test_settings: TestSettings
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
@@ -42,8 +42,8 @@ class TrafficFlowTests:
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
 
-        s = IperfServer(tc=self._tc, ts=self.test_settings)
-        c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
+        s = IperfServer(tc=self.tc, ts=self.test_settings)
+        c = IperfClient(tc=self.tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def _create_netperf_server_client(
@@ -53,13 +53,13 @@ class TrafficFlowTests:
             f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
         )
 
-        s = NetPerfServer(tc=self._tc, ts=self.test_settings)
-        c = NetPerfClient(tc=self._tc, ts=self.test_settings, server=s)
+        s = NetPerfServer(tc=self.tc, ts=self.test_settings)
+        c = NetPerfClient(tc=self.tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def _configure_namespace(self, namespace: str) -> None:
         logger.info(f"Configuring namespace {namespace}")
-        r = self._tc.client_tenant.oc(
+        r = self.tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false"
@@ -73,13 +73,13 @@ class TrafficFlowTests:
 
     def _cleanup_previous_testspace(self, namespace: str) -> None:
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
+        r = self.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = self._tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        r = self.tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
@@ -182,12 +182,12 @@ class TrafficFlowTests:
             test_case_id=test_id,
             node_server_name=node_server_name,
             node_client_name=node_client_name,
-            server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
-            client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
-            server_default_network=self._tc.default_network_from_config(
+            server_pod_type=self.tc.pod_type_from_config(connections["server"][0]),
+            client_pod_type=self.tc.pod_type_from_config(connections["client"][0]),
+            server_default_network=self.tc.default_network_from_config(
                 connections["server"][0]
             ),
-            client_default_network=self._tc.default_network_from_config(
+            client_default_network=self.tc.default_network_from_config(
                 connections["client"][0]
             ),
             index=index,
@@ -212,7 +212,7 @@ class TrafficFlowTests:
             for plugins in connections["plugins"]:
                 plugin = pluginbase.get_by_name(plugins["name"])
                 m = plugin.enable(
-                    tc=self._tc,
+                    tc=self.tc,
                     node_server_name=node_server_name,
                     node_client_name=node_client_name,
                     perf_server=servers[-1],
@@ -234,7 +234,7 @@ class TrafficFlowTests:
                 f"Number Of Simultaneous connections {connections['instances']}"
             )
             for index in range(connections["instances"]):
-                test_type = self._tc.validate_test_type(connections)
+                test_type = self.tc.validate_test_type(connections)
                 # if test_type is iperf_TCP run both forward and reverse tests
                 self._run(
                     connections=connections,
@@ -260,7 +260,7 @@ class TrafficFlowTests:
         self._cleanup_previous_testspace(tests["namespace"])
         self._create_log_paths_from_tests(tests)
         logger.info(f"Running test {tests['name']} for {tests['duration']} seconds")
-        test_cases = self._tc.parse_test_cases(tests["test_cases"])
+        test_cases = self.tc.parse_test_cases(tests["test_cases"])
         for test_id in test_cases:
             self._run_test_case(tests=tests, test_id=test_id)
         self._dump_result_to_log()
