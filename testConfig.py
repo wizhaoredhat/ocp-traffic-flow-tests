@@ -12,9 +12,9 @@ import host
 
 from k8sClient import K8sClient
 from logger import logger
-from common import PodType
-from common import TestCaseType
-from common import TestType
+from tftbase import PodType
+from tftbase import TestCaseType
+from tftbase import TestType
 
 
 class ClusterMode(Enum):

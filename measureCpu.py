@@ -9,10 +9,10 @@ from logger import logger
 from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
-from common import MEASURE_CPU_PLUGIN
-from common import PluginOutput
-from common import TFT_TOOLS_IMG
-from common import TftAggregateOutput
+from tftbase import MEASURE_CPU_PLUGIN
+from tftbase import PluginOutput
+from tftbase import TFT_TOOLS_IMG
+from tftbase import TftAggregateOutput
 from thread import ReturnValueThread
 
 

@@ -1,10 +1,10 @@
-from common import ConnectionMode
-from common import NodeLocation
-from common import PodInfo
-from common import PodType
-from common import TestCaseType
-from common import TestMetadata
-from common import TestType
+from tftbase import ConnectionMode
+from tftbase import NodeLocation
+from tftbase import PodInfo
+from tftbase import PodType
+from tftbase import TestCaseType
+from tftbase import TestMetadata
+from tftbase import TestType
 
 
 class TestSettings:

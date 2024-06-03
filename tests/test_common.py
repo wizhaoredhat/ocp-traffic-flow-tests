@@ -6,14 +6,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from common import enum_convert  # noqa: E402
 from common import serialize_enum  # noqa: E402
-from common import ConnectionMode  # noqa: E402
-from common import IperfOutput  # noqa: E402
-from common import NodeLocation  # noqa: E402
-from common import PodInfo  # noqa: E402
-from common import PodType  # noqa: E402
-from common import TestCaseType  # noqa: E402
-from common import TestMetadata  # noqa: E402
-from common import TestType  # noqa: E402
+from tftbase import ConnectionMode  # noqa: E402
+from tftbase import IperfOutput  # noqa: E402
+from tftbase import NodeLocation  # noqa: E402
+from tftbase import PodInfo  # noqa: E402
+from tftbase import PodType  # noqa: E402
+from tftbase import TestCaseType  # noqa: E402
+from tftbase import TestMetadata  # noqa: E402
+from tftbase import TestType  # noqa: E402
 
 
 def test_enum_convert() -> None:

@@ -5,8 +5,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import testConfig  # noqa: E402
 
-from common import TestCaseType  # noqa: E402
-from common import TestType  # noqa: E402
+from tftbase import TestCaseType  # noqa: E402
+from tftbase import TestType  # noqa: E402
 
 
 def test_parse_test_cases() -> None:

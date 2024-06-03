@@ -13,13 +13,13 @@ from typing import Mapping
 from common import dataclass_from_dict
 from common import serialize_enum
 from logger import logger
-from common import IperfOutput
-from common import PluginOutput
-from common import TFT_TESTS
-from common import TestCaseType
-from common import TestMetadata
-from common import TestType
-from common import VALIDATE_OFFLOAD_PLUGIN
+from tftbase import IperfOutput
+from tftbase import PluginOutput
+from tftbase import TFT_TESTS
+from tftbase import TestCaseType
+from tftbase import TestMetadata
+from tftbase import TestType
+from tftbase import VALIDATE_OFFLOAD_PLUGIN
 
 
 @dataclass

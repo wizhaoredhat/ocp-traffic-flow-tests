@@ -9,11 +9,11 @@ from logger import logger
 from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
-from common import PluginOutput
-from common import PodType
-from common import TFT_TOOLS_IMG
-from common import TftAggregateOutput
-from common import VALIDATE_OFFLOAD_PLUGIN
+from tftbase import PluginOutput
+from tftbase import PodType
+from tftbase import TFT_TOOLS_IMG
+from tftbase import TftAggregateOutput
+from tftbase import VALIDATE_OFFLOAD_PLUGIN
 from thread import ReturnValueThread
 
 

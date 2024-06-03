@@ -6,7 +6,7 @@ import yaml
 
 from typing import Any
 
-from common import TestCaseType
+from tftbase import TestCaseType
 
 
 # can implement custom rounding if you want

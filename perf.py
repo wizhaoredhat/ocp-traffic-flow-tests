@@ -2,14 +2,15 @@ import sys
 import time
 
 import common
+import tftbase
 
 from logger import logger
 from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
 from testSettings import TestSettings
-from common import ConnectionMode
-from common import PodType
+from tftbase import ConnectionMode
+from tftbase import PodType
 
 
 EXTERNAL_PERF_SERVER = "external-perf-server"
@@ -86,11 +87,11 @@ class PerfServer(Task):
     def run(self, duration: int) -> None:
         pass
 
-    def output(self, out: common.TftAggregateOutput) -> None:
+    def output(self, out: tftbase.TftAggregateOutput) -> None:
         pass
 
-    def generate_output(self, data: str) -> common.BaseOutput:
-        return common.BaseOutput("", {})
+    def generate_output(self, data: str) -> tftbase.BaseOutput:
+        return tftbase.BaseOutput("", {})
 
 
 class PerfClient(Task):

@@ -6,13 +6,6 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from common import MEASURE_CPU_PLUGIN
-from common import MEASURE_POWER_PLUGIN
-from common import TFT_TESTS
-from common import TestCaseType
-from common import TestType
-from common import TftAggregateOutput
-from common import VALIDATE_OFFLOAD_PLUGIN
 from common import serialize_enum
 from evaluator import Evaluator
 from host import LocalHost
@@ -27,6 +20,13 @@ from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
 from testSettings import TestSettings
+from tftbase import MEASURE_CPU_PLUGIN
+from tftbase import MEASURE_POWER_PLUGIN
+from tftbase import TFT_TESTS
+from tftbase import TestCaseType
+from tftbase import TestType
+from tftbase import TftAggregateOutput
+from tftbase import VALIDATE_OFFLOAD_PLUGIN
 from validateOffload import ValidateOffload
 
 
