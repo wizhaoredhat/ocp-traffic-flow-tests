@@ -4,6 +4,8 @@ import sys
 import typing
 import yaml
 
+import tftbase
+
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -63,23 +65,6 @@ class TestResult:
     bitrate_gbps: Bitrate
 
 
-@dataclass
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    test_id: TestCaseType
-    test_type: TestType
-    reverse: bool
-    success: bool
-
-
 VF_REP_TRAFFIC_THRESHOLD = 1000
 
 
@@ -100,7 +85,7 @@ class Evaluator:
             }
 
         self.test_results: list[TestResult] = []
-        self.plugin_results: list[PluginResult] = []
+        self.plugin_results: list[tftbase.PluginResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
@@ -144,7 +129,7 @@ class Evaluator:
                 tx_end=tx_end,
             )
 
-        result = PluginResult(
+        result = tftbase.PluginResult(
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,

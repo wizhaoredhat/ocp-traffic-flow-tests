@@ -82,6 +82,23 @@ class PodInfo:
 
 
 @dataclass
+class PluginResult:
+    """Result of a single plugin from a given run
+
+    Attributes:
+        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
+        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        reverse: Specify whether test is client->server or reversed server->client
+        success: boolean representing whether the test passed or failed
+    """
+
+    test_id: TestCaseType
+    test_type: TestType
+    reverse: bool
+    success: bool
+
+
+@dataclass
 class TestMetadata:
     reverse: bool
     test_case_id: TestCaseType
