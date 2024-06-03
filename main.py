@@ -55,10 +55,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     tc = TestConfig(args.config)
-    tft = TrafficFlowTests(tc)
+    tft = TrafficFlowTests(tc, args.evaluator_config)
 
     for test in tft.tc.GetConfig():
-        tft.test_run(test, args.evaluator_config)
+        tft.test_run(test)
 
         if args.evaluator_config:
             if not tft.evaluate_run_success():

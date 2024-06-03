@@ -27,13 +27,14 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self, tc: TestConfig):
+    def __init__(self, tc: TestConfig, eval_config: str):
         self.tc = tc
         self.test_settings: TestSettings
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
         self.tft_output: list[TftAggregateOutput] = []
+        self.eval_config = eval_config
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
@@ -254,8 +255,7 @@ class TrafficFlowTests:
                     )
                 self._cleanup_previous_testspace(tests["namespace"])
 
-    def test_run(self, tests: dict[str, Any], eval_config: str) -> None:
-        self.eval_config = eval_config
+    def test_run(self, tests: dict[str, Any]) -> None:
         self._configure_namespace(tests["namespace"])
         self._cleanup_previous_testspace(tests["namespace"])
         self._create_log_paths_from_tests(tests)
