@@ -1,20 +1,20 @@
-from common import (
-    TFT_TOOLS_IMG,
-    PluginOutput,
-    j2_render,
-    TftAggregateOutput,
-    PodType,
-    Result,
-    VALIDATE_OFFLOAD_PLUGIN,
-)
-from logger import logger
-from testConfig import TestConfig
-import perf
-from thread import ReturnValueThread
-from task import Task
 import json
-from syncManager import SyncManager
 import typing
+
+import perf
+
+from common import j2_render
+from common import Result
+from logger import logger
+from syncManager import SyncManager
+from task import Task
+from testConfig import TestConfig
+from common import PluginOutput
+from common import PodType
+from common import TFT_TOOLS_IMG
+from common import TftAggregateOutput
+from common import VALIDATE_OFFLOAD_PLUGIN
+from thread import ReturnValueThread
 
 
 class ValidateOffload(Task):

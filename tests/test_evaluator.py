@@ -1,9 +1,11 @@
+import filecmp
 import os
 import pytest
 import subprocess
+
 from pathlib import Path
-import filecmp
 from typing import Any
+
 
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)

@@ -1,18 +1,19 @@
-from common import (
-    TFT_TOOLS_IMG,
-    PluginOutput,
-    j2_render,
-    TftAggregateOutput,
-    Result,
-    MEASURE_CPU_PLUGIN,
-)
-from logger import logger
-from testConfig import TestConfig
-from thread import ReturnValueThread
-from task import Task
 import jc
-from typing import Any, cast
+
+from typing import Any
+from typing import cast
+
+from common import j2_render
+from common import Result
+from logger import logger
 from syncManager import SyncManager
+from task import Task
+from testConfig import TestConfig
+from common import MEASURE_CPU_PLUGIN
+from common import PluginOutput
+from common import TFT_TOOLS_IMG
+from common import TftAggregateOutput
+from thread import ReturnValueThread
 
 
 class MeasureCPU(Task):

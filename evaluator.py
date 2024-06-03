@@ -1,23 +1,25 @@
 import argparse
-import sys
-import yaml
 import json
-from dataclasses import dataclass, asdict
-from common import (
-    TestCaseType,
-    TestType,
-    IperfOutput,
-    TestMetadata,
-    PluginOutput,
-    TFT_TESTS,
-    VALIDATE_OFFLOAD_PLUGIN,
-)
-from logger import logger
+import sys
+import typing
+import yaml
+
+from dataclasses import asdict
+from dataclasses import dataclass
 from pathlib import Path
-from common import serialize_enum, dataclass_from_dict
 from typing import Any
 from typing import Mapping
-import typing
+
+from common import dataclass_from_dict
+from common import serialize_enum
+from logger import logger
+from common import IperfOutput
+from common import PluginOutput
+from common import TFT_TESTS
+from common import TestCaseType
+from common import TestMetadata
+from common import TestType
+from common import VALIDATE_OFFLOAD_PLUGIN
 
 
 @dataclass

@@ -1,31 +1,33 @@
-from common import (
-    TestType,
-    TestCaseType,
-    TftAggregateOutput,
-    TFT_TESTS,
-    serialize_enum,
-    VALIDATE_OFFLOAD_PLUGIN,
-    MEASURE_POWER_PLUGIN,
-    MEASURE_CPU_PLUGIN,
-)
-from testSettings import TestSettings
-from testConfig import TestConfig
-from logger import logger
-from task import Task
-from iperf import IperfServer, IperfClient
-from netperf import NetPerfServer, NetPerfClient
+import datetime
+import json
 import perf
-from validateOffload import ValidateOffload
+
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
+
+from common import MEASURE_CPU_PLUGIN
+from common import MEASURE_POWER_PLUGIN
+from common import TFT_TESTS
+from common import TestCaseType
+from common import TestType
+from common import TftAggregateOutput
+from common import VALIDATE_OFFLOAD_PLUGIN
+from common import serialize_enum
+from evaluator import Evaluator
+from host import LocalHost
+from iperf import IperfClient
+from iperf import IperfServer
+from logger import logger
 from measureCpu import MeasureCPU
 from measurePower import MeasurePower
-from host import LocalHost
-import json
-from pathlib import Path
-from evaluator import Evaluator
-import datetime
-from dataclasses import asdict
+from netperf import NetPerfClient
+from netperf import NetPerfServer
 from syncManager import SyncManager
-from typing import Any
+from task import Task
+from testConfig import TestConfig
+from testSettings import TestSettings
+from validateOffload import ValidateOffload
 
 
 class TrafficFlowTests:

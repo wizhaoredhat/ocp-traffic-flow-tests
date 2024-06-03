@@ -1,6 +1,7 @@
+import arguments
+
 from testConfig import TestConfig
 from trafficFlowTests import TrafficFlowTests
-import arguments
 
 
 def main() -> None:

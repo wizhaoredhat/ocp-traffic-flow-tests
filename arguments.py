@@ -1,7 +1,9 @@
-from logger import configure_logger
-import logging
 import argparse
+import logging
+
 from pathlib import Path
+
+from logger import configure_logger
 
 
 def parse_args() -> argparse.Namespace:

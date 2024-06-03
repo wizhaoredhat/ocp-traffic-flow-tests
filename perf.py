@@ -1,12 +1,16 @@
-import common
-from common import PodType, ConnectionMode
-from logger import logger
-from testConfig import TestConfig
-from task import Task
-from testSettings import TestSettings
-import time
-from syncManager import SyncManager
 import sys
+import time
+
+import common
+
+from logger import logger
+from syncManager import SyncManager
+from task import Task
+from testConfig import TestConfig
+from testSettings import TestSettings
+from common import ConnectionMode
+from common import PodType
+
 
 EXTERNAL_PERF_SERVER = "external-perf-server"
 

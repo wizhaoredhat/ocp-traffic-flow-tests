@@ -1,8 +1,17 @@
 import jinja2
-from dataclasses import dataclass, fields, field, is_dataclass
+
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import fields
+from dataclasses import is_dataclass
 from enum import Enum
-from typing import Optional, Any, Type, TypeVar, cast
+from typing import Any
 from typing import Mapping
+from typing import Optional
+from typing import Type
+from typing import TypeVar
+from typing import cast
+
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"

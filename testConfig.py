@@ -1,15 +1,20 @@
-import host
-import sys
-from enum import Enum
-from logger import logger
-from k8sClient import K8sClient
-from yaml import safe_load
 import io
-import common
-from common import TestType, TestCaseType, PodType
+import sys
+import typing
+
+from enum import Enum
 from typing import Any
 from typing import Mapping
-import typing
+from yaml import safe_load
+
+import common
+import host
+
+from k8sClient import K8sClient
+from logger import logger
+from common import PodType
+from common import TestCaseType
+from common import TestType
 
 
 class ClusterMode(Enum):

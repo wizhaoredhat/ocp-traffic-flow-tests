@@ -1,12 +1,10 @@
-from common import (
-    TestCaseType,
-    PodType,
-    ConnectionMode,
-    NodeLocation,
-    TestType,
-    PodInfo,
-    TestMetadata,
-)
+from common import ConnectionMode
+from common import NodeLocation
+from common import PodInfo
+from common import PodType
+from common import TestCaseType
+from common import TestMetadata
+from common import TestType
 
 
 class TestSettings:

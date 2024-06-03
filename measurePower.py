@@ -1,19 +1,18 @@
-from common import (
-    j2_render,
-    TFT_TOOLS_IMG,
-    PluginOutput,
-    TftAggregateOutput,
-    MEASURE_POWER_PLUGIN,
-)
-from logger import logger
-from testConfig import TestConfig
-from thread import ReturnValueThread
-from task import Task
-from common import Result
+import json
 import re
 import time
-import json
+
+from common import j2_render
+from common import Result
+from logger import logger
 from syncManager import SyncManager
+from task import Task
+from testConfig import TestConfig
+from common import MEASURE_POWER_PLUGIN
+from common import PluginOutput
+from common import TFT_TOOLS_IMG
+from common import TftAggregateOutput
+from thread import ReturnValueThread
 
 
 class MeasurePower(Task):

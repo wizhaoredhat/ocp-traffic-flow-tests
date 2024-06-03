@@ -1,13 +1,17 @@
 import sys
-import yaml
-import common
-from abc import ABC, abstractmethod
-from logger import logger
-from testConfig import TestConfig
-from testConfig import ClusterMode
-from thread import ReturnValueThread
-import host
 import typing
+import yaml
+
+from abc import ABC
+from abc import abstractmethod
+
+import common
+import host
+
+from logger import logger
+from testConfig import ClusterMode
+from testConfig import TestConfig
+from thread import ReturnValueThread
 
 
 class Task(ABC):

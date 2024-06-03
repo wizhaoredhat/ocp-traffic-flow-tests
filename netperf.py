@@ -1,12 +1,16 @@
-import common
-from common import ConnectionMode, TestType, IperfOutput
-from logger import logger
-from testConfig import TestConfig
-from thread import ReturnValueThread
-from common import Result
-from testSettings import TestSettings
-from syncManager import SyncManager
 import perf
+import common
+
+from common import Result
+from logger import logger
+from syncManager import SyncManager
+from testConfig import TestConfig
+from testSettings import TestSettings
+from common import ConnectionMode
+from common import IperfOutput
+from common import TestType
+from thread import ReturnValueThread
+
 
 NETPERF_SERVER_EXE = "netserver"
 NETPERF_CLIENT_EXE = "netperf"

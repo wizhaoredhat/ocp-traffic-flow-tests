@@ -1,8 +1,10 @@
 from threading import Thread
-from logger import logger
 from typing import Any
-from typing import Callable, Optional
+from typing import Callable
+from typing import Optional
+
 from common import Result
+from logger import logger
 
 
 class ReturnValueThread(Thread):
