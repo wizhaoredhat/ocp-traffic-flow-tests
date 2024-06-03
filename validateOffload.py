@@ -1,7 +1,9 @@
 import json
 import typing
+from typing import Optional
 
 import perf
+import pluginbase
 
 from common import j2_render
 from host import Result
@@ -10,14 +12,83 @@ from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
 from tftbase import PluginOutput
+from tftbase import PluginResult
 from tftbase import PodType
 from tftbase import TFT_TOOLS_IMG
+from tftbase import TestMetadata
 from tftbase import TftAggregateOutput
-from tftbase import VALIDATE_OFFLOAD_PLUGIN
 from thread import ReturnValueThread
+
+VF_REP_TRAFFIC_THRESHOLD = 1000
+
+
+def no_traffic_on_vf_rep(
+    rx_start: int, tx_start: int, rx_end: int, tx_end: int
+) -> bool:
+    return (
+        rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
+        and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
+    )
+
+
+class PluginValidateOffload(pluginbase.Plugin):
+    PLUGIN_NAME = "validate_offload"
+
+    def enable(
+        self,
+        *,
+        tc: TestConfig,
+        node_server_name: str,
+        node_client_name: str,
+        perf_server: perf.PerfServer,
+        perf_client: perf.PerfClient,
+        tenant: bool,
+    ) -> list[Task]:
+        # TODO allow this to run on each individual server + client pairs.
+        return [
+            ValidateOffload(tc, perf_server, tenant),
+            ValidateOffload(tc, perf_client, tenant),
+        ]
+
+    def eval_log(
+        self, plugin_output: PluginOutput, md: TestMetadata
+    ) -> Optional[PluginResult]:
+        rx_start = plugin_output.result.get("rx_start")
+        tx_start = plugin_output.result.get("tx_start")
+        rx_end = plugin_output.result.get("rx_end")
+        tx_end = plugin_output.result.get("tx_end")
+
+        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
+            logger.error(
+                f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
+            )
+            success = False
+        else:
+            assert isinstance(rx_start, int)
+            assert isinstance(tx_start, int)
+            assert isinstance(rx_end, int)
+            assert isinstance(tx_end, int)
+            success = no_traffic_on_vf_rep(
+                rx_start=rx_start,
+                tx_start=tx_start,
+                rx_end=rx_end,
+                tx_end=tx_end,
+            )
+
+        return PluginResult(
+            test_id=md.test_case_id,
+            test_type=md.test_type,
+            reverse=md.reverse,
+            success=success,
+        )
+
+
+plugin = PluginValidateOffload()
 
 
 class ValidateOffload(Task):
+    plugin = plugin
+
     def __init__(
         self,
         tft: TestConfig,
@@ -175,5 +246,5 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             result=parsed_data,
-            name=VALIDATE_OFFLOAD_PLUGIN,
+            name=plugin.PLUGIN_NAME,
         )

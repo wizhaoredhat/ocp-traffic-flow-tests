@@ -3,20 +3,46 @@ import jc
 from typing import Any
 from typing import cast
 
+import perf
+import pluginbase
+
 from common import j2_render
 from host import Result
 from logger import logger
 from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
-from tftbase import MEASURE_CPU_PLUGIN
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG
 from tftbase import TftAggregateOutput
 from thread import ReturnValueThread
 
 
+class PluginMeasureCpu(pluginbase.Plugin):
+    PLUGIN_NAME = "measure_cpu"
+
+    def enable(
+        self,
+        *,
+        tc: TestConfig,
+        node_server_name: str,
+        node_client_name: str,
+        perf_server: perf.PerfServer,
+        perf_client: perf.PerfClient,
+        tenant: bool,
+    ) -> list[Task]:
+        return [
+            MeasureCPU(tc, node_server_name, tenant),
+            MeasureCPU(tc, node_client_name, tenant),
+        ]
+
+
+plugin = PluginMeasureCpu()
+
+
 class MeasureCPU(Task):
+    plugin = plugin
+
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
 
@@ -68,5 +94,5 @@ class MeasureCPU(Task):
             },
             command=self.cmd,
             result=parsed_data[0],
-            name=MEASURE_CPU_PLUGIN,
+            name=plugin.PLUGIN_NAME,
         )

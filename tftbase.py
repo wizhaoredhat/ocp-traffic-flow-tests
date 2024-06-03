@@ -13,10 +13,6 @@ from common import enum_convert
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
-MEASURE_POWER_PLUGIN = "measure_power"
-MEASURE_CPU_PLUGIN = "measure_cpu"
-VALIDATE_OFFLOAD_PLUGIN = "validate_offload"
-
 
 class TestType(Enum):
     IPERF_TCP = 1
