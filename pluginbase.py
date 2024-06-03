@@ -41,14 +41,14 @@ def get_by_name(plugin_name: str) -> Plugin:
 
     if not _plugins:
         # We need to ensure, that these modules were loaded. Import them now.
-        import measureCpu
-        import measurePower
-        import validateOffload
+        import pluginMeasureCpu
+        import pluginMeasurePower
+        import pluginValidateOffload
 
         modules = [
-            measureCpu,
-            measurePower,
-            validateOffload,
+            pluginMeasureCpu,
+            pluginMeasurePower,
+            pluginValidateOffload,
         ]
         for m in modules:
             p = m.plugin
