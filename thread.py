@@ -3,7 +3,7 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 
-from common import Result
+from host import Result
 from logger import logger
 
 

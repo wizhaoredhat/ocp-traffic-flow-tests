@@ -6,7 +6,7 @@ from typing import Mapping
 
 import common
 
-from common import Result
+from host import Result
 from logger import logger
 from syncManager import SyncManager
 from testConfig import TestConfig

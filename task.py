@@ -41,7 +41,7 @@ class Task(ABC):
         self.template_args["node_name"] = self.node_name
         self.tc = tc
 
-    def run_oc(self, cmd: str) -> common.Result:
+    def run_oc(self, cmd: str) -> host.Result:
         if self.tenant:
             r = self.tc.client_tenant.oc(cmd)
         else:

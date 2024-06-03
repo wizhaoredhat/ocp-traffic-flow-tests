@@ -7,10 +7,17 @@ import typing
 
 from abc import ABC
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 from logger import logger
-from common import Result
+
+
+@dataclass
+class Result:
+    out: str
+    err: str
+    returncode: int
 
 
 class Host(ABC):

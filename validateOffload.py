@@ -4,7 +4,7 @@ import typing
 import perf
 
 from common import j2_render
-from common import Result
+from host import Result
 from logger import logger
 from syncManager import SyncManager
 from task import Task

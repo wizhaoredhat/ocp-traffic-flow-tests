@@ -21,13 +21,6 @@ MEASURE_CPU_PLUGIN = "measure_cpu"
 VALIDATE_OFFLOAD_PLUGIN = "validate_offload"
 
 
-@dataclass
-class Result:
-    out: str
-    err: str
-    returncode: int
-
-
 E = TypeVar("E", bound=Enum)
 
 
