@@ -1,6 +1,10 @@
 import threading
-from threading import Barrier, Event
-from typing import Optional, ClassVar
+
+from typing import ClassVar
+from typing import Optional
+
+from threading import Barrier
+from threading import Event
 
 
 # Singleton class, synchronizes threads using barriers and events

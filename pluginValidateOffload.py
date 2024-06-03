@@ -1,23 +1,97 @@
-from common import (
-    TFT_TOOLS_IMG,
-    PluginOutput,
-    j2_render,
-    TftAggregateOutput,
-    PodType,
-    Result,
-    VALIDATE_OFFLOAD_PLUGIN,
-)
-from logger import logger
-from testConfig import TestConfig
-import perf
-from thread import ReturnValueThread
-from task import Task
 import json
-from syncManager import SyncManager
 import typing
+from typing import Optional
+
+import perf
+import pluginbase
+
+from common import j2_render
+from host import Result
+from logger import logger
+from pluginbase import PluginTask
+from syncManager import SyncManager
+from testConfig import TestConfig
+from tftbase import PluginOutput
+from tftbase import PluginResult
+from tftbase import PodType
+from tftbase import TFT_TOOLS_IMG
+from tftbase import TestMetadata
+from tftbase import TftAggregateOutput
+from thread import ReturnValueThread
+
+VF_REP_TRAFFIC_THRESHOLD = 1000
 
 
-class ValidateOffload(Task):
+def no_traffic_on_vf_rep(
+    rx_start: int, tx_start: int, rx_end: int, tx_end: int
+) -> bool:
+    return (
+        rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
+        and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
+    )
+
+
+class PluginValidateOffload(pluginbase.Plugin):
+    PLUGIN_NAME = "validate_offload"
+
+    def enable(
+        self,
+        *,
+        tc: TestConfig,
+        node_server_name: str,
+        node_client_name: str,
+        perf_server: perf.PerfServer,
+        perf_client: perf.PerfClient,
+        tenant: bool,
+    ) -> list[PluginTask]:
+        # TODO allow this to run on each individual server + client pairs.
+        return [
+            TaskValidateOffload(tc, perf_server, tenant),
+            TaskValidateOffload(tc, perf_client, tenant),
+        ]
+
+    def eval_log(
+        self, plugin_output: PluginOutput, md: TestMetadata
+    ) -> Optional[PluginResult]:
+        rx_start = plugin_output.result.get("rx_start")
+        tx_start = plugin_output.result.get("tx_start")
+        rx_end = plugin_output.result.get("rx_end")
+        tx_end = plugin_output.result.get("tx_end")
+
+        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
+            logger.error(
+                f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
+            )
+            success = False
+        else:
+            assert isinstance(rx_start, int)
+            assert isinstance(tx_start, int)
+            assert isinstance(rx_end, int)
+            assert isinstance(tx_end, int)
+            success = no_traffic_on_vf_rep(
+                rx_start=rx_start,
+                tx_start=tx_start,
+                rx_end=rx_end,
+                tx_end=tx_end,
+            )
+
+        return PluginResult(
+            test_id=md.test_case_id,
+            test_type=md.test_type,
+            reverse=md.reverse,
+            success=success,
+        )
+
+
+plugin = PluginValidateOffload()
+
+
+class TaskValidateOffload(PluginTask):
+
+    @property
+    def plugin(self) -> pluginbase.Plugin:
+        return plugin
+
     def __init__(
         self,
         tft: TestConfig,
@@ -100,7 +174,7 @@ class ValidateOffload(Task):
         return total_packets
 
     def run(self, duration: int) -> None:
-        def stat(self: ValidateOffload, duration: int) -> Result:
+        def stat(self: TaskValidateOffload, duration: int) -> Result:
             SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = (
@@ -175,5 +249,5 @@ class ValidateOffload(Task):
                 "pod_name": self.pod_name,
             },
             result=parsed_data,
-            name=VALIDATE_OFFLOAD_PLUGIN,
+            name=plugin.PLUGIN_NAME,
         )

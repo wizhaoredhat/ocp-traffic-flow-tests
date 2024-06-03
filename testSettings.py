@@ -1,12 +1,10 @@
-from common import (
-    TestCaseType,
-    PodType,
-    ConnectionMode,
-    NodeLocation,
-    TestType,
-    PodInfo,
-    TestMetadata,
-)
+from tftbase import ConnectionMode
+from tftbase import NodeLocation
+from tftbase import PodInfo
+from tftbase import PodType
+from tftbase import TestCaseType
+from tftbase import TestMetadata
+from tftbase import TestType
 
 
 class TestSettings:

@@ -1,23 +1,26 @@
 import argparse
-import sys
-import yaml
 import json
-from dataclasses import dataclass, asdict
-from common import (
-    TestCaseType,
-    TestType,
-    IperfOutput,
-    TestMetadata,
-    PluginOutput,
-    TFT_TESTS,
-    VALIDATE_OFFLOAD_PLUGIN,
-)
-from logger import logger
+import sys
+import typing
+import yaml
+
+from dataclasses import asdict
+from dataclasses import dataclass
 from pathlib import Path
-from common import serialize_enum, dataclass_from_dict
 from typing import Any
 from typing import Mapping
-import typing
+
+import pluginbase
+import tftbase
+
+from common import dataclass_from_dict
+from common import serialize_enum
+from logger import logger
+from tftbase import IperfOutput
+from tftbase import PluginOutput
+from tftbase import TFT_TESTS
+from tftbase import TestCaseType
+from tftbase import TestType
 
 
 @dataclass
@@ -61,26 +64,6 @@ class TestResult:
     bitrate_gbps: Bitrate
 
 
-@dataclass
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    test_id: TestCaseType
-    test_type: TestType
-    reverse: bool
-    success: bool
-
-
-VF_REP_TRAFFIC_THRESHOLD = 1000
-
-
 class Evaluator:
     def __init__(self, config_path: str):
         with open(config_path, encoding="utf-8") as file:
@@ -98,7 +81,7 @@ class Evaluator:
             }
 
         self.test_results: list[TestResult] = []
-        self.plugin_results: list[PluginResult] = []
+        self.plugin_results: list[tftbase.PluginResult] = []
 
     def _eval_flow_test(self, run: IperfOutput) -> None:
         md = run.tft_metadata
@@ -117,39 +100,6 @@ class Evaluator:
         )
         self.test_results.append(result)
 
-    def _eval_validate_offload(
-        self, plugin_output: PluginOutput, md: TestMetadata
-    ) -> None:
-        rx_start = plugin_output.result.get("rx_start")
-        tx_start = plugin_output.result.get("tx_start")
-        rx_end = plugin_output.result.get("rx_end")
-        tx_end = plugin_output.result.get("tx_end")
-
-        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
-            logger.error(
-                f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
-            )
-            success = False
-        else:
-            assert isinstance(rx_start, int)
-            assert isinstance(tx_start, int)
-            assert isinstance(rx_end, int)
-            assert isinstance(tx_end, int)
-            success = self.no_traffic_on_vf_rep(
-                rx_start=rx_start,
-                tx_start=tx_start,
-                rx_end=rx_end,
-                tx_end=tx_end,
-            )
-
-        result = PluginResult(
-            test_id=md.test_case_id,
-            test_type=md.test_type,
-            reverse=md.reverse,
-            success=success,
-        )
-        self.plugin_results.append(result)
-
     def eval_log(self, log_path: Path) -> None:
         try:
             with open(log_path, "r") as file:
@@ -164,24 +114,16 @@ class Evaluator:
 
             self._eval_flow_test(run["flow_test"])
             for plugin_output in run["plugins"]:
-                # TODO: add evaluation for measure_cpu and measure_power plugins
                 plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
-                if plugin_output.name == VALIDATE_OFFLOAD_PLUGIN:
-                    self._eval_validate_offload(
-                        plugin_output, run["flow_test"].tft_metadata
-                    )
+                plugin = pluginbase.get_by_name(plugin_output.name)
+                plugin_result = plugin.eval_log(
+                    plugin_output, run["flow_test"].tft_metadata
+                )
+                if plugin_result is not None:
+                    self.plugin_results.append(plugin_result)
 
     def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
         return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
-
-    def no_traffic_on_vf_rep(
-        self, rx_start: int, tx_start: int, rx_end: int, tx_end: int
-    ) -> bool:
-
-        return (
-            rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
-            and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
-        )
 
     def get_threshold(
         self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool

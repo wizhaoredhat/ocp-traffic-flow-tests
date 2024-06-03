@@ -1,31 +1,29 @@
-from common import (
-    TestType,
-    TestCaseType,
-    TftAggregateOutput,
-    TFT_TESTS,
-    serialize_enum,
-    VALIDATE_OFFLOAD_PLUGIN,
-    MEASURE_POWER_PLUGIN,
-    MEASURE_CPU_PLUGIN,
-)
-from testSettings import TestSettings
-from testConfig import TestConfig
-from logger import logger
-from task import Task
-from iperf import IperfServer, IperfClient
-from netperf import NetPerfServer, NetPerfClient
-import perf
-from validateOffload import ValidateOffload
-from measureCpu import MeasureCPU
-from measurePower import MeasurePower
-from host import LocalHost
-import json
-from pathlib import Path
-from evaluator import Evaluator
 import datetime
+import json
+import perf
+
 from dataclasses import asdict
-from syncManager import SyncManager
+from pathlib import Path
 from typing import Any
+
+import pluginbase
+
+from common import serialize_enum
+from evaluator import Evaluator
+from host import LocalHost
+from iperf import IperfClient
+from iperf import IperfServer
+from logger import logger
+from netperf import NetPerfClient
+from netperf import NetPerfServer
+from syncManager import SyncManager
+from task import Task
+from testConfig import TestConfig
+from testSettings import TestSettings
+from tftbase import TFT_TESTS
+from tftbase import TestCaseType
+from tftbase import TestType
+from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
@@ -91,42 +89,6 @@ class TrafficFlowTests:
         )
         cmd = f"podman stop --time 10 {perf.EXTERNAL_PERF_SERVER}; podman rm --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
-
-    def _enable_measure_cpu_plugin(
-        self,
-        monitors: list[Task],
-        node_server_name: str,
-        node_client_name: str,
-        tenant: bool,
-    ) -> None:
-        s = MeasureCPU(self._tc, node_server_name, tenant)
-        c = MeasureCPU(self._tc, node_client_name, tenant)
-        monitors.append(s)
-        monitors.append(c)
-
-    def _enable_measure_power_plugin(
-        self,
-        monitors: list[Task],
-        node_server_name: str,
-        node_client_name: str,
-        tenant: bool,
-    ) -> None:
-        s = MeasurePower(self._tc, node_server_name, tenant)
-        c = MeasurePower(self._tc, node_client_name, tenant)
-        monitors.append(s)
-        monitors.append(c)
-
-    def enable_validate_offload_plugin(
-        self,
-        monitors: list[Task],
-        perf_server: perf.PerfServer,
-        perf_client: perf.PerfClient,
-        tenant: bool,
-    ) -> None:
-        s = ValidateOffload(self._tc, perf_server, tenant)
-        c = ValidateOffload(self._tc, perf_client, tenant)
-        monitors.append(s)
-        monitors.append(c)
 
     def _run_tests(
         self,
@@ -248,21 +210,16 @@ class TrafficFlowTests:
             raise Exception("http connections not currently supported")
         if connections["plugins"]:
             for plugins in connections["plugins"]:
-                if plugins["name"] == MEASURE_CPU_PLUGIN:
-                    self._enable_measure_cpu_plugin(
-                        monitors, node_server_name, node_client_name, True
-                    )
-                if plugins["name"] == MEASURE_POWER_PLUGIN:
-                    self._enable_measure_power_plugin(
-                        monitors, node_server_name, node_client_name, True
-                    )
-                if plugins["name"] == VALIDATE_OFFLOAD_PLUGIN:
-                    # TODO allow this to run on each individual server + client pairs.
-                    iperf_server = servers[-1]
-                    iperf_client = clients[-1]
-                    self.enable_validate_offload_plugin(
-                        monitors, iperf_server, iperf_client, True
-                    )
+                plugin = pluginbase.get_by_name(plugins["name"])
+                m = plugin.enable(
+                    tc=self._tc,
+                    node_server_name=node_server_name,
+                    node_client_name=node_client_name,
+                    perf_server=servers[-1],
+                    perf_client=clients[-1],
+                    tenant=True,
+                )
+                monitors.extend(m)
 
         SyncManager.reset(len(clients) + len(monitors))
         output = self._run_tests(servers, clients, monitors, duration)

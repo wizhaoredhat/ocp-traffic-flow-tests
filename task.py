@@ -1,13 +1,18 @@
 import sys
-import yaml
-import common
-from abc import ABC, abstractmethod
-from logger import logger
-from testConfig import TestConfig
-from testConfig import ClusterMode
-from thread import ReturnValueThread
-import host
 import typing
+import yaml
+
+from abc import ABC
+from abc import abstractmethod
+
+import common
+import host
+import tftbase
+
+from logger import logger
+from testConfig import ClusterMode
+from testConfig import TestConfig
+from thread import ReturnValueThread
 
 
 class Task(ABC):
@@ -22,7 +27,7 @@ class Task(ABC):
         self.lh = host.LocalHost()
 
         self.template_args["name_space"] = "default"
-        self.template_args["test_image"] = common.TFT_TOOLS_IMG
+        self.template_args["test_image"] = tftbase.TFT_TOOLS_IMG
         self.template_args["command"] = "/sbin/init"
         self.template_args["args"] = ""
         self.template_args["index"] = f"{index}"
@@ -37,7 +42,7 @@ class Task(ABC):
         self.template_args["node_name"] = self.node_name
         self.tc = tc
 
-    def run_oc(self, cmd: str) -> common.Result:
+    def run_oc(self, cmd: str) -> host.Result:
         if self.tenant:
             r = self.tc.client_tenant.oc(cmd)
         else:
@@ -125,7 +130,7 @@ class Task(ABC):
             self._output = self.generate_output(data=r.out)
         else:
             logger.error(f"Thread {class_name} did not return a result")
-            self._output = common.BaseOutput("", {})
+            self._output = tftbase.BaseOutput("", {})
 
     """
     output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the
@@ -134,9 +139,9 @@ class Task(ABC):
     """
 
     @abstractmethod
-    def output(self, out: common.TftAggregateOutput) -> None:
+    def output(self, out: tftbase.TftAggregateOutput) -> None:
         raise NotImplementedError("Must implement output()")
 
     @abstractmethod
-    def generate_output(self, data: str) -> common.BaseOutput:
+    def generate_output(self, data: str) -> tftbase.BaseOutput:
         raise NotImplementedError("Must implement generate_output()")

@@ -1,13 +1,20 @@
-import host
-import sys
-from enum import Enum
-from logger import logger
-from k8sClient import K8sClient
-from yaml import safe_load
 import io
-from common import TestType, TestCaseType, enum_convert, PodType
-from typing import Any
+import sys
 import typing
+
+from enum import Enum
+from typing import Any
+from typing import Mapping
+from yaml import safe_load
+
+import common
+import host
+
+from k8sClient import K8sClient
+from logger import logger
+from tftbase import PodType
+from tftbase import TestCaseType
+from tftbase import TestType
 
 
 class ClusterMode(Enum):
@@ -55,31 +62,9 @@ class TestConfig:
 
         logger.info(self.GetConfig())
 
-    def parse_test_cases(self, input_str: str) -> list[TestCaseType]:
-        output: list[TestCaseType] = []
-        parts = input_str.split(",")
-
-        for part in parts:
-            part = part.strip()
-            if part:
-                if not part.isdigit() and "-" not in part:
-                    raise ValueError(f"Invalid test case id: {part}")
-
-                if "-" in part:
-                    try:
-                        start, end = map(int, part.split("-"))
-                        output.extend(
-                            [
-                                enum_convert(TestCaseType, i)
-                                for i in range(start, end + 1)
-                            ]
-                        )
-                    except ValueError:
-                        raise ValueError(f"Invalid test case id: {part}")
-                else:
-                    output.append(enum_convert(TestCaseType, int(part)))
-
-        return output
+    @staticmethod
+    def parse_test_cases(input_str: str) -> list[TestCaseType]:
+        return common.enum_convert_list(TestCaseType, input_str)
 
     def pod_type_from_config(self, connection_server: dict[str, str]) -> PodType:
         if "sriov" in connection_server:
@@ -92,27 +77,14 @@ class TestConfig:
             return connection["default-network"]
         return "default/default"
 
-    def validate_test_type(self, connection: dict[str, str]) -> TestType:
-        if "type" not in connection:
-            return TestType.IPERF_TCP
-
-        input_ct = connection["type"].lower()
-        if "iperf" in input_ct:
-            if "udp" in input_ct:
-                return TestType.IPERF_UDP
-            else:
-                return TestType.IPERF_TCP
-        if "netperf" in input_ct:
-            if "tcp-stream" in input_ct:
-                return TestType.NETPERF_TCP_STREAM
-            else:
-                return TestType.NETPERF_TCP_RR
-        elif "http" in input_ct:
-            return TestType.HTTP
-        else:
+    @staticmethod
+    def validate_test_type(connection: Mapping[str, Any]) -> TestType:
+        input_ct = connection.get("type")
+        try:
+            return common.enum_convert(TestType, input_ct, default=TestType.IPERF_TCP)
+        except Exception:
             raise ValueError(
-                f"Invalid connection type {connection['type']} provided. \
-                Supported connection types: iperf-tcp (default), iperf-udp, http"
+                f"Invalid connection type {input_ct} provided. Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
 
     def GetConfig(self) -> list[dict[str, Any]]:

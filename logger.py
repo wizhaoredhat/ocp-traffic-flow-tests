@@ -1,5 +1,7 @@
 import logging
-from typing import Optional, TextIO
+
+from typing import Optional
+from typing import TextIO
 
 
 def configure_logger(lvl: int) -> None:

@@ -1,25 +1,26 @@
-# Hack to import stuff from parent directory
 import sys
 import os
 import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from common import ConnectionMode  # noqa: E402
 from common import enum_convert  # noqa: E402
-from common import IperfOutput  # noqa: E402
-from common import NodeLocation  # noqa: E402
-from common import PodInfo  # noqa: E402
-from common import PodType  # noqa: E402
 from common import serialize_enum  # noqa: E402
-from common import TestCaseType  # noqa: E402
-from common import TestMetadata  # noqa: E402
-from common import TestType  # noqa: E402
+from tftbase import ConnectionMode  # noqa: E402
+from tftbase import IperfOutput  # noqa: E402
+from tftbase import NodeLocation  # noqa: E402
+from tftbase import PodInfo  # noqa: E402
+from tftbase import PodType  # noqa: E402
+from tftbase import TestCaseType  # noqa: E402
+from tftbase import TestMetadata  # noqa: E402
+from tftbase import TestType  # noqa: E402
 
 
 def test_enum_convert() -> None:
     assert enum_convert(TestType, "IPERF_TCP") == TestType.IPERF_TCP
     assert enum_convert(PodType, 1) == PodType.NORMAL
+    assert enum_convert(PodType, "1 ") == PodType.NORMAL
+    assert enum_convert(PodType, " normal") == PodType.NORMAL
     with pytest.raises(ValueError):
         enum_convert(TestType, "Not_in_enum")
     with pytest.raises(ValueError):

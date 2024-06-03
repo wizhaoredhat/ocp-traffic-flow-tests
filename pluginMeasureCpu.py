@@ -1,22 +1,51 @@
-from common import (
-    j2_render,
-    TFT_TOOLS_IMG,
-    PluginOutput,
-    TftAggregateOutput,
-    MEASURE_POWER_PLUGIN,
-)
+import jc
+
+from typing import Any
+from typing import cast
+
+import perf
+import pluginbase
+
+from common import j2_render
+from host import Result
 from logger import logger
-from testConfig import TestConfig
-from thread import ReturnValueThread
-from task import Task
-from common import Result
-import re
-import time
-import json
+from pluginbase import PluginTask
 from syncManager import SyncManager
+from testConfig import TestConfig
+from tftbase import PluginOutput
+from tftbase import TFT_TOOLS_IMG
+from tftbase import TftAggregateOutput
+from thread import ReturnValueThread
 
 
-class MeasurePower(Task):
+class PluginMeasureCpu(pluginbase.Plugin):
+    PLUGIN_NAME = "measure_cpu"
+
+    def enable(
+        self,
+        *,
+        tc: TestConfig,
+        node_server_name: str,
+        node_client_name: str,
+        perf_server: perf.PerfServer,
+        perf_client: perf.PerfClient,
+        tenant: bool,
+    ) -> list[PluginTask]:
+        return [
+            TaskMeasureCPU(tc, node_server_name, tenant),
+            TaskMeasureCPU(tc, node_client_name, tenant),
+        ]
+
+
+plugin = PluginMeasureCpu()
+
+
+class TaskMeasureCPU(PluginTask):
+
+    @property
+    def plugin(self) -> pluginbase.Plugin:
+        return plugin
+
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
 
@@ -35,33 +64,12 @@ class MeasurePower(Task):
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def extract(r: Result) -> int:
-            for e in r.out.split("\n"):
-                if "Instantaneous power reading" in e:
-                    match = re.search(r"\d+", e)
-                    if match:
-                        return int(match.group())
-            logger.error(f"Could not find Instantaneous power reading: {e}.")
-            return 0
-
-        def stat(self: MeasurePower, cmd: str) -> Result:
+        def stat(self: TaskMeasureCPU, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
-            total_pwr = 0
-            iteration = 0
-            while SyncManager.client_not_finished():
-                r = self.run_oc(cmd)
-                if r.returncode != 0:
-                    logger.error(f"Failed to get power {cmd}: {r}")
-                pwr = extract(r)
-                total_pwr += pwr
-                iteration += 1
-                time.sleep(0.2)
-
-            r = Result(f"{total_pwr/iteration}", "", 0)
-            return r
+            return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
-        self.cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
+        self.cmd = f"exec {self.pod_name} -- mpstat -P ALL {duration} 1"
         self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd))
         self.exec_thread.start()
         logger.info(f"Running {self.cmd}")
@@ -74,17 +82,20 @@ class MeasurePower(Task):
         out.plugins.append(self._output)
 
         # Print summary to console logs
-        logger.info(f"measurePower results: {self._output.result}")
+        p_idle = self._output.result["percent_idle"]
+        logger.info(f"Idle on {self.node_name} = {p_idle}%")
 
+    # TODO: We are currently only storing the "cpu: all" data from mpstat
     def generate_output(self, data: str) -> PluginOutput:
-        parsed_data = json.loads(data)
+        # satisfy the linter. jc.parse returns a list of dicts in this case
+        parsed_data = cast(list[dict[str, Any]], jc.parse("mpstat", data))
         return PluginOutput(
             plugin_metadata={
-                "name": "MeasurePower",
+                "name": "MeasureCPU",
                 "node_name": self.node_name,
                 "pod_name": self.pod_name,
             },
             command=self.cmd,
-            result=parsed_data,
-            name=MEASURE_POWER_PLUGIN,
+            result=parsed_data[0],
+            name=plugin.PLUGIN_NAME,
         )

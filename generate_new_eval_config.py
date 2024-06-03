@@ -1,10 +1,12 @@
 # Script to generates a new eval_config ymal file from the json RESULTS output
 import json
-import yaml
 import math
 import sys
-from common import TestCaseType
+import yaml
+
 from typing import Any
+
+from tftbase import TestCaseType
 
 
 # can implement custom rounding if you want

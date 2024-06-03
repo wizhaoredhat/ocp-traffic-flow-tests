@@ -1,12 +1,16 @@
-import common
-from common import ConnectionMode, TestType, IperfOutput
-from logger import logger
-from testConfig import TestConfig
-from thread import ReturnValueThread
-from common import Result
-from testSettings import TestSettings
-from syncManager import SyncManager
 import perf
+import tftbase
+
+from host import Result
+from logger import logger
+from syncManager import SyncManager
+from testConfig import TestConfig
+from testSettings import TestSettings
+from tftbase import ConnectionMode
+from tftbase import IperfOutput
+from tftbase import TestType
+from thread import ReturnValueThread
+
 
 NETPERF_SERVER_EXE = "netserver"
 NETPERF_CLIENT_EXE = "netperf"
@@ -24,7 +28,7 @@ class NetPerfServer(perf.PerfServer):
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --rm -p {self.port} --entrypoint {NETPERF_SERVER_EXE} --name={self.pod_name} {common.TFT_TOOLS_IMG} -p {self.port} -N"
+            cmd = f"podman run -it --rm -p {self.port} --entrypoint {NETPERF_SERVER_EXE} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} -p {self.port} -N"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
         else:
             # Create the server pods
@@ -109,7 +113,7 @@ class NetPerfClient(perf.PerfClient):
         )
         return json_dump
 
-    def output(self, out: common.TftAggregateOutput) -> None:
+    def output(self, out: tftbase.TftAggregateOutput) -> None:
         # Return machine-readable output to top level
         assert isinstance(
             self._output, IperfOutput

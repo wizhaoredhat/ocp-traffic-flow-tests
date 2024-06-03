@@ -21,7 +21,7 @@ pip3 install -r requirements.txt
 tft:
   - name: "(1)"
     namespace: "(2)"
-    # test cases can be specified individually i.e "1,2,3,6" or as a range i.e. "1-9,15-19"
+    # test cases can be specified individually i.e "1,2,POD_TO_HOST_SAME_NODE,6" or as a range i.e. "POD_TO_POD_SAME_NODE-9,15-19"
     test_cases: "(3)"
     duration: "(4)"
     # Location of artifacts from run can be specified: default <working-dir>/ft-logs/
@@ -46,7 +46,7 @@ tft:
 
 1. "name" - This is the name of the test. Any string value to identify the test.
 2. "namespace" - The k8s namespace where the test pods will be run on
-3. "test_cases" - A numerical list interpretation of the tests that can be run.
+3. "test_cases" - A list interpretation of the tests that can be run.
     | ID | Test Name            |
     | -- | -------------------- |
     | 1  | POD_TO_POD_SAME_NODE |
@@ -89,7 +89,6 @@ tft:
 15. "name" - (Optional) list of plugin names
     | Name             | Description          |
     | ---------------- | -------------------- |
-    | capture_flows    | Capture OvS Flows    |
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
