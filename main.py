@@ -58,7 +58,7 @@ def main() -> None:
     tft = TrafficFlowTests(tc)
 
     for test in tft.tc.GetConfig():
-        tft.run(test, args.evaluator_config)
+        tft.test_run(test, args.evaluator_config)
 
         if args.evaluator_config:
             if not tft.evaluate_run_success():

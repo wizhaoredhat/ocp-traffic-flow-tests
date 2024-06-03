@@ -90,7 +90,7 @@ class TrafficFlowTests:
         cmd = f"podman stop --time 10 {perf.EXTERNAL_PERF_SERVER}; podman rm --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
 
-    def _run_tests(
+    def _run_test_tasks(
         self,
         servers: list[perf.PerfServer],
         clients: list[perf.PerfClient],
@@ -162,7 +162,7 @@ class TrafficFlowTests:
 
         return res.result
 
-    def _run(
+    def _run_test_case_instance(
         self,
         connections: dict[str, Any],
         test_type: TestType,
@@ -222,7 +222,7 @@ class TrafficFlowTests:
                 monitors.extend(m)
 
         SyncManager.reset(len(clients) + len(monitors))
-        output = self._run_tests(servers, clients, monitors, duration)
+        output = self._run_test_tasks(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
     def _run_test_case(self, tests: dict[str, Any], test_id: TestCaseType) -> None:
@@ -236,7 +236,7 @@ class TrafficFlowTests:
             for index in range(connections["instances"]):
                 test_type = self.tc.validate_test_type(connections)
                 # if test_type is iperf_TCP run both forward and reverse tests
-                self._run(
+                self._run_test_case_instance(
                     connections=connections,
                     test_type=test_type,
                     test_id=test_id,
@@ -244,7 +244,7 @@ class TrafficFlowTests:
                     duration=duration,
                 )
                 if test_type == TestType.IPERF_TCP:
-                    self._run(
+                    self._run_test_case_instance(
                         connections=connections,
                         test_type=test_type,
                         test_id=test_id,
@@ -254,7 +254,7 @@ class TrafficFlowTests:
                     )
                 self._cleanup_previous_testspace(tests["namespace"])
 
-    def run(self, tests: dict[str, Any], eval_config: str) -> None:
+    def test_run(self, tests: dict[str, Any], eval_config: str) -> None:
         self.eval_config = eval_config
         self._configure_namespace(tests["namespace"])
         self._cleanup_previous_testspace(tests["namespace"])
