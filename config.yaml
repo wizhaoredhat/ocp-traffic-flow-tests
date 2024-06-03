@@ -19,7 +19,6 @@ tft:
           - name: "worker-230"
             sriov: "true"
         plugins:
-          - name: capture_flows
           - name: measure_cpu
           - name: measure_power
           - name: validate_offload

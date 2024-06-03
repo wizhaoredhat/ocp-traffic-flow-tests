@@ -89,7 +89,6 @@ tft:
 15. "name" - (Optional) list of plugin names
     | Name             | Description          |
     | ---------------- | -------------------- |
-    | capture_flows    | Capture OvS Flows    |
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
