@@ -8,8 +8,8 @@ import pluginbase
 from common import j2_render
 from host import Result
 from logger import logger
+from pluginbase import PluginTask
 from syncManager import SyncManager
-from task import Task
 from testConfig import TestConfig
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG
@@ -29,18 +29,21 @@ class PluginMeasurePower(pluginbase.Plugin):
         perf_server: perf.PerfServer,
         perf_client: perf.PerfClient,
         tenant: bool,
-    ) -> list[Task]:
+    ) -> list[PluginTask]:
         return [
-            MeasurePower(tc, node_server_name, tenant),
-            MeasurePower(tc, node_client_name, tenant),
+            TaskMeasurePower(tc, node_server_name, tenant),
+            TaskMeasurePower(tc, node_client_name, tenant),
         ]
 
 
 plugin = PluginMeasurePower()
 
 
-class MeasurePower(Task):
-    plugin = plugin
+class TaskMeasurePower(PluginTask):
+
+    @property
+    def plugin(self) -> pluginbase.Plugin:
+        return plugin
 
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
@@ -69,7 +72,7 @@ class MeasurePower(Task):
             logger.error(f"Could not find Instantaneous power reading: {e}.")
             return 0
 
-        def stat(self: MeasurePower, cmd: str) -> Result:
+        def stat(self: TaskMeasurePower, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             total_pwr = 0
             iteration = 0

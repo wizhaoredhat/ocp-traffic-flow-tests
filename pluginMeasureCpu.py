@@ -9,8 +9,8 @@ import pluginbase
 from common import j2_render
 from host import Result
 from logger import logger
+from pluginbase import PluginTask
 from syncManager import SyncManager
-from task import Task
 from testConfig import TestConfig
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG
@@ -30,18 +30,21 @@ class PluginMeasureCpu(pluginbase.Plugin):
         perf_server: perf.PerfServer,
         perf_client: perf.PerfClient,
         tenant: bool,
-    ) -> list[Task]:
+    ) -> list[PluginTask]:
         return [
-            MeasureCPU(tc, node_server_name, tenant),
-            MeasureCPU(tc, node_client_name, tenant),
+            TaskMeasureCPU(tc, node_server_name, tenant),
+            TaskMeasureCPU(tc, node_client_name, tenant),
         ]
 
 
 plugin = PluginMeasureCpu()
 
 
-class MeasureCPU(Task):
-    plugin = plugin
+class TaskMeasureCPU(PluginTask):
+
+    @property
+    def plugin(self) -> pluginbase.Plugin:
+        return plugin
 
     def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
         super().__init__(tc, 0, node_name, tenant)
@@ -61,7 +64,7 @@ class MeasureCPU(Task):
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def run(self, duration: int) -> None:
-        def stat(self: MeasureCPU, cmd: str) -> Result:
+        def stat(self: TaskMeasureCPU, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             return self.run_oc(cmd)
 

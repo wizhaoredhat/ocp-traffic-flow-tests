@@ -8,8 +8,8 @@ import pluginbase
 from common import j2_render
 from host import Result
 from logger import logger
+from pluginbase import PluginTask
 from syncManager import SyncManager
-from task import Task
 from testConfig import TestConfig
 from tftbase import PluginOutput
 from tftbase import PluginResult
@@ -43,11 +43,11 @@ class PluginValidateOffload(pluginbase.Plugin):
         perf_server: perf.PerfServer,
         perf_client: perf.PerfClient,
         tenant: bool,
-    ) -> list[Task]:
+    ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
         return [
-            ValidateOffload(tc, perf_server, tenant),
-            ValidateOffload(tc, perf_client, tenant),
+            TaskValidateOffload(tc, perf_server, tenant),
+            TaskValidateOffload(tc, perf_client, tenant),
         ]
 
     def eval_log(
@@ -86,8 +86,11 @@ class PluginValidateOffload(pluginbase.Plugin):
 plugin = PluginValidateOffload()
 
 
-class ValidateOffload(Task):
-    plugin = plugin
+class TaskValidateOffload(PluginTask):
+
+    @property
+    def plugin(self) -> pluginbase.Plugin:
+        return plugin
 
     def __init__(
         self,
@@ -171,7 +174,7 @@ class ValidateOffload(Task):
         return total_packets
 
     def run(self, duration: int) -> None:
-        def stat(self: ValidateOffload, duration: int) -> Result:
+        def stat(self: TaskValidateOffload, duration: int) -> Result:
             SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = (

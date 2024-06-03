@@ -11,6 +11,13 @@ from tftbase import PluginResult
 from tftbase import TestMetadata
 
 
+class PluginTask(Task):
+    @property
+    @abstractmethod
+    def plugin(self) -> "Plugin":
+        pass
+
+
 class Plugin(ABC):
     PLUGIN_NAME = ""
 
@@ -24,7 +31,7 @@ class Plugin(ABC):
         perf_server: perf.PerfServer,
         perf_client: perf.PerfClient,
         tenant: bool,
-    ) -> list[Task]:
+    ) -> list[PluginTask]:
         pass
 
     def eval_log(
