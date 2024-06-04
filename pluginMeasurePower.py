@@ -40,7 +40,6 @@ plugin = PluginMeasurePower()
 
 
 class TaskMeasurePower(PluginTask):
-
     @property
     def plugin(self) -> pluginbase.Plugin:
         return plugin
