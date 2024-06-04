@@ -68,17 +68,22 @@ class TestConfig:
             raise RuntimeError("TestConfig has no infra client")
         return client
 
+    def GetConfig(self) -> list[dict[str, Any]]:
+        return typing.cast(list[dict[str, Any]], self.full_config["tft"])
+
     @staticmethod
     def parse_test_cases(input_str: str) -> list[TestCaseType]:
         return common.enum_convert_list(TestCaseType, input_str)
 
-    def pod_type_from_config(self, connection_server: dict[str, str]) -> PodType:
+    @staticmethod
+    def pod_type_from_config(connection_server: dict[str, str]) -> PodType:
         if "sriov" in connection_server:
             if "true" in connection_server["sriov"].lower():
                 return PodType.SRIOV
         return PodType.NORMAL
 
-    def default_network_from_config(self, connection: dict[str, str]) -> str:
+    @staticmethod
+    def default_network_from_config(connection: dict[str, str]) -> str:
         if "default-network" in connection:
             return connection["default-network"]
         return "default/default"
@@ -92,6 +97,3 @@ class TestConfig:
             raise ValueError(
                 f"Invalid connection type {input_ct} provided. Supported connection types: iperf-tcp (default), iperf-udp, http"
             )
-
-    def GetConfig(self) -> list[dict[str, Any]]:
-        return typing.cast(list[dict[str, Any]], self.full_config["tft"])
