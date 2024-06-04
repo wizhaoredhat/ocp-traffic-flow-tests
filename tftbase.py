@@ -1,4 +1,5 @@
 import dataclasses
+import typing
 
 from dataclasses import dataclass
 from enum import Enum
@@ -191,3 +192,93 @@ class TftAggregateOutput:
             )
             for plugin in self.plugins
         ]
+
+
+class TestCaseTypInfo(typing.NamedTuple):
+    connection_mode: ConnectionMode
+
+
+_test_case_typ_infos = {
+    TestCaseType.POD_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.POD_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.POD_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.POD_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.POD_TO_CLUSTER_IP_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.POD_TO_NODE_PORT_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.POD_TO_NODE_PORT_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.POD_TO_NODE_PORT_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.POD_TO_NODE_PORT_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.HOST_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.HOST_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.HOST_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.HOST_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.POD_IP,
+    ),
+    TestCaseType.HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.CLUSTER_IP,
+    ),
+    TestCaseType.HOST_TO_NODE_PORT_TO_POD_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.HOST_TO_NODE_PORT_TO_POD_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE: TestCaseTypInfo(
+        connection_mode=ConnectionMode.NODE_PORT_IP,
+    ),
+    TestCaseType.POD_TO_EXTERNAL: TestCaseTypInfo(
+        connection_mode=ConnectionMode.EXTERNAL_IP,
+    ),
+    TestCaseType.HOST_TO_EXTERNAL: TestCaseTypInfo(
+        connection_mode=ConnectionMode.EXTERNAL_IP,
+    ),
+}
+
+
+def test_case_type_to_connection_mode(test_case_type: TestCaseType) -> ConnectionMode:
+    return _test_case_typ_infos[test_case_type].connection_mode

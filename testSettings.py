@@ -1,6 +1,6 @@
 import testConfig
+import tftbase
 
-from tftbase import ConnectionMode
 from tftbase import NodeLocation
 from tftbase import PodInfo
 from tftbase import PodType
@@ -44,7 +44,7 @@ class TestSettings:
         self.reverse = reverse
 
         # Derive params from test_case_id
-        self.connection_mode = self._test_id_to_connection_mode(test_case_id)
+        self.connection_mode = tftbase.test_case_type_to_connection_mode(test_case_id)
         if self._is_same_node_test(test_case_id):
             self.nodeLocation = NodeLocation.SAME_NODE
         else:
@@ -86,17 +86,6 @@ class TestSettings:
                 index=self.client_index,
             ),
         )
-
-    @staticmethod
-    def _test_id_to_connection_mode(test_case_id: TestCaseType) -> ConnectionMode:
-        """The connection type will be used to determine what IP the client should direct traffic to"""
-        if test_case_id.value in (5, 6, 7, 8, 17, 18, 19, 20):
-            return ConnectionMode.CLUSTER_IP
-        if test_case_id.value in (9, 10, 11, 12, 21, 22, 23, 24):
-            return ConnectionMode.NODE_PORT_IP
-        if test_case_id.value in (25, 26):
-            return ConnectionMode.EXTERNAL_IP
-        return ConnectionMode.POD_IP
 
     @staticmethod
     def _determine_server_name(

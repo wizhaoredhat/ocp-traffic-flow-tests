@@ -8,6 +8,7 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import common  # noqa: E402
+import tftbase  # noqa: E402
 
 from common import enum_convert  # noqa: E402
 from common import enum_convert_list  # noqa: E402
@@ -262,3 +263,23 @@ def test_serialize_enum() -> None:
     # Test with non-enum value
     assert serialize_enum("some_string") == "some_string"
     assert serialize_enum(123) == 123
+
+
+def test_test_case_typ_infos() -> None:
+    assert list(tftbase._test_case_typ_infos) == list(TestCaseType)
+
+
+def test_test_case_type_to_connection_mode() -> None:
+    def _alternative(test_case_id: TestCaseType) -> ConnectionMode:
+        if test_case_id.value in (5, 6, 7, 8, 17, 18, 19, 20):
+            return ConnectionMode.CLUSTER_IP
+        if test_case_id.value in (9, 10, 11, 12, 21, 22, 23, 24):
+            return ConnectionMode.NODE_PORT_IP
+        if test_case_id.value in (25, 26):
+            return ConnectionMode.EXTERNAL_IP
+        return ConnectionMode.POD_IP
+
+    for test_case_type in TestCaseType:
+        assert _alternative(
+            test_case_type
+        ) == tftbase.test_case_type_to_connection_mode(test_case_type)
