@@ -4,6 +4,7 @@ import typing
 
 from typing import Any
 from typing import Mapping
+from typing import Optional
 from yaml import safe_load
 
 import common
@@ -22,9 +23,10 @@ class TestConfig:
     kubeconfig_infra: str = "/root/kubeconfig.infracluster"
     kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
     kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
-    mode: ClusterMode = ClusterMode.SINGLE
+
+    mode: ClusterMode
     client_tenant: K8sClient
-    client_infra: K8sClient
+    client_infra: Optional[K8sClient]
     full_config: dict[str, Any]
 
     def __init__(self, config_path: str):
@@ -35,6 +37,7 @@ class TestConfig:
         lh = host.LocalHost()
 
         # Find out what type of cluster are we in.
+        self.client_infra = None
         if lh.file_exists(self.kubeconfig_single):
             self.mode = ClusterMode.SINGLE
             self.client_tenant = K8sClient(self.kubeconfig_single)
@@ -56,6 +59,14 @@ class TestConfig:
             sys.exit(-1)
 
         logger.info(self.GetConfig())
+
+    def client(self, *, tenant: bool) -> K8sClient:
+        if tenant:
+            return self.client_tenant
+        client = self.client_infra
+        if client is None:
+            raise RuntimeError("TestConfig has no infra client")
+        return client
 
     @staticmethod
     def parse_test_cases(input_str: str) -> list[TestCaseType]:

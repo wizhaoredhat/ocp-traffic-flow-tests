@@ -43,11 +43,7 @@ class Task(ABC):
         self.tc = tc
 
     def run_oc(self, cmd: str) -> host.Result:
-        if self.tenant:
-            r = self.tc.client_tenant.oc(cmd)
-        else:
-            r = self.tc.client_infra.oc(cmd)
-        return r
+        return self.tc.client(tenant=self.tenant).oc(cmd)
 
     def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml")
