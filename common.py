@@ -10,6 +10,71 @@ from typing import TypeVar
 from typing import cast
 
 
+# This is used as default value for some arguments, to recognize that the
+# caller didn't specify the argument. This is useful, when we want to
+# explicitly distinguish between having an argument unset or set to any value.
+# The caller would never pass this value, but the implementation would check
+# whether the argument is still left at the default.
+#
+# See also, dataclasses.MISSING and dataclasses._MISSING_TYPE
+class _MISSING_TYPE:
+    pass
+
+
+MISSING = _MISSING_TYPE()
+
+
+def bool_to_str(val: bool, *, format: str = "true") -> str:
+    if format == "true":
+        return "true" if val else "false"
+    if format == "yes":
+        return "yes" if val else "no"
+    raise ValueError(f'Invalid format "{format}"')
+
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+
+def str_to_bool(
+    val: None | str | bool,
+    on_error: T1 | _MISSING_TYPE = MISSING,
+    *,
+    on_default: T2 | _MISSING_TYPE = MISSING,
+) -> bool | T1 | T2:
+
+    is_default = False
+
+    if isinstance(val, str):
+        val2 = val.lower().strip()
+        if val2 in ("1", "y", "yes", "true", "on"):
+            return True
+        if val2 in ("0", "n", "no", "false", "off"):
+            return False
+        if val2 in ("", "default", "-1"):
+            is_default = True
+    elif val is None:
+        # None is (maybe) accepted as default value.
+        is_default = True
+    elif isinstance(val, bool):
+        # For convenience, also accept that the value is already a boolean.
+        return val
+
+    if is_default and not isinstance(on_default, _MISSING_TYPE):
+        # The value is explicitly set to one of the recognized default values
+        # (None, "default", "-1" or "").
+        #
+        # By setting @on_default, the caller can use str_to_bool() to not only
+        # parse boolean values, but ternary values.
+        return on_default
+
+    if not isinstance(on_error, _MISSING_TYPE):
+        # On failure, we return the fallback value.
+        return on_error
+
+    raise ValueError(f"Value {val} is not a boolean")
+
+
 E = TypeVar("E", bound=Enum)
 
 
