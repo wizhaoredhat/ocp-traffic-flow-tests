@@ -1,11 +1,9 @@
-import io
-import sys
 import typing
+import yaml
 
 from typing import Any
 from typing import Mapping
 from typing import Optional
-from yaml import safe_load
 
 import common
 import host
@@ -25,48 +23,104 @@ class TestConfig:
     kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
 
     mode: ClusterMode
-    client_tenant: K8sClient
-    client_infra: Optional[K8sClient]
     full_config: dict[str, Any]
+    kc_tenant: str
+    kc_infra: Optional[str]
+    _client_tenant: Optional[K8sClient]
+    _client_infra: Optional[K8sClient]
 
-    def __init__(self, config_path: str):
-        with open(config_path, "r") as f:
-            contents = f.read()
-            self.full_config = safe_load(io.StringIO(contents))
-
-        lh = host.LocalHost()
+    @staticmethod
+    def _detect_mode_args() -> tuple[ClusterMode, str, Optional[str]]:
 
         # Find out what type of cluster are we in.
-        self.client_infra = None
-        if lh.file_exists(self.kubeconfig_single):
-            self.mode = ClusterMode.SINGLE
-            self.client_tenant = K8sClient(self.kubeconfig_single)
-        elif lh.file_exists(self.kubeconfig_cx):
-            self.mode = ClusterMode.SINGLE
-            self.client_tenant = K8sClient(self.kubeconfig_cx)
-        elif lh.file_exists(self.kubeconfig_tenant):
-            if lh.file_exists(self.kubeconfig_infra):
-                self.mode = ClusterMode.DPU
-                self.client_tenant = K8sClient(self.kubeconfig_tenant)
-                self.client_infra = K8sClient(self.kubeconfig_infra)
+
+        mode = ClusterMode.SINGLE
+        kc_tenant: str
+        kc_infra: Optional[str] = None
+
+        lh = host.LocalHost()
+        if lh.file_exists(TestConfig.kubeconfig_single):
+            kc_tenant = TestConfig.kubeconfig_single
+        elif lh.file_exists(TestConfig.kubeconfig_cx):
+            kc_tenant = TestConfig.kubeconfig_cx
+        elif lh.file_exists(TestConfig.kubeconfig_tenant):
+            if lh.file_exists(TestConfig.kubeconfig_infra):
+                mode = ClusterMode.DPU
+                kc_tenant = TestConfig.kubeconfig_tenant
+                kc_infra = TestConfig.kubeconfig_infra
             else:
-                logger.error(
-                    "Assuming DPU...Cannot Find Infrastructure Cluster Config."
+                raise RuntimeError(
+                    "Assuming DPU...Cannot Find Infrastructure Cluster Config"
                 )
-                sys.exit(-1)
         else:
-            logger.error("Cannot Find Kubeconfig.")
-            sys.exit(-1)
+            raise RuntimeError("Cannot Find Kubeconfig")
+
+        return (mode, kc_tenant, kc_infra)
+
+    def __init__(
+        self,
+        *,
+        full_config: Optional[dict[str, Any]] = None,
+        config_path: Optional[str] = None,
+        mode_args: Optional[tuple[ClusterMode, str, Optional[str]]] = None,
+    ) -> None:
+
+        if config_path is not None:
+            if full_config is not None:
+                raise ValueError(
+                    "Must either specify a full_config or a config_path argument"
+                )
+            with open(config_path, "r") as f:
+                full_config = yaml.safe_load(f)
+
+        if not isinstance(full_config, dict):
+            raise ValueError(
+                f"invalid config is not a dictionary but {type(full_config)}"
+            )
+
+        if any(not isinstance(k, str) for k in full_config):
+            raise ValueError("The configuration must contain string keys only")
+
+        if mode_args is None:
+            mode_args = TestConfig._detect_mode_args()
+
+        self.full_config = full_config
+
+        self._client_tenant = None
+        self._client_infra = None
+
+        self.mode, self.kc_tenant, self.kc_infra = mode_args
 
         logger.info(self.GetConfig())
 
     def client(self, *, tenant: bool) -> K8sClient:
         if tenant:
-            return self.client_tenant
-        client = self.client_infra
-        if client is None:
-            raise RuntimeError("TestConfig has no infra client")
-        return client
+            client = self._client_tenant
+        else:
+            if self.kc_infra is None:
+                raise RuntimeError("TestConfig has no infra client")
+            client = self._client_infra
+
+        if client is not None:
+            return client
+
+        # Construct the K8sClient on first.
+
+        if tenant:
+            self._client_tenant = K8sClient(self.kc_tenant)
+        else:
+            assert self.kc_infra is not None
+            self._client_infra = K8sClient(self.kc_infra)
+
+        return self.client(tenant=tenant)
+
+    @property
+    def client_tenant(self) -> K8sClient:
+        return self.client(tenant=True)
+
+    @property
+    def client_infra(self) -> K8sClient:
+        return self.client(tenant=False)
 
     def GetConfig(self) -> list[dict[str, Any]]:
         return typing.cast(list[dict[str, Any]], self.full_config["tft"])
