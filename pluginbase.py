@@ -35,26 +35,42 @@ class Plugin(ABC):
 _plugins: dict[str, Plugin] = {}
 
 
+def _plugins_ensure_loaded() -> None:
+
+    if _plugins:
+        # already loaded.
+        return
+
+    # Plugins register themselves when we load their module.
+    # But we must ensure that the module is loaded.
+    #
+    # We could search the file system for plugins, instead just hardcode
+    # the list of known plugins. This is the only place where we refer to
+    # plugins explicitly.
+    import pluginMeasureCpu
+    import pluginMeasurePower
+    import pluginValidateOffload
+
+    modules = [
+        pluginMeasureCpu,
+        pluginMeasurePower,
+        pluginValidateOffload,
+    ]
+    for m in modules:
+        p = m.plugin
+        assert isinstance(p, Plugin)
+        assert p.PLUGIN_NAME
+        assert p.PLUGIN_NAME not in _plugins
+        _plugins[p.PLUGIN_NAME] = p
+
+
+def get_all() -> list[Plugin]:
+    _plugins_ensure_loaded()
+    return list(_plugins.values())
+
+
 def get_by_name(plugin_name: str) -> Plugin:
-
-    if not _plugins:
-        # We need to ensure, that these modules were loaded. Import them now.
-        import pluginMeasureCpu
-        import pluginMeasurePower
-        import pluginValidateOffload
-
-        modules = [
-            pluginMeasureCpu,
-            pluginMeasurePower,
-            pluginValidateOffload,
-        ]
-        for m in modules:
-            p = m.plugin
-            assert isinstance(p, Plugin)
-            assert p.PLUGIN_NAME
-            assert p.PLUGIN_NAME not in _plugins
-            _plugins[p.PLUGIN_NAME] = p
-
+    _plugins_ensure_loaded()
     plugin = _plugins.get(plugin_name)
     if plugin is None:
         raise ValueError(f'Plugin "{plugin_name}" does not exist')
