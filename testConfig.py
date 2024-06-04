@@ -5,7 +5,6 @@ import yaml
 
 from dataclasses import dataclass
 from typing import Any
-from typing import Mapping
 from typing import Optional
 from typing import TypeVar
 
@@ -491,7 +490,7 @@ class TestConfig:
 
         self.mode, self.kc_tenant, self.kc_infra = mode_args
 
-        logger.info(self.GetConfig())
+        logger.info(full_config["tft"])
 
     def client(self, *, tenant: bool) -> K8sClient:
         if tenant:
@@ -521,33 +520,3 @@ class TestConfig:
     @property
     def client_infra(self) -> K8sClient:
         return self.client(tenant=False)
-
-    def GetConfig(self) -> list[dict[str, Any]]:
-        return typing.cast(list[dict[str, Any]], self.full_config["tft"])
-
-    @staticmethod
-    def parse_test_cases(input_str: str) -> list[TestCaseType]:
-        return common.enum_convert_list(TestCaseType, input_str)
-
-    @staticmethod
-    def pod_type_from_config(connection_server: dict[str, str]) -> PodType:
-        if "sriov" in connection_server:
-            if "true" in connection_server["sriov"].lower():
-                return PodType.SRIOV
-        return PodType.NORMAL
-
-    @staticmethod
-    def default_network_from_config(connection: dict[str, str]) -> str:
-        if "default-network" in connection:
-            return connection["default-network"]
-        return "default/default"
-
-    @staticmethod
-    def validate_test_type(connection: Mapping[str, Any]) -> TestType:
-        input_ct = connection.get("type")
-        try:
-            return common.enum_convert(TestType, input_ct, default=TestType.IPERF_TCP)
-        except Exception:
-            raise ValueError(
-                f"Invalid connection type {input_ct} provided. Supported connection types: iperf-tcp (default), iperf-udp, http"
-            )

@@ -17,7 +17,7 @@ testConfigModeArgs1 = (tftbase.ClusterMode.SINGLE, "/root/kubeconfig.x1", None)
 
 def test_parse_test_cases() -> None:
     def _t(input_str: str) -> list[TestCaseType]:
-        return testConfig.TestConfig.parse_test_cases(input_str)
+        return common.enum_convert_list(TestCaseType, input_str)
 
     assert _t("1,2,3,6") == [
         TestCaseType.POD_TO_POD_SAME_NODE,
@@ -77,7 +77,7 @@ def test_parse_test_cases() -> None:
 
 def test_validate_test_type() -> None:
     def _t(input_str: str) -> TestType:
-        return testConfig.TestConfig.validate_test_type({"type": input_str})
+        return common.enum_convert(TestType, input_str, default=TestType.IPERF_TCP)
 
     assert _t("iperf-tcp") == TestType.IPERF_TCP
     assert _t("iperf-udp") == TestType.IPERF_UDP

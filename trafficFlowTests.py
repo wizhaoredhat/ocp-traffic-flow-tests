@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-import pluginbase
+import testConfig
 
 from common import serialize_enum
 from evaluator import Evaluator
@@ -118,9 +118,10 @@ class TrafficFlowTests:
 
         return tft_aggregate_output
 
-    def _create_log_paths_from_tests(self, tests: dict[str, str]) -> None:
-        if "logs" in tests:
-            self.log_path = Path(tests["logs"])
+    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
+        # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"
+        # method. Storing per-test data in the object is ugly.
+        self.log_path = test.logs
         self.log_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self.log_file = self.log_path / f"{timestamp}.json"
@@ -165,8 +166,7 @@ class TrafficFlowTests:
 
     def _run_test_case_instance(
         self,
-        connections: dict[str, Any],
-        test_type: TestType,
+        connection: testConfig.ConfConnection,
         test_id: TestCaseType,
         index: int,
         duration: int,
@@ -175,33 +175,33 @@ class TrafficFlowTests:
         servers: list[perf.PerfServer] = []
         clients: list[perf.PerfClient] = []
         monitors: list[Task] = []
-        node_server_name = connections["server"][0]["name"]
-        node_client_name = connections["client"][0]["name"]
+
+        c_server = connection.server[0]
+        c_client = connection.client[0]
 
         self.test_settings = TestSettings(
-            connection_name=connections["name"],
+            connection_name=connection.name,
             test_case_id=test_id,
-            node_server_name=node_server_name,
-            node_client_name=node_client_name,
-            server_pod_type=self.tc.pod_type_from_config(connections["server"][0]),
-            client_pod_type=self.tc.pod_type_from_config(connections["client"][0]),
-            server_default_network=self.tc.default_network_from_config(
-                connections["server"][0]
-            ),
-            client_default_network=self.tc.default_network_from_config(
-                connections["client"][0]
-            ),
+            node_server_name=c_server.name,
+            node_client_name=c_client.name,
+            server_pod_type=c_server.pod_type,
+            client_pod_type=c_client.pod_type,
+            server_default_network=c_server.default_network,
+            client_default_network=c_client.default_network,
             index=index,
-            test_type=test_type,
+            test_type=connection.test_type,
             reverse=reverse,
         )
-        if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
+        if (
+            connection.test_type == TestType.IPERF_TCP
+            or connection.test_type == TestType.IPERF_UDP
+        ):
             s, c = self._create_iperf_server_client(self.test_settings)
             servers.append(s)
             clients.append(c)
         elif (
-            test_type == TestType.NETPERF_TCP_STREAM
-            or test_type == TestType.NETPERF_TCP_RR
+            connection.test_type == TestType.NETPERF_TCP_STREAM
+            or connection.test_type == TestType.NETPERF_TCP_RR
         ):
             s, c = self._create_netperf_server_client(self.test_settings)
             servers.append(s)
@@ -209,58 +209,49 @@ class TrafficFlowTests:
         else:
             logger.error("http connections not currently supported")
             raise Exception("http connections not currently supported")
-        if connections["plugins"]:
-            for plugins in connections["plugins"]:
-                plugin = pluginbase.get_by_name(plugins["name"])
-                m = plugin.enable(
-                    tc=self.tc,
-                    node_server_name=node_server_name,
-                    node_client_name=node_client_name,
-                    perf_server=servers[-1],
-                    perf_client=clients[-1],
-                    tenant=True,
-                )
-                monitors.extend(m)
+        for plugin in connection.plugins:
+            m = plugin.plugin.enable(
+                tc=self.tc,
+                node_server_name=c_server.name,
+                node_client_name=c_client.name,
+                perf_server=servers[-1],
+                perf_client=clients[-1],
+                tenant=True,
+            )
+            monitors.extend(m)
 
         SyncManager.reset(len(clients) + len(monitors))
         output = self._run_test_tasks(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict[str, Any], test_id: TestCaseType) -> None:
-        duration = int(tests["duration"])
+    def _run_test_case(self, test: testConfig.ConfTest, test_id: TestCaseType) -> None:
         # TODO Allow for multiple connections / instances to run simultaneously
-        for connections in tests["connections"]:
-            logger.info(f"Starting {connections['name']}")
-            logger.info(
-                f"Number Of Simultaneous connections {connections['instances']}"
-            )
-            for index in range(connections["instances"]):
-                test_type = self.tc.validate_test_type(connections)
+        for connection in test.connections:
+            logger.info(f"Starting {connection.name}")
+            logger.info(f"Number Of Simultaneous connections {connection.instances}")
+            for index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
                 self._run_test_case_instance(
-                    connections=connections,
-                    test_type=test_type,
+                    connection=connection,
                     test_id=test_id,
                     index=index,
-                    duration=duration,
+                    duration=test.duration,
                 )
-                if test_type == TestType.IPERF_TCP:
+                if connection.test_type == TestType.IPERF_TCP:
                     self._run_test_case_instance(
-                        connections=connections,
-                        test_type=test_type,
+                        connection=connection,
                         test_id=test_id,
                         index=index,
-                        duration=duration,
+                        duration=test.duration,
                         reverse=True,
                     )
-                self._cleanup_previous_testspace(tests["namespace"])
+                self._cleanup_previous_testspace(test.namespace)
 
-    def test_run(self, tests: dict[str, Any]) -> None:
-        self._configure_namespace(tests["namespace"])
-        self._cleanup_previous_testspace(tests["namespace"])
-        self._create_log_paths_from_tests(tests)
-        logger.info(f"Running test {tests['name']} for {tests['duration']} seconds")
-        test_cases = self.tc.parse_test_cases(tests["test_cases"])
-        for test_id in test_cases:
-            self._run_test_case(tests=tests, test_id=test_id)
+    def test_run(self, test: testConfig.ConfTest) -> None:
+        self._configure_namespace(test.namespace)
+        self._cleanup_previous_testspace(test.namespace)
+        self._create_log_paths_from_tests(test)
+        logger.info(f"Running test {test.name} for {test.duration} seconds")
+        for test_id in test.test_cases:
+            self._run_test_case(test=test, test_id=test_id)
         self._dump_result_to_log()
