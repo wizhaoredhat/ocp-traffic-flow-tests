@@ -168,7 +168,7 @@ class TrafficFlowTests:
         self,
         connection: testConfig.ConfConnection,
         test_id: TestCaseType,
-        index: int,
+        instance_index: int,
         duration: int,
         reverse: bool = False,
     ) -> None:
@@ -180,16 +180,11 @@ class TrafficFlowTests:
         c_client = connection.client[0]
 
         self.test_settings = TestSettings(
-            connection_name=connection.name,
+            connection=connection,
             test_case_id=test_id,
-            node_server_name=c_server.name,
-            node_client_name=c_client.name,
-            server_pod_type=c_server.pod_type,
-            client_pod_type=c_client.pod_type,
-            server_default_network=c_server.default_network,
-            client_default_network=c_client.default_network,
-            index=index,
-            test_type=connection.test_type,
+            conf_server=c_server,
+            conf_client=c_client,
+            instance_index=instance_index,
             reverse=reverse,
         )
         if (
@@ -229,19 +224,19 @@ class TrafficFlowTests:
         for connection in test.connections:
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
-            for index in range(connection.instances):
+            for instance_index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
                 self._run_test_case_instance(
                     connection=connection,
                     test_id=test_id,
-                    index=index,
+                    instance_index=instance_index,
                     duration=test.duration,
                 )
                 if connection.test_type == TestType.IPERF_TCP:
                     self._run_test_case_instance(
                         connection=connection,
                         test_id=test_id,
-                        index=index,
+                        instance_index=instance_index,
                         duration=test.duration,
                         reverse=True,
                     )

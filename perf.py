@@ -26,7 +26,7 @@ class PerfServer(Task):
         self.pod_type = ts.server_pod_type
         self.connection_mode = ts.connection_mode
 
-        self.template_args["default_network"] = ts.server_default_network
+        self.template_args["default_network"] = ts.conf_server.default_network
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
             self.pod_name = EXTERNAL_PERF_SERVER
             return
@@ -94,19 +94,19 @@ class PerfServer(Task):
 class PerfClient(Task):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: PerfServer):
         Task.__init__(
-            self, tc, ts.client_index, ts.node_client_name, ts.client_is_tenant
+            self, tc, ts.client_index, ts.conf_client.name, ts.client_is_tenant
         )
         self.server = server
         self.port = self.server.port
         self.pod_type = ts.client_pod_type
         self.connection_mode = ts.connection_mode
-        self.test_type = ts.test_type
+        self.test_type = ts.connection.test_type
         self.test_case_id = ts.test_case_id
         self.ts = ts
         self.reverse = ts.reverse
         self.cmd = ""
 
-        self.template_args["default_network"] = ts.client_default_network
+        self.template_args["default_network"] = ts.conf_client.default_network
         if self.pod_type == PodType.SRIOV:
             self.in_file_template = "./manifests/sriov-pod.yaml.j2"
             self.out_file_yaml = (
