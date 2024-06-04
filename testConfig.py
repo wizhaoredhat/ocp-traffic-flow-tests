@@ -2,7 +2,6 @@ import io
 import sys
 import typing
 
-from enum import Enum
 from typing import Any
 from typing import Mapping
 from yaml import safe_load
@@ -12,14 +11,10 @@ import host
 
 from k8sClient import K8sClient
 from logger import logger
+from tftbase import ClusterMode
 from tftbase import PodType
 from tftbase import TestCaseType
 from tftbase import TestType
-
-
-class ClusterMode(Enum):
-    SINGLE = 1
-    DPU = 3
 
 
 class TestConfig:

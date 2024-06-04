@@ -14,6 +14,11 @@ TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
 
 
+class ClusterMode(Enum):
+    SINGLE = 1
+    DPU = 3
+
+
 class TestType(Enum):
     IPERF_TCP = 1
     IPERF_UDP = 2

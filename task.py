@@ -10,8 +10,8 @@ import host
 import tftbase
 
 from logger import logger
-from testConfig import ClusterMode
 from testConfig import TestConfig
+from tftbase import ClusterMode
 from thread import ReturnValueThread
 
 
