@@ -130,7 +130,7 @@ class TestMetadata:
 @dataclass
 class BaseOutput:
     command: str
-    result: dict[str, str | int]
+    result: dict[str, Any]
 
     def __init__(self, command: str, result: Mapping[str, str | int]):
         if not isinstance(result, dict):
