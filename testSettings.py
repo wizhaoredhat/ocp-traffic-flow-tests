@@ -27,7 +27,7 @@ class TestSettings:
         self.node_server_name = self._determine_server_name(
             test_case_id, conf_server.name, conf_client.name
         )
-        self.server_pod_type = self.server_test_to_pod_type(
+        self.server_pod_type = tftbase.test_case_type_to_server_pod_type(
             test_case_id,
             conf_server.pod_type,
         )
@@ -97,19 +97,6 @@ class TestSettings:
         if tftbase.test_case_type_is_same_node(test_case_id):
             return node_client_name
         return node_server_name
-
-    @staticmethod
-    def server_test_to_pod_type(
-        test_id: TestCaseType,
-        cfg_pod_type: PodType,
-    ) -> PodType:
-        if test_id.value in (3, 4, 7, 8, 19, 20, 23, 24):
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == PodType.SRIOV:
-            return PodType.SRIOV
-
-        return PodType.NORMAL
 
     @staticmethod
     def client_test_to_pod_type(

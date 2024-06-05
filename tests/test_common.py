@@ -293,3 +293,23 @@ def test_test_case_type_is_same_node() -> None:
         assert _alternative(test_case_type) == tftbase.test_case_type_is_same_node(
             test_case_type
         )
+
+
+def test_test_case_type_to_pod_type() -> None:
+    def _alternative(
+        test_id: TestCaseType,
+        cfg_pod_type: PodType,
+    ) -> PodType:
+        if test_id.value in (3, 4, 7, 8, 19, 20, 23, 24):
+            return PodType.HOSTBACKED
+
+        if cfg_pod_type == PodType.SRIOV:
+            return PodType.SRIOV
+
+        return PodType.NORMAL
+
+    for pod_type in PodType:
+        for test_case_type in TestCaseType:
+            assert _alternative(
+                test_case_type, pod_type
+            ) == tftbase.test_case_type_to_server_pod_type(test_case_type, pod_type)
