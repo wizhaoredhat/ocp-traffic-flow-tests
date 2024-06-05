@@ -239,18 +239,57 @@ T = TypeVar("T")
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
 def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
-    assert is_dataclass(
-        cls
-    ), "dataclass_from_dict() should only be used with dataclasses."
-    field_values = {}
-    for f in fields(cls):
-        field_name = f.name
-        field_type = f.type
-        if is_dataclass(field_type) and field_name in data:
-            field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
-        elif field_name in data:
-            field_values[field_name] = data[field_name]
-    return cast(T, cls(**field_values))
+    if not is_dataclass(cls):
+        raise ValueError(
+            f"dataclass_from_dict() should only be used with dataclasses but is called with {cls}"
+        )
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"requires a dictionary to in initialize dataclass {cls} but got {type(data)}"
+        )
+    for k in data:
+        if not isinstance(k, str):
+            raise ValueError(
+                f"requires a strdict to in initialize dataclass {cls} but has key {type(k)}"
+            )
+    data = dict(data)
+    create_kwargs = {}
+    for field in fields(cls):
+        if field.name not in data:
+            if (
+                field.default is dataclasses.MISSING
+                and field.default_factory is dataclasses.MISSING
+            ):
+                raise ValueError(
+                    f'Missing mandatory argument "{field.name}" for dataclass {cls}'
+                )
+            continue
+
+        if not field.init:
+            continue
+
+        actual_type = typing.get_origin(field.type)
+
+        value = data.pop(field.name)
+
+        if is_dataclass(field.type) and isinstance(value, dict):
+            value = dataclass_from_dict(field.type, value)
+        elif actual_type is None and issubclass(field.type, Enum):
+            value = enum_convert(field.type, value)
+
+        if not check_type(value, field.type):
+            raise TypeError(
+                f"Expected type '{field.type}' for attribute '{field.name}' but received type '{type(value)}' ({value})"
+            )
+
+        create_kwargs[field.name] = value
+
+    if data:
+        raise ValueError(
+            f"There are left over keys {list(data)} to create dataclass {cls}"
+        )
+
+    return cast(T, cls(**create_kwargs))
 
 
 def check_type(value: typing.Any, type_hint: type[typing.Any]) -> bool:
