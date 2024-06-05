@@ -87,7 +87,6 @@ plugin = PluginValidateOffload()
 
 
 class TaskValidateOffload(PluginTask):
-
     @property
     def plugin(self) -> pluginbase.Plugin:
         return plugin

@@ -35,23 +35,20 @@ class PerfServer(Task):
             self.out_file_yaml = (
                 f"./manifests/yamls/sriov-pod-{self.node_name}-server.yaml"
             )
-            self.template_args["pod_name"] = (
-                f"sriov-pod-{self.node_name}-server-{self.port}"
-            )
+            s = f"sriov-pod-{self.node_name}-server-{self.port}"
+            self.template_args["pod_name"] = s
         elif self.pod_type == PodType.NORMAL:
             self.in_file_template = "./manifests/pod.yaml.j2"
             self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-server.yaml"
-            self.template_args["pod_name"] = (
-                f"normal-pod-{self.node_name}-server-{self.port}"
-            )
+            s = f"normal-pod-{self.node_name}-server-{self.port}"
+            self.template_args["pod_name"] = s
         elif self.pod_type == PodType.HOSTBACKED:
             self.in_file_template = "./manifests/host-pod.yaml.j2"
             self.out_file_yaml = (
                 f"./manifests/yamls/host-pod-{self.node_name}-server.yaml"
             )
-            self.template_args["pod_name"] = (
-                f"host-pod-{self.node_name}-server-{self.port}"
-            )
+            s = f"host-pod-{self.node_name}-server-{self.port}"
+            self.template_args["pod_name"] = s
 
         self.template_args["port"] = f"{self.port}"
 
@@ -115,23 +112,20 @@ class PerfClient(Task):
             self.out_file_yaml = (
                 f"./manifests/yamls/sriov-pod-{self.node_name}-client.yaml"
             )
-            self.template_args["pod_name"] = (
-                f"sriov-pod-{self.node_name}-client-{self.port}"
-            )
+            s = f"sriov-pod-{self.node_name}-client-{self.port}"
+            self.template_args["pod_name"] = s
         elif self.pod_type == PodType.NORMAL:
             self.in_file_template = "./manifests/pod.yaml.j2"
             self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-client.yaml"
-            self.template_args["pod_name"] = (
-                f"normal-pod-{self.node_name}-client-{self.port}"
-            )
+            s = f"normal-pod-{self.node_name}-client-{self.port}"
+            self.template_args["pod_name"] = s
         elif self.pod_type == PodType.HOSTBACKED:
             self.in_file_template = "./manifests/host-pod.yaml.j2"
             self.out_file_yaml = (
                 f"./manifests/yamls/host-pod-{self.node_name}-client.yaml"
             )
-            self.template_args["pod_name"] = (
-                f"host-pod-{self.node_name}-client-{self.port}"
-            )
+            s = f"host-pod-{self.node_name}-client-{self.port}"
+            self.template_args["pod_name"] = s
 
         self.pod_name = self.template_args["pod_name"]
 

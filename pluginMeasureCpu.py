@@ -41,7 +41,6 @@ plugin = PluginMeasureCpu()
 
 
 class TaskMeasureCPU(PluginTask):
-
     @property
     def plugin(self) -> pluginbase.Plugin:
         return plugin
