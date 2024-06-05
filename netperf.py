@@ -20,7 +20,7 @@ class NetPerfServer(perf.PerfServer):
     def __init__(self, tc: TestConfig, ts: TestSettings):
         super().__init__(tc, ts)
 
-        self.exec_persistent = ts.server_is_persistent
+        self.exec_persistent = ts.conf_server.persistent
 
         if self.exec_persistent:
             self.template_args["command"] = NETPERF_SERVER_EXE

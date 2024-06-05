@@ -21,7 +21,7 @@ class PerfServer(Task):
         Task.__init__(
             self, tc, ts.server_index, ts.node_server_name, ts.server_is_tenant
         )
-        self.exec_persistent = ts.server_is_persistent
+        self.exec_persistent = ts.conf_server.persistent
         self.port = 5201 + self.index
         self.pod_type = ts.server_pod_type
         self.connection_mode = ts.connection_mode

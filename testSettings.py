@@ -45,7 +45,6 @@ class TestSettings:
 
         # Derive params from test_case_id
         self.connection_mode = self._test_id_to_connection_mode(test_case_id)
-        self.server_is_persistent = self._server_test_to_persistent(test_case_id)
         if self._is_same_node_test(test_case_id):
             self.nodeLocation = NodeLocation.SAME_NODE
         else:
@@ -58,7 +57,7 @@ class TestSettings:
             Tenant={self.client_is_tenant}
             Index={self.client_index}
         Server Node: {self.node_server_name}
-            Exec Persistence: {self.server_is_persistent}
+            Exec Persistence: {self.conf_server.persistent}
             Tenant={self.server_is_tenant}
             Index={self.server_index}
         """
@@ -113,10 +112,6 @@ class TestSettings:
     @staticmethod
     def _is_same_node_test(test_id: TestCaseType) -> bool:
         return test_id.value in (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23)
-
-    def _server_test_to_persistent(self, test_id: TestCaseType) -> bool:
-        # TODO: add logic to determine when this is required
-        return False
 
     @staticmethod
     def server_test_to_pod_type(
