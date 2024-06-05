@@ -23,17 +23,6 @@ class TestSettings:
         self.test_case_id = test_case_id
         self.conf_server = conf_server
         self.conf_client = conf_client
-        self.node_server_name = self._determine_server_name(
-            test_case_id, conf_server.name, conf_client.name
-        )
-        self.server_pod_type = tftbase.test_case_type_to_server_pod_type(
-            test_case_id,
-            conf_server.pod_type,
-        )
-        self.client_pod_type = tftbase.test_case_type_to_client_pod_type(
-            test_case_id,
-            conf_client.pod_type,
-        )
         # TODO: Handle Case when client is not tenant
         self.client_is_tenant = True
         self.server_is_tenant = True
@@ -42,9 +31,28 @@ class TestSettings:
         self.client_index = instance_index
         self.reverse = reverse
 
-        # Derive params from test_case_id
-        self.connection_mode = tftbase.test_case_type_to_connection_mode(test_case_id)
-        if tftbase.test_case_type_is_same_node(test_case_id):
+        # Initialize derived attributes...
+
+        if tftbase.test_case_type_is_same_node(self.test_case_id):
+            self.node_server_name = self.conf_client.name
+        else:
+            self.node_server_name = self.conf_server.name
+
+        self.server_pod_type = tftbase.test_case_type_to_server_pod_type(
+            self.test_case_id,
+            self.conf_server.pod_type,
+        )
+
+        self.client_pod_type = tftbase.test_case_type_to_client_pod_type(
+            self.test_case_id,
+            self.conf_client.pod_type,
+        )
+
+        self.connection_mode = tftbase.test_case_type_to_connection_mode(
+            self.test_case_id
+        )
+
+        if tftbase.test_case_type_is_same_node(self.test_case_id):
             self.nodeLocation = NodeLocation.SAME_NODE
         else:
             self.nodeLocation = NodeLocation.DIFF_NODE
@@ -85,14 +93,3 @@ class TestSettings:
                 index=self.client_index,
             ),
         )
-
-    @staticmethod
-    def _determine_server_name(
-        test_case_id: TestCaseType,
-        node_server_name: str,
-        node_client_name: str,
-    ) -> str:
-        """If conducting Same Node testing, the server node should be the client node"""
-        if tftbase.test_case_type_is_same_node(test_case_id):
-            return node_client_name
-        return node_server_name
