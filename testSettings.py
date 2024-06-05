@@ -3,7 +3,6 @@ import tftbase
 
 from tftbase import NodeLocation
 from tftbase import PodInfo
-from tftbase import PodType
 from tftbase import TestCaseType
 from tftbase import TestMetadata
 
@@ -31,7 +30,7 @@ class TestSettings:
             test_case_id,
             conf_server.pod_type,
         )
-        self.client_pod_type = self.client_test_to_pod_type(
+        self.client_pod_type = tftbase.test_case_type_to_client_pod_type(
             test_case_id,
             conf_client.pod_type,
         )
@@ -97,19 +96,3 @@ class TestSettings:
         if tftbase.test_case_type_is_same_node(test_case_id):
             return node_client_name
         return node_server_name
-
-    @staticmethod
-    def client_test_to_pod_type(
-        test_id: TestCaseType,
-        cfg_pod_type: PodType,
-    ) -> PodType:
-        if (
-            test_id.value >= TestCaseType.HOST_TO_HOST_SAME_NODE.value
-            and test_id.value <= TestCaseType.HOST_TO_EXTERNAL.value
-        ):
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == PodType.SRIOV:
-            return PodType.SRIOV
-
-        return PodType.NORMAL

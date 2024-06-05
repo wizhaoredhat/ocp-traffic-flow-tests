@@ -295,7 +295,7 @@ def test_test_case_type_is_same_node() -> None:
         )
 
 
-def test_test_case_type_to_pod_type() -> None:
+def test_test_case_type_to_server_pod_type() -> None:
     def _alternative(
         test_id: TestCaseType,
         cfg_pod_type: PodType,
@@ -313,3 +313,26 @@ def test_test_case_type_to_pod_type() -> None:
             assert _alternative(
                 test_case_type, pod_type
             ) == tftbase.test_case_type_to_server_pod_type(test_case_type, pod_type)
+
+
+def test_test_case_type_to_client_pod_type() -> None:
+    def _alternative(
+        test_id: TestCaseType,
+        cfg_pod_type: PodType,
+    ) -> PodType:
+        if (
+            test_id.value >= TestCaseType.HOST_TO_HOST_SAME_NODE.value
+            and test_id.value <= TestCaseType.HOST_TO_EXTERNAL.value
+        ):
+            return PodType.HOSTBACKED
+
+        if cfg_pod_type == PodType.SRIOV:
+            return PodType.SRIOV
+
+        return PodType.NORMAL
+
+    for pod_type in PodType:
+        for test_case_type in TestCaseType:
+            assert _alternative(
+                test_case_type, pod_type
+            ) == tftbase.test_case_type_to_client_pod_type(test_case_type, pod_type)
