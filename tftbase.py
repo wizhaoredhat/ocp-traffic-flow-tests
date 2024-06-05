@@ -6,6 +6,8 @@ from enum import Enum
 from typing import Any
 from typing import Optional
 
+from common import strict_dataclass
+
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
 TFT_TESTS = "tft-tests"
@@ -71,7 +73,8 @@ class NodeLocation(Enum):
     DIFF_NODE = 2
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PodInfo:
     name: str
     pod_type: PodType
@@ -79,7 +82,8 @@ class PodInfo:
     index: int
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PluginResult:
     """Result of a single plugin from a given run
 
@@ -96,7 +100,8 @@ class PluginResult:
     success: bool
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class TestMetadata:
     reverse: bool
     test_case_id: TestCaseType
@@ -105,23 +110,27 @@ class TestMetadata:
     client: PodInfo
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class BaseOutput:
     command: str
     result: dict[str, Any]
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PluginOutput(BaseOutput):
     plugin_metadata: dict[str, str]
     name: str
 
 
+@strict_dataclass
 @dataclass
 class TftAggregateOutput:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will

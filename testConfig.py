@@ -11,6 +11,7 @@ from typing import TypeVar
 import common
 import host
 
+from common import strict_dataclass
 from k8sClient import K8sClient
 from logger import logger
 from pluginbase import Plugin
@@ -79,12 +80,14 @@ def _check_and_pop_name_required(vdict: dict[str, Any], yamlpath: str) -> str:
     return typing.cast(str, _check_and_pop_name(vdict, yamlpath, required=True))
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class _ConfBase(abc.ABC):
     yamlpath: str
     yamlidx: int
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class _ConfBaseNamed(_ConfBase, abc.ABC):
     name: str
@@ -93,6 +96,7 @@ class _ConfBaseNamed(_ConfBase, abc.ABC):
 T2 = TypeVar("T2", bound="ConfServer | ConfClient")
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
     sriov: bool
@@ -151,6 +155,7 @@ class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
         return typing.cast("T2", result)
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfPlugin(_ConfBaseNamed):
     plugin: Plugin
@@ -181,6 +186,7 @@ class ConfPlugin(_ConfBaseNamed):
         )
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfServer(_ConfBaseClientServer):
     persistent: bool
@@ -190,6 +196,7 @@ class ConfServer(_ConfBaseClientServer):
         return _ConfBaseClientServer._parse(ConfServer, yamlidx, yamlpath, arg)
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfClient(_ConfBaseClientServer):
     @staticmethod
@@ -197,6 +204,7 @@ class ConfClient(_ConfBaseClientServer):
         return _ConfBaseClientServer._parse(ConfClient, yamlidx, yamlpath, arg)
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfConnection(_ConfBaseNamed):
     test_type: TestType
@@ -288,6 +296,7 @@ class ConfConnection(_ConfBaseNamed):
         )
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfTest(_ConfBaseNamed):
     namespace: str
@@ -375,6 +384,7 @@ class ConfTest(_ConfBaseNamed):
         )
 
 
+@strict_dataclass
 @dataclass(frozen=True)
 class ConfConfig(_ConfBase):
     tft: tuple[ConfTest, ...]

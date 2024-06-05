@@ -15,6 +15,7 @@ import tftbase
 
 from common import dataclass_from_dict
 from common import serialize_enum
+from common import strict_dataclass
 from logger import logger
 from tftbase import IperfOutput
 from tftbase import PluginOutput
@@ -23,13 +24,15 @@ from tftbase import TestCaseType
 from tftbase import TestType
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class Bitrate:
     tx: float
     rx: float
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PassFailStatus:
     """Pass/Fail ratio and result from evaluating a full tft Flow Test result
 
@@ -45,7 +48,8 @@ class PassFailStatus:
     num_plugin_failed: int
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class TestResult:
     """Result of a single test case run
 
