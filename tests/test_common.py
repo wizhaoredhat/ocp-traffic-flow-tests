@@ -283,3 +283,13 @@ def test_test_case_type_to_connection_mode() -> None:
         assert _alternative(
             test_case_type
         ) == tftbase.test_case_type_to_connection_mode(test_case_type)
+
+
+def test_test_case_type_is_same_node() -> None:
+    def _alternative(test_id: TestCaseType) -> bool:
+        return test_id.value in (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23)
+
+    for test_case_type in TestCaseType:
+        assert _alternative(test_case_type) == tftbase.test_case_type_is_same_node(
+            test_case_type
+        )

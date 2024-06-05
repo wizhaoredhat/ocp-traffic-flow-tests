@@ -45,7 +45,7 @@ class TestSettings:
 
         # Derive params from test_case_id
         self.connection_mode = tftbase.test_case_type_to_connection_mode(test_case_id)
-        if self._is_same_node_test(test_case_id):
+        if tftbase.test_case_type_is_same_node(test_case_id):
             self.nodeLocation = NodeLocation.SAME_NODE
         else:
             self.nodeLocation = NodeLocation.DIFF_NODE
@@ -94,13 +94,9 @@ class TestSettings:
         node_client_name: str,
     ) -> str:
         """If conducting Same Node testing, the server node should be the client node"""
-        if TestSettings._is_same_node_test(test_case_id):
+        if tftbase.test_case_type_is_same_node(test_case_id):
             return node_client_name
         return node_server_name
-
-    @staticmethod
-    def _is_same_node_test(test_id: TestCaseType) -> bool:
-        return test_id.value in (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23)
 
     @staticmethod
     def server_test_to_pod_type(
