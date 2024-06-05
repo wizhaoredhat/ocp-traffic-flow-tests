@@ -193,20 +193,6 @@ def test_test_metadata() -> None:
     assert metadata.server == server
     assert metadata.client == client
 
-    # Test with dictionary input
-    metadata_dict = TestMetadata(
-        reverse=True,
-        test_case_id=TestCaseType.POD_TO_POD_DIFF_NODE,
-        test_type=TestType.IPERF_UDP,
-        server=server.__dict__,
-        client=client.__dict__,
-    )
-    assert metadata_dict.reverse is True
-    assert metadata_dict.test_case_id == TestCaseType.POD_TO_POD_DIFF_NODE
-    assert metadata_dict.test_type == TestType.IPERF_UDP
-    assert isinstance(metadata_dict.server, PodInfo)
-    assert isinstance(metadata_dict.client, PodInfo)
-
 
 def test_iperf_output() -> None:
     server = PodInfo(
@@ -217,15 +203,31 @@ def test_iperf_output() -> None:
     )
     metadata = TestMetadata(
         reverse=False,
-        test_case_id="POD_TO_POD_SAME_NODE",
-        test_type="IPERF_TCP",
-        server=server.__dict__,
-        client=client.__dict__,
+        test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
+        test_type=TestType.IPERF_TCP,
+        server=server,
+        client=client,
     )
     IperfOutput(command="command", result={}, tft_metadata=metadata)
 
-    with pytest.raises(ValueError):
-        IperfOutput(command="command", result={}, tft_metadata="string")  # type: ignore
+    common.dataclass_from_dict(
+        IperfOutput,
+        {
+            "command": "command",
+            "result": {},
+            "tft_metadata": metadata,
+        },
+    )
+
+    with pytest.raises(TypeError):
+        common.dataclass_from_dict(
+            IperfOutput,
+            {
+                "command": "command",
+                "result": {},
+                "tft_metadata": "string",
+            },
+        )
 
 
 def test_serialize_enum() -> None:
