@@ -9,19 +9,24 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import common  # noqa: E402
-import tftbase  # noqa: E402
 
 from common import enum_convert  # noqa: E402
 from common import enum_convert_list  # noqa: E402
 from common import serialize_enum  # noqa: E402
-from tftbase import ConnectionMode  # noqa: E402
-from tftbase import IperfOutput  # noqa: E402
-from tftbase import NodeLocation  # noqa: E402
-from tftbase import PodInfo  # noqa: E402
-from tftbase import PodType  # noqa: E402
-from tftbase import TestCaseType  # noqa: E402
-from tftbase import TestMetadata  # noqa: E402
-from tftbase import TestType  # noqa: E402
+
+
+class TstTestType(Enum):
+    IPERF_TCP = 1
+    IPERF_UDP = 2
+    HTTP = 3
+    NETPERF_TCP_STREAM = 4
+    NETPERF_TCP_RR = 5
+
+
+class TstPodType(Enum):
+    NORMAL = 1
+    SRIOV = 2
+    HOSTBACKED = 3
 
 
 def test_str_to_bool() -> None:
@@ -120,22 +125,24 @@ def test_str_to_bool() -> None:
 
 
 def test_enum_convert() -> None:
-    assert enum_convert(TestType, "IPERF_TCP") == TestType.IPERF_TCP
-    assert enum_convert(PodType, 1) == PodType.NORMAL
-    assert enum_convert(PodType, "1 ") == PodType.NORMAL
-    assert enum_convert(PodType, " normal") == PodType.NORMAL
+    assert enum_convert(TstTestType, "IPERF_TCP") == TstTestType.IPERF_TCP
+    assert enum_convert(TstPodType, 1) == TstPodType.NORMAL
+    assert enum_convert(TstPodType, "1 ") == TstPodType.NORMAL
+    assert enum_convert(TstPodType, " normal") == TstPodType.NORMAL
     with pytest.raises(ValueError):
-        enum_convert(TestType, "Not_in_enum")
+        enum_convert(TstTestType, "Not_in_enum")
     with pytest.raises(ValueError):
-        enum_convert(TestType, 10000)
+        enum_convert(TstTestType, 10000)
 
-    assert enum_convert_list(TestType, [1]) == [TestType.IPERF_TCP]
-    assert enum_convert_list(TestType, [TestType.IPERF_TCP]) == [TestType.IPERF_TCP]
-    assert enum_convert_list(TestType, ["iperf-tcp"]) == [TestType.IPERF_TCP]
-    assert enum_convert_list(TestType, ["iperf_tcp-1,3", 2]) == [
-        TestType.IPERF_TCP,
-        TestType.HTTP,
-        TestType.IPERF_UDP,
+    assert enum_convert_list(TstTestType, [1]) == [TstTestType.IPERF_TCP]
+    assert enum_convert_list(TstTestType, [TstTestType.IPERF_TCP]) == [
+        TstTestType.IPERF_TCP
+    ]
+    assert enum_convert_list(TstTestType, ["iperf-tcp"]) == [TstTestType.IPERF_TCP]
+    assert enum_convert_list(TstTestType, ["iperf_tcp-1,3", 2]) == [
+        TstTestType.IPERF_TCP,
+        TstTestType.HTTP,
+        TstTestType.IPERF_UDP,
     ]
 
     class E1(Enum):
@@ -165,79 +172,14 @@ def test_enum_convert() -> None:
     assert enum_convert(E1, "1") == E1.V1
 
 
-def test_pod_info() -> None:
-    pod = PodInfo(name="test_pod", pod_type=PodType.NORMAL, is_tenant=True, index=0)
-    assert pod.name == "test_pod"
-    assert pod.pod_type == PodType.NORMAL
-    assert pod.is_tenant is True
-    assert pod.index == 0
-
-
-def test_test_metadata() -> None:
-    server = PodInfo(
-        name="server_pod", pod_type=PodType.NORMAL, is_tenant=True, index=0
-    )
-    client = PodInfo(
-        name="client_pod", pod_type=PodType.NORMAL, is_tenant=False, index=1
-    )
-    metadata = TestMetadata(
-        reverse=False,
-        test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
-        test_type=TestType.IPERF_TCP,
-        server=server,
-        client=client,
-    )
-    assert metadata.reverse is False
-    assert metadata.test_case_id == TestCaseType.POD_TO_POD_SAME_NODE
-    assert metadata.test_type == TestType.IPERF_TCP
-    assert metadata.server == server
-    assert metadata.client == client
-
-
-def test_iperf_output() -> None:
-    server = PodInfo(
-        name="server_pod", pod_type=PodType.NORMAL, is_tenant=True, index=0
-    )
-    client = PodInfo(
-        name="client_pod", pod_type=PodType.NORMAL, is_tenant=False, index=1
-    )
-    metadata = TestMetadata(
-        reverse=False,
-        test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
-        test_type=TestType.IPERF_TCP,
-        server=server,
-        client=client,
-    )
-    IperfOutput(command="command", result={}, tft_metadata=metadata)
-
-    common.dataclass_from_dict(
-        IperfOutput,
-        {
-            "command": "command",
-            "result": {},
-            "tft_metadata": metadata,
-        },
-    )
-
-    with pytest.raises(TypeError):
-        common.dataclass_from_dict(
-            IperfOutput,
-            {
-                "command": "command",
-                "result": {},
-                "tft_metadata": "string",
-            },
-        )
-
-
 def test_serialize_enum() -> None:
     # Test with enum value
-    assert serialize_enum(TestType.IPERF_TCP) == "IPERF_TCP"
+    assert serialize_enum(TstTestType.IPERF_TCP) == "IPERF_TCP"
 
     # Test with a dictionary containing enum values
     data = {
-        "test_type": TestType.IPERF_UDP,
-        "pod_type": PodType.SRIOV,
+        "test_type": TstTestType.IPERF_UDP,
+        "pod_type": TstPodType.SRIOV,
         "other_key": "some_value",
     }
     serialized_data = serialize_enum(data)
@@ -248,14 +190,23 @@ def test_serialize_enum() -> None:
     }
 
     # Test with a list containing enum values
-    data_list = [TestType.HTTP, PodType.HOSTBACKED]
+    data_list = [TstTestType.HTTP, TstPodType.HOSTBACKED]
     serialized_list = serialize_enum(data_list)
     assert serialized_list == ["HTTP", "HOSTBACKED"]
 
+    class TstTestCaseType(Enum):
+        POD_TO_HOST_SAME_NODE = 5
+
+    class TstConnectionMode(Enum):
+        EXTERNAL_IP = 1
+
+    class TstNodeLocation(Enum):
+        SAME_NODE = 1
+
     # Test with nested structures
     nested_data = {
-        "nested_dict": {"test_case_id": TestCaseType.POD_TO_HOST_SAME_NODE},
-        "nested_list": [ConnectionMode.EXTERNAL_IP, NodeLocation.SAME_NODE],
+        "nested_dict": {"test_case_id": TstTestCaseType.POD_TO_HOST_SAME_NODE},
+        "nested_list": [TstConnectionMode.EXTERNAL_IP, TstNodeLocation.SAME_NODE],
     }
     serialized_nested_data = serialize_enum(nested_data)
     assert serialized_nested_data == {
@@ -266,79 +217,6 @@ def test_serialize_enum() -> None:
     # Test with non-enum value
     assert serialize_enum("some_string") == "some_string"
     assert serialize_enum(123) == 123
-
-
-def test_test_case_typ_infos() -> None:
-    assert list(tftbase._test_case_typ_infos) == list(TestCaseType)
-
-
-def test_test_case_type_to_connection_mode() -> None:
-    def _alternative(test_case_id: TestCaseType) -> ConnectionMode:
-        if test_case_id.value in (5, 6, 7, 8, 17, 18, 19, 20):
-            return ConnectionMode.CLUSTER_IP
-        if test_case_id.value in (9, 10, 11, 12, 21, 22, 23, 24):
-            return ConnectionMode.NODE_PORT_IP
-        if test_case_id.value in (25, 26):
-            return ConnectionMode.EXTERNAL_IP
-        return ConnectionMode.POD_IP
-
-    for test_case_type in TestCaseType:
-        assert _alternative(
-            test_case_type
-        ) == tftbase.test_case_type_to_connection_mode(test_case_type)
-
-
-def test_test_case_type_is_same_node() -> None:
-    def _alternative(test_id: TestCaseType) -> bool:
-        return test_id.value in (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23)
-
-    for test_case_type in TestCaseType:
-        assert _alternative(test_case_type) == tftbase.test_case_type_is_same_node(
-            test_case_type
-        )
-
-
-def test_test_case_type_to_server_pod_type() -> None:
-    def _alternative(
-        test_id: TestCaseType,
-        cfg_pod_type: PodType,
-    ) -> PodType:
-        if test_id.value in (3, 4, 7, 8, 19, 20, 23, 24):
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == PodType.SRIOV:
-            return PodType.SRIOV
-
-        return PodType.NORMAL
-
-    for pod_type in PodType:
-        for test_case_type in TestCaseType:
-            assert _alternative(
-                test_case_type, pod_type
-            ) == tftbase.test_case_type_to_server_pod_type(test_case_type, pod_type)
-
-
-def test_test_case_type_to_client_pod_type() -> None:
-    def _alternative(
-        test_id: TestCaseType,
-        cfg_pod_type: PodType,
-    ) -> PodType:
-        if (
-            test_id.value >= TestCaseType.HOST_TO_HOST_SAME_NODE.value
-            and test_id.value <= TestCaseType.HOST_TO_EXTERNAL.value
-        ):
-            return PodType.HOSTBACKED
-
-        if cfg_pod_type == PodType.SRIOV:
-            return PodType.SRIOV
-
-        return PodType.NORMAL
-
-    for pod_type in PodType:
-        for test_case_type in TestCaseType:
-            assert _alternative(
-                test_case_type, pod_type
-            ) == tftbase.test_case_type_to_client_pod_type(test_case_type, pod_type)
 
 
 def test_strict_dataclass() -> None:
@@ -414,9 +292,17 @@ def test_strict_dataclass() -> None:
         C6(("a", 1))  # type: ignore
 
     @common.strict_dataclass
+    @dataclasses.dataclass(frozen=True)
+    class TstPodInfo:
+        name: str
+        pod_type: TstPodType
+        is_tenant: bool
+        index: int
+
+    @common.strict_dataclass
     @dataclasses.dataclass
     class C7:
-        addr_info: typing.List[PodInfo]
+        addr_info: typing.List[TstPodInfo]
 
         def _post_check(self) -> None:
             pass
@@ -424,9 +310,9 @@ def test_strict_dataclass() -> None:
     with pytest.raises(TypeError):
         C7(None)  # type: ignore
     C7([])
-    C7([PodInfo("name", PodType.NORMAL, True, 5)])
+    C7([TstPodInfo("name", TstPodType.NORMAL, True, 5)])
     with pytest.raises(TypeError):
-        C7([PodInfo("name", PodType.NORMAL, True, 5), None])  # type:ignore
+        C7([TstPodInfo("name", TstPodType.NORMAL, True, 5), None])  # type:ignore
 
     @common.strict_dataclass
     @dataclasses.dataclass
