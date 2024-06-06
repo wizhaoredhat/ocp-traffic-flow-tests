@@ -85,10 +85,22 @@ class _ConfBase(abc.ABC):
     yamlpath: str
     yamlidx: int
 
+    @abc.abstractmethod
+    def serialize(self) -> dict[str, Any]:
+        pass
+
+    def serialize_json(self) -> str:
+        return json.dumps(self.serialize())
+
 
 @dataclass(frozen=True)
 class _ConfBaseNamed(_ConfBase, abc.ABC):
     name: str
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+        }
 
 
 T2 = TypeVar("T2", bound="ConfServer | ConfClient")
@@ -99,6 +111,13 @@ class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
     sriov: bool
     pod_type: PodType
     default_network: str
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            **super().serialize(),
+            "sriov": self.sriov,
+            "default-network": self.default_network,
+        }
 
     @staticmethod
     def _parse(
@@ -186,6 +205,12 @@ class ConfPlugin(_ConfBaseNamed):
 class ConfServer(_ConfBaseClientServer):
     persistent: bool
 
+    def serialize(self) -> dict[str, Any]:
+        return {
+            **super().serialize(),
+            "persistent": self.persistent,
+        }
+
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfServer":
         return _ConfBaseClientServer._parse(ConfServer, yamlidx, yamlpath, arg)
@@ -205,6 +230,16 @@ class ConfConnection(_ConfBaseNamed):
     server: tuple[ConfServer, ...]
     client: tuple[ConfClient, ...]
     plugins: tuple[ConfPlugin, ...]
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            **super().serialize(),
+            "type": self.test_type.name,
+            "instances": self.instances,
+            "server": [s.serialize() for s in self.server],
+            "client": [c.serialize() for c in self.client],
+            "plugins": [p.serialize() for p in self.plugins],
+        }
 
     @staticmethod
     def parse(
@@ -297,6 +332,16 @@ class ConfTest(_ConfBaseNamed):
     connections: tuple[ConfConnection, ...]
     logs: pathlib.Path
 
+    def serialize(self) -> dict[str, Any]:
+        return {
+            **super().serialize(),
+            "namespace": self.namespace,
+            "test_cases": [t.name for t in self.test_cases],
+            "duration": self.duration,
+            "connections": [c.serialize() for c in self.connections],
+            "logs": str(self.logs),
+        }
+
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfTest":
         v: Any
@@ -379,6 +424,11 @@ class ConfTest(_ConfBaseNamed):
 @dataclass(frozen=True)
 class ConfConfig(_ConfBase):
     tft: tuple[ConfTest, ...]
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "tft": [c.serialize() for c in self.tft],
+        }
 
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfConfig":

@@ -1,5 +1,6 @@
-import sys
+import json
 import os
+import sys
 import yaml
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -86,6 +87,21 @@ def test_validate_test_type() -> None:
     assert _t("HTTP") == TestType.HTTP
 
 
+def _check_testConfig(tc: testConfig.TestConfig) -> None:
+
+    assert isinstance(tc, testConfig.TestConfig)
+
+    jdata = tc.config.serialize()
+
+    tc2 = testConfig.TestConfig(full_config=jdata, mode_args=testConfigModeArgs1)
+
+    assert isinstance(tc, testConfig.TestConfig)
+
+    assert tc.config == tc2.config
+    assert jdata == tc2.config.serialize()
+    assert json.dumps(jdata) == tc2.config.serialize_json()
+
+
 def test_config1() -> None:
     file = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
     assert os.path.exists(file)
@@ -109,6 +125,8 @@ def test_config1() -> None:
         tc.config.tft[0].connections[0].plugins[0].yamlpath
         == ".tft[0].connections[0].plugins[0]"
     )
+
+    _check_testConfig(tc)
 
 
 def test_config2() -> None:
@@ -146,6 +164,8 @@ tft:
     )
     assert tc.config.tft[0].connections[0].plugins[1].name == "measure_power"
 
+    _check_testConfig(tc)
+
     # A minimal yaml.
     full_config = yaml.safe_load(
         """
@@ -162,3 +182,5 @@ tft:
         common.enum_convert_list(TestCaseType, "*")
     )
     assert tc.config.tft[0].connections[0].name == "Connection Test 1/1"
+
+    _check_testConfig(tc)
