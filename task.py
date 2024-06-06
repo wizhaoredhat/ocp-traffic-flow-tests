@@ -25,7 +25,7 @@ class Task(ABC):
         self.out_file_yaml = ""
         self.pod_name = ""
         self.exec_thread: ReturnValueThread
-        self.lh = host.LocalHost()
+        self.lh = host.local
         self.index = index
         self.node_name = node_name
         self.tenant = tenant
