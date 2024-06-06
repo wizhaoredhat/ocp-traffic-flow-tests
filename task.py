@@ -13,6 +13,7 @@ from logger import logger
 from testConfig import TestConfig
 from tftbase import ClusterMode
 from thread import ReturnValueThread
+from pluginbase import Plugin
 
 
 class Task(ABC):
@@ -141,3 +142,10 @@ class Task(ABC):
     @abstractmethod
     def generate_output(self, data: str) -> tftbase.BaseOutput:
         raise NotImplementedError("Must implement generate_output()")
+
+
+class PluginTask(Task):
+    @property
+    @abstractmethod
+    def plugin(self) -> Plugin:
+        pass

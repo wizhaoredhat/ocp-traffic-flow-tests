@@ -1,21 +1,12 @@
+import typing
+
 from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
-import perf
-
-from task import Task
-from testConfig import TestConfig
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import TestMetadata
-
-
-class PluginTask(Task):
-    @property
-    @abstractmethod
-    def plugin(self) -> "Plugin":
-        pass
 
 
 class Plugin(ABC):
@@ -25,13 +16,13 @@ class Plugin(ABC):
     def enable(
         self,
         *,
-        tc: TestConfig,
+        tc: "TestConfig",
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.PerfServer,
-        perf_client: perf.PerfClient,
+        perf_server: "PerfServer",
+        perf_client: "PerfClient",
         tenant: bool,
-    ) -> list[PluginTask]:
+    ) -> list["PluginTask"]:
         pass
 
     def eval_log(
@@ -68,3 +59,15 @@ def get_by_name(plugin_name: str) -> Plugin:
     if plugin is None:
         raise ValueError(f'Plugin "{plugin_name}" does not exist')
     return plugin
+
+
+if typing.TYPE_CHECKING:
+    # "pluginbase" cannot import modules like perf, task or testConfig, because
+    # those modules import "pluginbase" in turn. However, to forward declare
+    # type annotations, we do need those module here. Import them with
+    # TYPE_CHECKING, but otherwise avoid the cyclic dependency between
+    # modules.
+    from perf import PerfClient
+    from perf import PerfServer
+    from task import PluginTask
+    from testConfig import TestConfig
