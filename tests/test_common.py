@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import pathlib
 import pytest
 import sys
 import typing
@@ -9,6 +10,7 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import common  # noqa: E402
+import host  # noqa: E402
 
 from common import enum_convert  # noqa: E402
 from common import enum_convert_list  # noqa: E402
@@ -336,3 +338,50 @@ def test_strict_dataclass() -> None:
 
     with pytest.raises(NotImplementedError):
         C9("foo")
+
+
+def test_host_result_bin() -> None:
+    res = host.local.run("echo -n out; echo -n err >&2", text=False)
+    assert res == host.BinResult(b"out", b"err", 0)
+
+
+def test_host_result_str() -> None:
+    res = host.local.run("echo -n out; echo -n err >&2", text=True)
+    assert res == host.Result("out", "err", 0)
+
+    res = host.local.run("echo -n out; echo -n err >&2")
+    assert res == host.Result("out", "err", 0)
+
+
+def test_host_various_results() -> None:
+    res = host.local.run('printf "foo:\\705x"')
+    assert res == host.Result("foo:\ufffdx", "", 0)
+
+    # The result with decode_errors="replace" is the same as if decode_errors
+    # is left unspecified. However, the latter case will log an ERROR message
+    # when seeing unexpected binary. If you set decode_errors, you expect
+    # binary, and no error message is logged.
+    res = host.local.run('printf "foo:\\705x"', decode_errors="replace")
+    assert res == host.Result("foo:\ufffdx", "", 0)
+
+    res = host.local.run('printf "foo:\\705x"', decode_errors="ignore")
+    assert res == host.Result("foo:x", "", 0)
+
+    with pytest.raises(UnicodeDecodeError):
+        res = host.local.run('printf "foo:\\705x"', decode_errors="strict")
+
+    res = host.local.run('printf "foo:\\705x"', decode_errors="backslashreplace")
+    assert res == host.Result("foo:\\xc5x", "", 0)
+
+    binres = host.local.run('printf "foo:\\705x"', text=False)
+    assert binres == host.BinResult(b"foo:\xc5x", b"", 0)
+
+
+def test_host_file_exists() -> None:
+    assert host.local.file_exists(__file__)
+    assert host.Host.file_exists(host.local, __file__)
+    assert host.local.file_exists(os.path.dirname(__file__))
+    assert host.Host.file_exists(host.local, os.path.dirname(__file__))
+
+    assert host.local.file_exists(pathlib.Path(__file__))
+    assert host.Host.file_exists(host.local, pathlib.Path(__file__))
