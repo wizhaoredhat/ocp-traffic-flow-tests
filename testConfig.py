@@ -1,4 +1,5 @@
 import abc
+import json
 import pathlib
 import typing
 import yaml
@@ -490,7 +491,8 @@ class TestConfig:
 
         self.mode, self.kc_tenant, self.kc_infra = mode_args
 
-        logger.info(full_config["tft"])
+        s = json.dumps(full_config["tft"])
+        logger.info(f"config: {s}")
 
     def client(self, *, tenant: bool) -> K8sClient:
         if tenant:
