@@ -91,35 +91,6 @@ class TrafficFlowTests:
         cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
 
-    def _run_test_tasks(
-        self,
-        cfg_descr: ConfigDescriptor,
-        servers: list[perf.PerfServer],
-        clients: list[perf.PerfClient],
-        monitors: list[Task],
-    ) -> TftAggregateOutput:
-        tft_aggregate_output = TftAggregateOutput()
-
-        duration = cfg_descr.get_tft().duration
-
-        for tasks in servers + clients + monitors:
-            tasks.setup()
-
-        SyncManager.wait_on_server_alive()
-
-        for tasks in servers + clients + monitors:
-            tasks.run(duration)
-
-        SyncManager.wait_on_client_finish()
-
-        for tasks in servers + clients + monitors:
-            tasks.stop(duration)
-
-        for tasks in servers + clients + monitors:
-            tasks.output(tft_aggregate_output)
-
-        return tft_aggregate_output
-
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
         # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"
         # method. Storing per-test data in the object is ugly.
@@ -220,13 +191,28 @@ class TrafficFlowTests:
             t.initialize()
 
         SyncManager.reset(len(clients) + len(monitors))
-        output = self._run_test_tasks(
-            cfg_descr,
-            servers,
-            clients,
-            monitors,
-        )
-        self.tft_output.append(output)
+
+        tft_aggregate_output = TftAggregateOutput()
+
+        duration = cfg_descr.get_tft().duration
+
+        for tasks in servers + clients + monitors:
+            tasks.setup()
+
+        SyncManager.wait_on_server_alive()
+
+        for tasks in servers + clients + monitors:
+            tasks.run(duration)
+
+        SyncManager.wait_on_client_finish()
+
+        for tasks in servers + clients + monitors:
+            tasks.stop(duration)
+
+        for tasks in servers + clients + monitors:
+            tasks.output(tft_aggregate_output)
+
+        self.tft_output.append(tft_aggregate_output)
 
     def _run_test_case(self, cfg_descr: ConfigDescriptor) -> None:
         # TODO Allow for multiple connections / instances to run simultaneously
