@@ -43,6 +43,9 @@ class Task(ABC):
         self.template_args["node_name"] = self.node_name
         self.tc = tc
 
+    def initialize(self) -> None:
+        pass
+
     def run_oc(self, cmd: str) -> host.Result:
         return self.tc.client(tenant=self.tenant).oc(cmd)
 

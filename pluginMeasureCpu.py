@@ -59,6 +59,8 @@ class TaskMeasureCPU(PluginTask):
         self.node_name = node_name
         self.cmd = ""
 
+    def initialize(self) -> None:
+        super().initialize()
         j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 

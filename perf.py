@@ -54,6 +54,8 @@ class PerfServer(Task):
 
         self.pod_name = self.template_args["pod_name"]
 
+    def initialize(self) -> None:
+        super().initialize()
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
@@ -129,6 +131,8 @@ class PerfClient(Task):
 
         self.pod_name = self.template_args["pod_name"]
 
+    def initialize(self) -> None:
+        super().initialize()
         common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
