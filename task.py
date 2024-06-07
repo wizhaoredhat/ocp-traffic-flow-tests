@@ -33,13 +33,15 @@ class Task(ABC):
         if not self.tenant and tc.mode == ClusterMode.SINGLE:
             raise ValueError("Cannot have non-tenant Task when cluster mode is single")
 
-        self.template_args: dict[str, str] = {}
-        self.template_args["name_space"] = "default"
-        self.template_args["test_image"] = tftbase.TFT_TOOLS_IMG
-        self.template_args["command"] = "/sbin/init"
-        self.template_args["args"] = ""
-        self.template_args["index"] = f"{index}"
-        self.template_args["node_name"] = self.node_name
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            "name_space": "default",
+            "test_image": tftbase.TFT_TOOLS_IMG,
+            "command": "/sbin/init",
+            "args": "",
+            "index": f"{self.index}",
+            "node_name": self.node_name,
+        }
 
     def initialize(self) -> None:
         pass
@@ -60,7 +62,7 @@ class Task(ABC):
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
-        common.j2_render(in_file_template, out_file_yaml, self.template_args)
+        common.j2_render(in_file_template, out_file_yaml, self.get_template_args())
         logger.info(f"Creating Cluster IP Service {out_file_yaml}")
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:
@@ -75,9 +77,13 @@ class Task(ABC):
     def create_node_port_service(self, nodeport: int) -> str:
         in_file_template = "./manifests/svc-node-port.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-node-port.yaml"
-        self.template_args["nodeport_svc_port"] = f"{nodeport}"
 
-        common.j2_render(in_file_template, out_file_yaml, self.template_args)
+        template_args = {
+            **self.get_template_args(),
+            "nodeport_svc_port": f"{nodeport}",
+        }
+
+        common.j2_render(in_file_template, out_file_yaml, template_args)
         logger.info(f"Creating Node Port Service {out_file_yaml}")
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:

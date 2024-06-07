@@ -109,12 +109,16 @@ class TaskValidateOffload(PluginTask):
         self.perf_pod_type = perf_instance.pod_type
         self.ethtool_cmd = ""
 
-        self.template_args["pod_name"] = self.pod_name
-        self.template_args["test_image"] = TFT_TOOLS_IMG
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            **super().get_template_args(),
+            "pod_name": self.pod_name,
+            "test_image": TFT_TOOLS_IMG,
+        }
 
     def initialize(self) -> None:
         super().initialize()
-        j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
+        j2_render(self.in_file_template, self.out_file_yaml, self.get_template_args())
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
     def extract_vf_rep(self) -> str:

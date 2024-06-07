@@ -48,18 +48,29 @@ class PerfServer(Task):
         self.port = port
         self.pod_type = pod_type
         self.connection_mode = ts.connection_mode
+        self.ts = ts
         self.in_file_template = in_file_template
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
 
-        self.template_args["default_network"] = ts.conf_server.default_network
-        if connection_mode != ConnectionMode.EXTERNAL_IP:
-            self.template_args["pod_name"] = pod_name
-            self.template_args["port"] = f"{self.port}"
+    def get_template_args(self) -> dict[str, str]:
+
+        extra_args: dict[str, str] = {}
+        if self.connection_mode != ConnectionMode.EXTERNAL_IP:
+            extra_args["pod_name"] = self.pod_name
+            extra_args["port"] = f"{self.port}"
+
+        return {
+            **super().get_template_args(),
+            "default_network": self.ts.conf_server.default_network,
+            **extra_args,
+        }
 
     def initialize(self) -> None:
         super().initialize()
-        common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
+        common.j2_render(
+            self.in_file_template, self.out_file_yaml, self.get_template_args()
+        )
         logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
 
         self.cluster_ip_addr = self.create_cluster_ip_service()
@@ -132,12 +143,18 @@ class PerfClient(Task):
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
 
-        self.template_args["default_network"] = ts.conf_client.default_network
-        self.template_args["pod_name"] = pod_name
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            **super().get_template_args(),
+            "default_network": self.ts.conf_client.default_network,
+            "pod_name": self.pod_name,
+        }
 
     def initialize(self) -> None:
         super().initialize()
-        common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
+        common.j2_render(
+            self.in_file_template, self.out_file_yaml, self.get_template_args()
+        )
         logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
 
     def get_target_ip(self) -> str:
