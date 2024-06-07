@@ -52,12 +52,12 @@ class TaskMeasureCPU(PluginTask):
         self.out_file_yaml = (
             f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         )
-        self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
-        self.template_args["test_image"] = TFT_TOOLS_IMG
-
-        self.pod_name = self.template_args["pod_name"]
+        self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
         self.node_name = node_name
         self.cmd = ""
+
+        self.template_args["pod_name"] = self.pod_name
+        self.template_args["test_image"] = TFT_TOOLS_IMG
 
     def initialize(self) -> None:
         super().initialize()

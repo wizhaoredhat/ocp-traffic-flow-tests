@@ -57,7 +57,7 @@ class NetPerfServer(perf.PerfServer):
 
 class NetPerfClient(perf.PerfClient):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: NetPerfServer):
-        perf.PerfClient.__init__(self, tc, ts, server)
+        super().__init__(tc, ts, server)
 
     def run(self, duration: int) -> None:
         def client(self: NetPerfClient, cmd: str) -> Result:

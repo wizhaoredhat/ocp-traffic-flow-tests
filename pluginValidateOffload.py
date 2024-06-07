@@ -103,14 +103,14 @@ class TaskValidateOffload(PluginTask):
         self.out_file_yaml = (
             f"./manifests/yamls/tools-pod-{self.node_name}-validate-offload.yaml"
         )
-        self.template_args["pod_name"] = f"tools-pod-{self.node_name}-validate-offload"
-        self.template_args["test_image"] = TFT_TOOLS_IMG
-
-        self.pod_name = self.template_args["pod_name"]
+        self.pod_name = f"tools-pod-{self.node_name}-validate-offload"
         self._perf_instance = perf_instance
         self.perf_pod_name = perf_instance.pod_name
         self.perf_pod_type = perf_instance.pod_type
         self.ethtool_cmd = ""
+
+        self.template_args["pod_name"] = self.pod_name
+        self.template_args["test_image"] = TFT_TOOLS_IMG
 
     def initialize(self) -> None:
         super().initialize()

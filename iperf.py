@@ -65,7 +65,7 @@ class IperfServer(perf.PerfServer):
 
 class IperfClient(perf.PerfClient):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: IperfServer):
-        perf.PerfClient.__init__(self, tc, ts, server)
+        super().__init__(tc, ts, server)
 
     def run(self, duration: int) -> None:
         def client(self: IperfClient, cmd: str) -> Result:

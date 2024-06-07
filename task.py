@@ -20,28 +20,26 @@ class Task(ABC):
     def __init__(
         self, tc: TestConfig, index: int, node_name: str, tenant: bool
     ) -> None:
-        self.template_args: dict[str, str] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
         self.exec_thread: ReturnValueThread
         self.lh = host.LocalHost()
+        self.index = index
+        self.node_name = node_name
+        self.tenant = tenant
+        self.tc = tc
 
+        if not self.tenant and tc.mode == ClusterMode.SINGLE:
+            raise ValueError("Cannot have non-tenant Task when cluster mode is single")
+
+        self.template_args: dict[str, str] = {}
         self.template_args["name_space"] = "default"
         self.template_args["test_image"] = tftbase.TFT_TOOLS_IMG
         self.template_args["command"] = "/sbin/init"
         self.template_args["args"] = ""
         self.template_args["index"] = f"{index}"
-
-        self.index = index
-        self.node_name = node_name
-        self.tenant = tenant
-        if not self.tenant and tc.mode == ClusterMode.SINGLE:
-            logger.error("Cannot have non-tenant Task when cluster mode is single.")
-            sys.exit(-1)
-
         self.template_args["node_name"] = self.node_name
-        self.tc = tc
 
     def initialize(self) -> None:
         pass
