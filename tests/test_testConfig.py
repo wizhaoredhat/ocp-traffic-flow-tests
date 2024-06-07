@@ -166,6 +166,13 @@ tft:
 
     _check_testConfig(tc)
 
+    cfg_descr1 = testConfig.ConfigDescriptor(tc)
+    t: list[TestCaseType] = []
+    for cfg_descr2 in cfg_descr1.describe_all_tft():
+        for cfg_descr3 in cfg_descr2.describe_all_test_cases():
+            t.append(cfg_descr3.get_test_case())
+    assert tc.config.tft[0].test_cases == tuple(t)
+
     # A minimal yaml.
     full_config = yaml.safe_load(
         """

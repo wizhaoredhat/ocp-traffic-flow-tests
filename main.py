@@ -5,6 +5,7 @@ from pathlib import Path
 
 from logger import configure_logger
 from testConfig import TestConfig
+from testConfig import ConfigDescriptor
 from trafficFlowTests import TrafficFlowTests
 
 
@@ -60,11 +61,11 @@ def main() -> None:
         args.evaluator_config,
     )
 
-    for test in tft.tc.config.tft:
-        tft.test_run(test)
+    for cfg_descr in ConfigDescriptor(tft.tc).describe_all_tft():
+        tft.test_run(cfg_descr)
         if args.evaluator_config:
             if not tft.evaluate_run_success():
-                print(f"Failure detected in {test.name} results")
+                print(f"Failure detected in {cfg_descr.get_tft().name} results")
 
 
 if __name__ == "__main__":

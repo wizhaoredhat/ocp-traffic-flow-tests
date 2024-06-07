@@ -19,9 +19,9 @@ from netperf import NetPerfServer
 from syncManager import SyncManager
 from task import Task
 from testConfig import TestConfig
+from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TFT_TESTS
-from tftbase import TestCaseType
 from tftbase import TestType
 from tftbase import TftAggregateOutput
 
@@ -93,12 +93,14 @@ class TrafficFlowTests:
 
     def _run_test_tasks(
         self,
+        cfg_descr: ConfigDescriptor,
         servers: list[perf.PerfServer],
         clients: list[perf.PerfClient],
         monitors: list[Task],
-        duration: int,
     ) -> TftAggregateOutput:
         tft_aggregate_output = TftAggregateOutput()
+
+        duration = cfg_descr.get_tft().duration
 
         for tasks in servers + clients + monitors:
             tasks.setup()
@@ -166,12 +168,12 @@ class TrafficFlowTests:
 
     def _run_test_case_instance(
         self,
-        connection: testConfig.ConfConnection,
-        test_id: TestCaseType,
+        cfg_descr: ConfigDescriptor,
         instance_index: int,
-        duration: int,
         reverse: bool = False,
     ) -> None:
+        connection = cfg_descr.get_connection()
+
         servers: list[perf.PerfServer] = []
         clients: list[perf.PerfClient] = []
         monitors: list[Task] = []
@@ -180,8 +182,7 @@ class TrafficFlowTests:
         c_client = connection.client[0]
 
         self.test_settings = TestSettings(
-            connection=connection,
-            test_case_id=test_id,
+            cfg_descr,
             conf_server=c_server,
             conf_client=c_client,
             instance_index=instance_index,
@@ -219,37 +220,40 @@ class TrafficFlowTests:
             t.initialize()
 
         SyncManager.reset(len(clients) + len(monitors))
-        output = self._run_test_tasks(servers, clients, monitors, duration)
+        output = self._run_test_tasks(
+            cfg_descr,
+            servers,
+            clients,
+            monitors,
+        )
         self.tft_output.append(output)
 
-    def _run_test_case(self, test: testConfig.ConfTest, test_id: TestCaseType) -> None:
+    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> None:
         # TODO Allow for multiple connections / instances to run simultaneously
-        for connection in test.connections:
+        for cfg_descr2 in cfg_descr.describe_all_connections():
+            connection = cfg_descr2.get_connection()
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
                 self._run_test_case_instance(
-                    connection=connection,
-                    test_id=test_id,
+                    cfg_descr2,
                     instance_index=instance_index,
-                    duration=test.duration,
                 )
                 if connection.test_type == TestType.IPERF_TCP:
                     self._run_test_case_instance(
-                        connection=connection,
-                        test_id=test_id,
+                        cfg_descr2,
                         instance_index=instance_index,
-                        duration=test.duration,
                         reverse=True,
                     )
-                self._cleanup_previous_testspace(test.namespace)
+                self._cleanup_previous_testspace(cfg_descr2.get_tft().namespace)
 
-    def test_run(self, test: testConfig.ConfTest) -> None:
+    def test_run(self, cfg_descr: ConfigDescriptor) -> None:
+        test = cfg_descr.get_tft()
         self._configure_namespace(test.namespace)
         self._cleanup_previous_testspace(test.namespace)
         self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
-        for test_id in test.test_cases:
-            self._run_test_case(test=test, test_id=test_id)
+        for cfg_descr2 in cfg_descr.describe_all_test_cases():
+            self._run_test_case(cfg_descr2)
         self._dump_result_to_log()
