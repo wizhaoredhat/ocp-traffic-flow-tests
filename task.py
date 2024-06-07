@@ -4,6 +4,7 @@ import yaml
 
 from abc import ABC
 from abc import abstractmethod
+from typing import Optional
 
 import common
 import host
@@ -43,6 +44,24 @@ class Task(ABC):
             "node_name": self.node_name,
         }
 
+    def render_file(
+        self,
+        log_info: str,
+        in_file_template: Optional[str] = None,
+        out_file_yaml: Optional[str] = None,
+        template_args: Optional[dict[str, str]] = None,
+    ) -> None:
+        if in_file_template is None:
+            in_file_template = self.in_file_template
+        if out_file_yaml is None:
+            out_file_yaml = self.out_file_yaml
+        if template_args is None:
+            template_args = self.get_template_args()
+        logger.info(
+            f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}")'
+        )
+        common.j2_render(in_file_template, out_file_yaml, template_args)
+
     def initialize(self) -> None:
         pass
 
@@ -62,8 +81,7 @@ class Task(ABC):
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
-        common.j2_render(in_file_template, out_file_yaml, self.get_template_args())
-        logger.info(f"Creating Cluster IP Service {out_file_yaml}")
+        self.render_file("Cluster IP Service", in_file_template, out_file_yaml)
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:
             if "already exists" not in r.err:
@@ -83,8 +101,9 @@ class Task(ABC):
             "nodeport_svc_port": f"{nodeport}",
         }
 
-        common.j2_render(in_file_template, out_file_yaml, template_args)
-        logger.info(f"Creating Node Port Service {out_file_yaml}")
+        self.render_file(
+            "Node Port Service", in_file_template, out_file_yaml, template_args
+        )
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:
             if "already exists" not in r.err:

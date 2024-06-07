@@ -5,7 +5,6 @@ from typing import Optional
 import perf
 import pluginbase
 
-from common import j2_render
 from host import Result
 from logger import logger
 from syncManager import SyncManager
@@ -118,8 +117,7 @@ class TaskValidateOffload(PluginTask):
 
     def initialize(self) -> None:
         super().initialize()
-        j2_render(self.in_file_template, self.out_file_yaml, self.get_template_args())
-        logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
+        self.render_file("Server Pod Yaml")
 
     def extract_vf_rep(self) -> str:
         if self.perf_pod_type == PodType.HOSTBACKED:

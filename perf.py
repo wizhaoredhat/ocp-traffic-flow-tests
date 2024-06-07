@@ -1,7 +1,6 @@
 import sys
 import time
 
-import common
 import tftbase
 
 from logger import logger
@@ -68,10 +67,7 @@ class PerfServer(Task):
 
     def initialize(self) -> None:
         super().initialize()
-        common.j2_render(
-            self.in_file_template, self.out_file_yaml, self.get_template_args()
-        )
-        logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
+        self.render_file("Server Pod Yaml")
 
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
@@ -152,10 +148,7 @@ class PerfClient(Task):
 
     def initialize(self) -> None:
         super().initialize()
-        common.j2_render(
-            self.in_file_template, self.out_file_yaml, self.get_template_args()
-        )
-        logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
+        self.render_file("Client Pod Yaml")
 
     def get_target_ip(self) -> str:
         if self.connection_mode == ConnectionMode.CLUSTER_IP:
