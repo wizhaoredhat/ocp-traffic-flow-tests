@@ -37,7 +37,7 @@ class Task(ABC):
 
     def get_template_args(self) -> dict[str, str]:
         return {
-            "name_space": "default",
+            "name_space": self.ts.cfg_descr.get_tft().namespace,
             "test_image": tftbase.TFT_TOOLS_IMG,
             "command": "/sbin/init",
             "args": "",
