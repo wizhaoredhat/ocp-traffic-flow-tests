@@ -18,13 +18,13 @@ NETPERF_CLIENT_EXE = "netperf"
 
 class NetPerfServer(perf.PerfServer):
     def __init__(self, tc: TestConfig, ts: TestSettings):
+        super().__init__(tc, ts)
 
         self.exec_persistent = ts.server_is_persistent
+
         if self.exec_persistent:
             self.template_args["command"] = NETPERF_SERVER_EXE
             self.template_args["args"] = f'["-p", "{self.port}", "-N"]'
-
-        perf.PerfServer.__init__(self, tc, ts)
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
