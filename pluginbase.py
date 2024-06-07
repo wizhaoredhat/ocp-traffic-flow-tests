@@ -20,7 +20,7 @@ class Plugin(ABC):
     def enable(
         self,
         *,
-        tc: "TestConfig",
+        ts: "TestSettings",
         node_server_name: str,
         node_client_name: str,
         perf_server: "PerfServer",
@@ -28,7 +28,7 @@ class Plugin(ABC):
         tenant: bool,
     ) -> list["PluginTask"]:
         tasks = self._enable(
-            tc=tc,
+            ts=ts,
             node_server_name=node_server_name,
             node_client_name=node_client_name,
             perf_server=perf_server,
@@ -42,7 +42,7 @@ class Plugin(ABC):
     def _enable(
         self,
         *,
-        tc: "TestConfig",
+        ts: "TestSettings",
         node_server_name: str,
         node_client_name: str,
         perf_server: "PerfServer",
@@ -104,7 +104,7 @@ def get_by_name(plugin_name: str) -> Plugin:
 
 
 if typing.TYPE_CHECKING:
-    # "pluginbase" cannot import modules like perf, task or testConfig, because
+    # "pluginbase" cannot import modules like perf, task or testSettings, because
     # those modules import "pluginbase" in turn. However, to forward declare
     # type annotations, we do need those module here. Import them with
     # TYPE_CHECKING, but otherwise avoid the cyclic dependency between
@@ -112,4 +112,4 @@ if typing.TYPE_CHECKING:
     from perf import PerfClient
     from perf import PerfServer
     from task import PluginTask
-    from testConfig import TestConfig
+    from testSettings import TestSettings

@@ -29,7 +29,6 @@ from tftbase import TftAggregateOutput
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig, eval_config: str):
         self.tc = tc
-        self.ts: TestSettings
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
@@ -43,8 +42,8 @@ class TrafficFlowTests:
             f"Initializing iperf server/client for test:\n {ts.get_test_info()}"
         )
 
-        s = IperfServer(tc=self.tc, ts=self.ts)
-        c = IperfClient(tc=self.tc, ts=self.ts, server=s)
+        s = IperfServer(ts=ts)
+        c = IperfClient(ts=ts, server=s)
         return (s, c)
 
     def _create_netperf_server_client(
@@ -54,8 +53,8 @@ class TrafficFlowTests:
             f"Initializing Netperf server/client for test:\n {ts.get_test_info()}"
         )
 
-        s = NetPerfServer(tc=self.tc, ts=self.ts)
-        c = NetPerfClient(tc=self.tc, ts=self.ts, server=s)
+        s = NetPerfServer(ts)
+        c = NetPerfClient(ts, server=s)
         return (s, c)
 
     def _configure_namespace(self, namespace: str) -> None:
@@ -152,7 +151,7 @@ class TrafficFlowTests:
         c_server = connection.server[0]
         c_client = connection.client[0]
 
-        self.ts = TestSettings(
+        ts = TestSettings(
             cfg_descr,
             conf_server=c_server,
             conf_client=c_client,
@@ -163,14 +162,14 @@ class TrafficFlowTests:
             connection.test_type == TestType.IPERF_TCP
             or connection.test_type == TestType.IPERF_UDP
         ):
-            s, c = self._create_iperf_server_client(self.ts)
+            s, c = self._create_iperf_server_client(ts)
             servers.append(s)
             clients.append(c)
         elif (
             connection.test_type == TestType.NETPERF_TCP_STREAM
             or connection.test_type == TestType.NETPERF_TCP_RR
         ):
-            s, c = self._create_netperf_server_client(self.ts)
+            s, c = self._create_netperf_server_client(ts)
             servers.append(s)
             clients.append(c)
         else:
@@ -178,7 +177,7 @@ class TrafficFlowTests:
             raise Exception("http connections not currently supported")
         for plugin in connection.plugins:
             m = plugin.plugin.enable(
-                tc=self.tc,
+                ts=ts,
                 node_server_name=c_server.name,
                 node_client_name=c_client.name,
                 perf_server=servers[-1],

@@ -6,7 +6,6 @@ import tftbase
 from logger import logger
 from syncManager import SyncManager
 from task import Task
-from testConfig import TestConfig
 from testSettings import TestSettings
 from tftbase import ConnectionMode
 from tftbase import PodType
@@ -16,8 +15,8 @@ EXTERNAL_PERF_SERVER = "external-perf-server"
 
 
 class PerfServer(Task):
-    def __init__(self, tc: TestConfig, ts: TestSettings):
-        super().__init__(tc, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+    def __init__(self, ts: TestSettings):
+        super().__init__(ts, ts.server_index, ts.node_server_name, ts.server_is_tenant)
 
         connection_mode = ts.connection_mode
         pod_type = ts.server_pod_type
@@ -47,7 +46,6 @@ class PerfServer(Task):
         self.port = port
         self.pod_type = pod_type
         self.connection_mode = ts.connection_mode
-        self.ts = ts
         self.in_file_template = in_file_template
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
@@ -104,8 +102,8 @@ class PerfServer(Task):
 
 
 class PerfClient(Task):
-    def __init__(self, tc: TestConfig, ts: TestSettings, server: PerfServer):
-        super().__init__(tc, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
+    def __init__(self, ts: TestSettings, server: PerfServer):
+        super().__init__(ts, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
 
         pod_type = ts.client_pod_type
         node_name = self.node_name
@@ -132,7 +130,6 @@ class PerfClient(Task):
         self.connection_mode = ts.connection_mode
         self.test_type = ts.connection.test_type
         self.test_case_id = ts.test_case_id
-        self.ts = ts
         self.reverse = ts.reverse
         self.cmd = ""
         self.in_file_template = in_file_template

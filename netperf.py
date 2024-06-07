@@ -4,7 +4,6 @@ import tftbase
 from host import Result
 from logger import logger
 from syncManager import SyncManager
-from testConfig import TestConfig
 from testSettings import TestSettings
 from tftbase import ConnectionMode
 from tftbase import IperfOutput
@@ -17,8 +16,8 @@ NETPERF_CLIENT_EXE = "netperf"
 
 
 class NetPerfServer(perf.PerfServer):
-    def __init__(self, tc: TestConfig, ts: TestSettings):
-        super().__init__(tc, ts)
+    def __init__(self, ts: TestSettings):
+        super().__init__(ts)
 
         self.exec_persistent = ts.conf_server.persistent
 
@@ -64,8 +63,8 @@ class NetPerfServer(perf.PerfServer):
 
 
 class NetPerfClient(perf.PerfClient):
-    def __init__(self, tc: TestConfig, ts: TestSettings, server: NetPerfServer):
-        super().__init__(tc, ts, server)
+    def __init__(self, ts: TestSettings, server: NetPerfServer):
+        super().__init__(ts, server)
 
     def run(self, duration: int) -> None:
         def client(self: NetPerfClient, cmd: str) -> Result:

@@ -9,7 +9,6 @@ import tftbase
 from host import Result
 from logger import logger
 from syncManager import SyncManager
-from testConfig import TestConfig
 from testSettings import TestSettings
 from tftbase import ConnectionMode
 from tftbase import IperfOutput
@@ -25,8 +24,8 @@ IPERF_REV_OPT = "-R"
 
 
 class IperfServer(perf.PerfServer):
-    def __init__(self, tc: TestConfig, ts: TestSettings):
-        super().__init__(tc, ts)
+    def __init__(self, ts: TestSettings):
+        super().__init__(ts)
 
         self.exec_persistent = ts.conf_server.persistent
 
@@ -72,8 +71,8 @@ class IperfServer(perf.PerfServer):
 
 
 class IperfClient(perf.PerfClient):
-    def __init__(self, tc: TestConfig, ts: TestSettings, server: IperfServer):
-        super().__init__(tc, ts, server)
+    def __init__(self, ts: TestSettings, server: IperfServer):
+        super().__init__(ts, server)
 
     def run(self, duration: int) -> None:
         def client(self: IperfClient, cmd: str) -> Result:
