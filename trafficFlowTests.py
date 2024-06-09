@@ -29,7 +29,6 @@ class TrafficFlowTests:
     def __init__(self) -> None:
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
-        self.tft_output: list[TftAggregateOutput] = []
 
     def _create_iperf_server_client(
         self, ts: TestSettings
@@ -99,11 +98,11 @@ class TrafficFlowTests:
         self.log_file = self.log_path / f"{timestamp}.json"
         logger.info(f"Logs will be written to {self.log_file}")
 
-    def _dump_result_to_log(self) -> None:
+    def _dump_result_to_log(self, tft_output: list[TftAggregateOutput]) -> None:
         # Dump test outputs into log file
         log = self.log_file
         json_out: dict[str, list[dict[str, Any]]] = {TFT_TESTS: []}
-        for out in self.tft_output:
+        for out in tft_output:
             json_out[TFT_TESTS].append(asdict(out))
         with open(log, "w") as output_file:
             json.dump(serialize_enum(json_out), output_file)
@@ -146,7 +145,7 @@ class TrafficFlowTests:
         cfg_descr: ConfigDescriptor,
         instance_index: int,
         reverse: bool = False,
-    ) -> None:
+    ) -> TftAggregateOutput:
         connection = cfg_descr.get_connection()
 
         servers: list[perf.PerfServer] = []
@@ -216,27 +215,33 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.output(tft_aggregate_output)
 
-        self.tft_output.append(tft_aggregate_output)
+        return tft_aggregate_output
 
-    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> None:
+    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftAggregateOutput]:
         # TODO Allow for multiple connections / instances to run simultaneously
+        tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_connections():
             connection = cfg_descr2.get_connection()
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
-                self._run_test_case_instance(
-                    cfg_descr2,
-                    instance_index=instance_index,
-                )
-                if connection.test_type == TestType.IPERF_TCP:
+                tft_output.append(
                     self._run_test_case_instance(
                         cfg_descr2,
                         instance_index=instance_index,
-                        reverse=True,
+                    )
+                )
+                if connection.test_type == TestType.IPERF_TCP:
+                    tft_output.append(
+                        self._run_test_case_instance(
+                            cfg_descr2,
+                            instance_index=instance_index,
+                            reverse=True,
+                        )
                     )
                 self._cleanup_previous_testspace(cfg_descr2)
+        return tft_output
 
     def test_run(self, cfg_descr: ConfigDescriptor) -> None:
         test = cfg_descr.get_tft()
@@ -244,6 +249,7 @@ class TrafficFlowTests:
         self._cleanup_previous_testspace(cfg_descr)
         self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
+        tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
-            self._run_test_case(cfg_descr2)
-        self._dump_result_to_log()
+            tft_output.extend(self._run_test_case(cfg_descr2))
+        self._dump_result_to_log(tft_output)
