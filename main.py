@@ -56,16 +56,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    tft = TrafficFlowTests(
-        TestConfig(
-            config_path=args.config,
-            evaluator_config=args.evaluator_config,
-        )
+    tc = TestConfig(
+        config_path=args.config,
+        evaluator_config=args.evaluator_config,
     )
+    tft = TrafficFlowTests()
 
-    for cfg_descr in ConfigDescriptor(tft.tc).describe_all_tft():
+    for cfg_descr in ConfigDescriptor(tc).describe_all_tft():
         tft.test_run(cfg_descr)
-        if not tft.evaluate_run_success():
+        if not tft.evaluate_run_success(cfg_descr):
             print(f"Failure detected in {cfg_descr.get_tft().name} results")
 
 

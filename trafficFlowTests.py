@@ -18,7 +18,6 @@ from netperf import NetPerfClient
 from netperf import NetPerfServer
 from syncManager import SyncManager
 from task import Task
-from testConfig import TestConfig
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TFT_TESTS
@@ -27,8 +26,7 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self, tc: TestConfig):
-        self.tc = tc
+    def __init__(self) -> None:
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
         self.tft_output: list[TftAggregateOutput] = []
@@ -55,9 +53,10 @@ class TrafficFlowTests:
         c = NetPerfClient(ts, server=s)
         return (s, c)
 
-    def _configure_namespace(self, namespace: str) -> None:
+    def _configure_namespace(self, cfg_descr: ConfigDescriptor) -> None:
+        namespace = cfg_descr.get_tft().namespace
         logger.info(f"Configuring namespace {namespace}")
-        r = self.tc.client_tenant.oc(
+        r = cfg_descr.tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false"
@@ -69,15 +68,18 @@ class TrafficFlowTests:
             )
         logger.info(f"Configured namespace {namespace}")
 
-    def _cleanup_previous_testspace(self, namespace: str) -> None:
+    def _cleanup_previous_testspace(self, cfg_descr: ConfigDescriptor) -> None:
+        namespace = cfg_descr.get_tft().namespace
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = self.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
+        r = cfg_descr.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = self.tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        r = cfg_descr.tc.client_tenant.oc(
+            f"delete services -n {namespace} -l tft-tests"
+        )
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
@@ -106,14 +108,14 @@ class TrafficFlowTests:
         with open(log, "w") as output_file:
             json.dump(serialize_enum(json_out), output_file)
 
-    def evaluate_run_success(self) -> bool:
+    def evaluate_run_success(self, cfg_descr: ConfigDescriptor) -> bool:
         # For the result of every test run, check the status of each run log to
         # ensure all test passed
 
-        if not self.tc.evaluator_config:
+        if not cfg_descr.tc.evaluator_config:
             return True
 
-        evaluator = Evaluator(self.tc.evaluator_config)
+        evaluator = Evaluator(cfg_descr.tc.evaluator_config)
 
         logger.info(f"Evaluating results of tests {self.log_file}")
         results_file = str(self.log_file.stem) + "-RESULTS"
@@ -234,12 +236,12 @@ class TrafficFlowTests:
                         instance_index=instance_index,
                         reverse=True,
                     )
-                self._cleanup_previous_testspace(cfg_descr2.get_tft().namespace)
+                self._cleanup_previous_testspace(cfg_descr2)
 
     def test_run(self, cfg_descr: ConfigDescriptor) -> None:
         test = cfg_descr.get_tft()
-        self._configure_namespace(test.namespace)
-        self._cleanup_previous_testspace(test.namespace)
+        self._configure_namespace(cfg_descr)
+        self._cleanup_previous_testspace(cfg_descr)
         self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
