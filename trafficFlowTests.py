@@ -27,13 +27,12 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self, tc: TestConfig, eval_config: str):
+    def __init__(self, tc: TestConfig):
         self.tc = tc
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
         self.tft_output: list[TftAggregateOutput] = []
-        self.eval_config = eval_config
 
     def _create_iperf_server_client(
         self, ts: TestSettings
@@ -109,8 +108,13 @@ class TrafficFlowTests:
             json.dump(serialize_enum(json_out), output_file)
 
     def evaluate_run_success(self) -> bool:
-        # For the result of every test run, check the status of each run log to ensure all test passed
-        evaluator = Evaluator(self.eval_config)
+        # For the result of every test run, check the status of each run log to
+        # ensure all test passed
+
+        if not self.tc.evaluator_config:
+            return True
+
+        evaluator = Evaluator(self.tc.evaluator_config)
 
         logger.info(f"Evaluating results of tests {self.log_file}")
         results_file = str(self.log_file.stem) + "-RESULTS"

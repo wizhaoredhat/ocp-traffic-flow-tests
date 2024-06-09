@@ -486,6 +486,7 @@ class TestConfig:
     kc_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
     _client_infra: Optional[K8sClient]
+    evaluator_config: Optional[str]
 
     @staticmethod
     def _detect_mode_args() -> tuple[ClusterMode, str, Optional[str]]:
@@ -521,6 +522,7 @@ class TestConfig:
         full_config: Optional[dict[str, Any]] = None,
         config_path: Optional[str] = None,
         mode_args: Optional[tuple[ClusterMode, str, Optional[str]]] = None,
+        evaluator_config: Optional[str] = None,
     ) -> None:
 
         if config_path is not None:
@@ -552,6 +554,8 @@ class TestConfig:
         self._client_infra = None
 
         self.mode, self.kc_tenant, self.kc_infra = mode_args
+
+        self.evaluator_config = evaluator_config
 
         s = json.dumps(full_config["tft"])
         logger.info(f"config: {s}")
