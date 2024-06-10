@@ -155,7 +155,7 @@ class TrafficFlowTests:
         c_client = connection.client[0]
 
         ts = TestSettings(
-            cfg_descr,
+            cfg_descr=cfg_descr,
             conf_server=c_server,
             conf_client=c_client,
             instance_index=instance_index,

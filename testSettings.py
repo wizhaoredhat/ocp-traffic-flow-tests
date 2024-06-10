@@ -1,3 +1,6 @@
+import dataclasses
+
+import common
 import testConfig
 import tftbase
 
@@ -6,58 +9,78 @@ from tftbase import PodInfo
 from tftbase import TestMetadata
 
 
+@common.strict_dataclass
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class TestSettings:
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
 
-    def __init__(
-        self,
-        cfg_descr: testConfig.ConfigDescriptor,
-        conf_server: testConfig.ConfServer,
-        conf_client: testConfig.ConfClient,
-        instance_index: int,
-        reverse: bool = False,
-    ):
-        connection = cfg_descr.get_connection()
-        test_case_id = cfg_descr.get_test_case()
+    cfg_descr: testConfig.ConfigDescriptor
+    conf_server: testConfig.ConfServer
+    conf_client: testConfig.ConfClient
+    instance_index: int
+    reverse: bool
 
-        self.cfg_descr = cfg_descr
-        self.connection = connection
-        self.test_case_id = test_case_id
-        self.conf_server = conf_server
-        self.conf_client = conf_client
-        # TODO: Handle Case when client is not tenant
-        self.client_is_tenant = True
-        self.server_is_tenant = True
+    def _post_check(self) -> None:
+        # Check that the cfg_descr has a connection/test_case_id
+        self.connection
+        self.test_case_id
+
+    @property
+    def connection(self) -> testConfig.ConfConnection:
+        return self.cfg_descr.get_connection()
+
+    @property
+    def test_case_id(self) -> tftbase.TestCaseType:
+        return self.cfg_descr.get_test_case()
+
+    @property
+    def server_is_tenant(self) -> bool:
+        # TODO: Handle Case when not tenant
+        return True
+
+    @property
+    def client_is_tenant(self) -> bool:
+        # TODO: Handle Case when not tenant
+        return True
+
+    @property
+    def server_index(self) -> int:
         # TODO: Add task indexing
-        self.server_index = instance_index
-        self.client_index = instance_index
-        self.reverse = reverse
+        return self.instance_index
 
-        # Initialize derived attributes...
+    @property
+    def client_index(self) -> int:
+        # TODO: Add task indexing
+        return self.instance_index
 
+    @property
+    def node_server_name(self) -> str:
         if tftbase.test_case_type_is_same_node(self.test_case_id):
-            self.node_server_name = self.conf_client.name
+            return self.conf_client.name
         else:
-            self.node_server_name = self.conf_server.name
+            return self.conf_server.name
 
-        self.server_pod_type = tftbase.test_case_type_to_server_pod_type(
+    @property
+    def server_pod_type(self) -> tftbase.PodType:
+        return tftbase.test_case_type_to_server_pod_type(
             self.test_case_id,
             self.conf_server.pod_type,
         )
 
-        self.client_pod_type = tftbase.test_case_type_to_client_pod_type(
+    @property
+    def client_pod_type(self) -> tftbase.PodType:
+        return tftbase.test_case_type_to_client_pod_type(
             self.test_case_id,
             self.conf_client.pod_type,
         )
 
-        self.connection_mode = tftbase.test_case_type_to_connection_mode(
-            self.test_case_id
-        )
+    @property
+    def connection_mode(self) -> tftbase.ConnectionMode:
+        return tftbase.test_case_type_to_connection_mode(self.test_case_id)
 
-        if tftbase.test_case_type_is_same_node(self.test_case_id):
-            self.nodeLocation = NodeLocation.SAME_NODE
-        else:
-            self.nodeLocation = NodeLocation.DIFF_NODE
+    @property
+    def nodeLocation(self) -> NodeLocation:
+        return tftbase.test_case_type_get_node_location(self.test_case_id)
 
     def get_test_info(self) -> str:
         return f"""{self.connection.test_type.name} TEST CONFIGURATION
