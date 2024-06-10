@@ -43,17 +43,17 @@ class TestTypeHandler(ABC):
         # The test types are all known statically. No extensive plugin loading
         # mechanism is done here.
         if test_type in (TestType.IPERF_TCP, TestType.IPERF_UDP):
-            import iperf
+            import testTypeIperf
 
             if test_type == TestType.IPERF_TCP:
-                return iperf.test_type_handler_iperf_tcp
-            return iperf.test_type_handler_iperf_udp
+                return testTypeIperf.test_type_handler_iperf_tcp
+            return testTypeIperf.test_type_handler_iperf_udp
         if test_type in (TestType.NETPERF_TCP_STREAM, TestType.NETPERF_TCP_RR):
-            import netperf
+            import testTypeNetPerf
 
             if test_type == TestType.NETPERF_TCP_STREAM:
-                return netperf.test_type_handler_netperf_tcp_stream
-            return netperf.test_type_handler_netperf_tcp_rr
+                return testTypeNetPerf.test_type_handler_netperf_tcp_stream
+            return testTypeNetPerf.test_type_handler_netperf_tcp_rr
         raise ValueError(f"Unsupported test type {test_type}")
 
 
