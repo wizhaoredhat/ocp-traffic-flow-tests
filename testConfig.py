@@ -24,6 +24,7 @@ from common import structparse_check_strdict
 from k8sClient import K8sClient
 from logger import logger
 from pluginbase import Plugin
+from testType import TestTypeHandler
 from tftbase import ClusterMode
 from tftbase import PodType
 from tftbase import TestCaseType
@@ -173,6 +174,7 @@ class ConfClient(_ConfBaseClientServer):
 @dataclass(frozen=True)
 class ConfConnection(StructParseBaseNamed):
     test_type: TestType
+    test_type_handler: TestTypeHandler
     instances: int
     server: tuple[ConfServer, ...]
     client: tuple[ConfClient, ...]
@@ -206,6 +208,11 @@ class ConfConnection(StructParseBaseNamed):
             raise ValueError(
                 f"{yamlpath}.type: expects a connection type like iperf-tcp (default), iperf-udp, http but got {v}"
             )
+
+        try:
+            test_type_handler = TestTypeHandler.get(test_type)
+        except ValueError:
+            raise ValueError(f'{yamlpath}.type: "{test_type.name}" is not implemented')
 
         instances = 1
         v = vdict.pop("instances", None)
@@ -264,6 +271,7 @@ class ConfConnection(StructParseBaseNamed):
             yamlpath=yamlpath,
             name=name,
             test_type=test_type,
+            test_type_handler=test_type_handler,
             instances=instances,
             server=tuple(server),
             client=tuple(client),

@@ -1,9 +1,14 @@
+from dataclasses import dataclass
+
 import perf
 import tftbase
 
 from host import Result
 from logger import logger
+from perf import PerfClient
+from perf import PerfServer
 from testSettings import TestSettings
+from testType import TestTypeHandler
 from tftbase import ConnectionMode
 from tftbase import IperfOutput
 from tftbase import TestType
@@ -12,6 +17,20 @@ from thread import ReturnValueThread
 
 NETPERF_SERVER_EXE = "netserver"
 NETPERF_CLIENT_EXE = "netperf"
+
+
+@dataclass(frozen=True)
+class TestTypeHandlerNetPerf(TestTypeHandler):
+    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+        s = NetPerfServer(ts)
+        c = NetPerfClient(ts, server=s)
+        return (s, c)
+
+
+test_type_handler_netperf_tcp_stream = TestTypeHandlerNetPerf(
+    TestType.NETPERF_TCP_STREAM
+)
+test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_RR)
 
 
 class NetPerfServer(perf.PerfServer):
