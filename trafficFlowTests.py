@@ -26,10 +26,6 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self) -> None:
-        self.log_path: Path = Path("ft-logs")
-        self.log_file: Path
-
     def _create_iperf_server_client(
         self, ts: TestSettings
     ) -> tuple[perf.PerfServer, perf.PerfClient]:
@@ -89,25 +85,25 @@ class TrafficFlowTests:
         cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
         host.local.run(cmd)
 
-    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
-        # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"
-        # method. Storing per-test data in the object is ugly.
-        self.log_path = test.logs
-        self.log_path.mkdir(parents=True, exist_ok=True)
+    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
+        log_path = test.logs
+        log_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.log_file = self.log_path / f"{timestamp}.json"
-        logger.info(f"Logs will be written to {self.log_file}")
+        log_file = log_path / f"{timestamp}.json"
+        logger.info(f"Logs will be written to {log_file}")
+        return log_file
 
-    def _dump_result_to_log(self, tft_output: list[TftAggregateOutput]) -> None:
+    def _dump_result_to_log(
+        self, tft_output: list[TftAggregateOutput], *, log_file: str
+    ) -> None:
         # Dump test outputs into log file
-        log = self.log_file
         json_out: dict[str, list[dict[str, Any]]] = {TFT_TESTS: []}
         for out in tft_output:
             json_out[TFT_TESTS].append(asdict(out))
-        with open(log, "w") as output_file:
+        with open(log_file, "w") as output_file:
             json.dump(serialize_enum(json_out), output_file)
 
-    def evaluate_run_success(self, cfg_descr: ConfigDescriptor) -> bool:
+    def evaluate_run_success(self, cfg_descr: ConfigDescriptor, log_file: Path) -> bool:
         # For the result of every test run, check the status of each run log to
         # ensure all test passed
 
@@ -116,11 +112,10 @@ class TrafficFlowTests:
 
         evaluator = Evaluator(cfg_descr.tc.evaluator_config)
 
-        logger.info(f"Evaluating results of tests {self.log_file}")
-        results_file = str(self.log_file.stem) + "-RESULTS"
-        results_path = self.log_path / results_file
+        logger.info(f"Evaluating results of tests {log_file}")
+        results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
 
-        evaluator.eval_log(self.log_file)
+        evaluator.eval_log(log_file)
 
         # Generate Resulting Json
         logger.info(f"Dumping results to {results_path}")
@@ -247,9 +242,12 @@ class TrafficFlowTests:
         test = cfg_descr.get_tft()
         self._configure_namespace(cfg_descr)
         self._cleanup_previous_testspace(cfg_descr)
-        self._create_log_paths_from_tests(test)
+        log_file = self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
         tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
             tft_output.extend(self._run_test_case(cfg_descr2))
-        self._dump_result_to_log(tft_output)
+        self._dump_result_to_log(tft_output, log_file=str(log_file))
+
+        if not self.evaluate_run_success(cfg_descr, log_file):
+            print(f"Failure detected in {cfg_descr.get_tft().name} results")
