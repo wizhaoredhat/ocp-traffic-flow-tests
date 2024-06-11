@@ -5,15 +5,15 @@ from typing import cast
 
 import perf
 import pluginbase
+import tftbase
 
-from host import Result
 from logger import logger
 from task import PluginTask
+from task import TaskOperation
 from testSettings import TestSettings
+from tftbase import BaseOutput
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG
-from tftbase import TftAggregateOutput
-from thread import ReturnValueThread
 
 
 class PluginMeasureCpu(pluginbase.Plugin):
@@ -52,7 +52,6 @@ class TaskMeasureCPU(PluginTask):
         )
         self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
         self.node_name = node_name
-        self.cmd = ""
 
     def get_template_args(self) -> dict[str, str]:
         return {
@@ -65,38 +64,40 @@ class TaskMeasureCPU(PluginTask):
         super().initialize()
         self.render_file("Server Pod Yaml")
 
-    def run(self, duration: int) -> None:
-        def stat(self: TaskMeasureCPU, cmd: str) -> Result:
+    def _create_task_operation(self) -> TaskOperation:
+        def _thread_action() -> BaseOutput:
+
+            cmd = f"exec {self.pod_name} -- mpstat -P ALL {self.get_duration()} 1"
             self.ts.clmo_barrier.wait()
-            return self.run_oc(cmd)
 
-        # 1 report at intervals defined by the duration in seconds.
-        self.cmd = f"exec {self.pod_name} -- mpstat -P ALL {duration} 1"
-        self.exec_thread = ReturnValueThread(target=stat, args=(self, self.cmd))
-        self.exec_thread.start()
-        logger.info(f"Running {self.cmd}")
+            r = self.run_oc(cmd)
 
-    def output(self, out: TftAggregateOutput) -> None:
-        # Return machine-readable output to top level
-        if not isinstance(self._output, PluginOutput):
-            return
-        out.plugins.append(self._output)
+            data = r.out
 
-        # Print summary to console logs
-        p_idle = self._output.result["percent_idle"]
-        logger.info(f"Idle on {self.node_name} = {p_idle}%")
+            # satisfy the linter. jc.parse returns a list of dicts in this case
+            parsed_data = cast(list[dict[str, Any]], jc.parse("mpstat", data))
+            return PluginOutput(
+                plugin_metadata={
+                    "name": "MeasureCPU",
+                    "node_name": self.node_name,
+                    "pod_name": self.pod_name,
+                },
+                command=cmd,
+                result=parsed_data[0],
+                name=plugin.PLUGIN_NAME,
+            )
 
-    # TODO: We are currently only storing the "cpu: all" data from mpstat
-    def generate_output(self, data: str) -> PluginOutput:
-        # satisfy the linter. jc.parse returns a list of dicts in this case
-        parsed_data = cast(list[dict[str, Any]], jc.parse("mpstat", data))
-        return PluginOutput(
-            plugin_metadata={
-                "name": "MeasureCPU",
-                "node_name": self.node_name,
-                "pod_name": self.pod_name,
-            },
-            command=self.cmd,
-            result=parsed_data[0],
-            name=plugin.PLUGIN_NAME,
+        return TaskOperation(
+            log_name=self.log_name,
+            thread_action=_thread_action,
         )
+
+    def _aggregate_output(
+        self,
+        result: tftbase.AggregatableOutput,
+        out: tftbase.TftAggregateOutput,
+    ) -> None:
+        assert isinstance(result, PluginOutput)
+        out.plugins.append(result)
+        p_idle = result.result["percent_idle"]
+        logger.info(f"Idle on {self.node_name} = {p_idle}%")

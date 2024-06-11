@@ -7,17 +7,16 @@ from typing import Any
 
 import tftbase
 
-from host import Result
 from logger import logger
 from perf import PerfClient
 from perf import PerfServer
+from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
+from tftbase import BaseOutput
 from tftbase import Bitrate
-from tftbase import ConnectionMode
 from tftbase import IperfOutput
 from tftbase import TestType
-from thread import ReturnValueThread
 
 
 IPERF_EXE = "iperf3"
@@ -97,84 +96,66 @@ class IperfServer(perf.PerfServer):
             **extra_args,
         }
 
-    def setup(self) -> None:
-        cmd = f"{IPERF_EXE} -s -p {self.port} --one-off --json"
-        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --init --replace --rm -p {self.port} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} {cmd}"
-            cleanup_cmd = f"podman rm --force {self.pod_name}"
-        else:
-            # Create the server pods
-            super().setup()
-            cmd = f"exec {self.pod_name} -- {cmd}"
-            cleanup_cmd = f"exec -t {self.pod_name} -- killall {IPERF_EXE}"
+    def _create_setup_operation_get_thread_action_cmd(self) -> str:
+        return f"{IPERF_EXE} -s -p {self.port} --one-off --json"
 
-        logger.info(f"Running {cmd}")
-
-        def server(self: IperfServer, cmd: str) -> Result:
-            if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-                return self.lh.run(cmd)
-            elif self.exec_persistent:
-                return Result("Server is persistent.", "", 0)
-            return self.run_oc(cmd)
-
-        self.exec_thread = ReturnValueThread(
-            target=server,
-            args=(self, cmd),
-            cleanup_action=server,
-            cleanup_args=(self, cleanup_cmd),
-        )
-        self.exec_thread.start()
-        self.confirm_server_alive()
+    def _create_setup_operation_get_cancel_action_cmd(self) -> str:
+        return f"killall {IPERF_EXE}"
 
 
 class IperfClient(perf.PerfClient):
     def __init__(self, ts: TestSettings, server: IperfServer):
         super().__init__(ts, server)
 
-    def run(self, duration: int) -> None:
-        def client(self: IperfClient, cmd: str) -> Result:
+    def _create_task_operation(self) -> TaskOperation:
+        server_ip = self.get_target_ip()
+        cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {self.get_duration()}"
+        if self.test_type == TestType.IPERF_UDP:
+            cmd = f" {cmd} {IPERF_UDP_OPT}"
+        if self.reverse:
+            cmd = f" {cmd} {IPERF_REV_OPT}"
+
+        def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
             r = self.run_oc(cmd)
             self.ts.event_client_finished.set()
-            return r
+            if not r.success:
+                return BaseOutput.from_cmd(r)
 
-        server_ip = self.get_target_ip()
-        self.cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {duration}"
-        if self.test_type == TestType.IPERF_UDP:
-            self.cmd = f" {self.cmd} {IPERF_UDP_OPT}"
-        if self.reverse:
-            self.cmd = f" {self.cmd} {IPERF_REV_OPT}"
-        self.exec_thread = ReturnValueThread(target=client, args=(self, self.cmd))
-        self.exec_thread.start()
+            data = r.out
 
-    def generate_output(self, data: str) -> IperfOutput:
-        parsed_data = json.loads(data)
-        json_dump = IperfOutput(
-            tft_metadata=self.ts.get_test_metadata(),
-            command=self.cmd,
-            result=parsed_data,
+            parsed_data = json.loads(data)
+            return IperfOutput(
+                tft_metadata=self.ts.get_test_metadata(),
+                command=cmd,
+                result=parsed_data,
+            )
+
+        return TaskOperation(
+            log_name=self.log_name,
+            thread_action=_thread_action,
         )
-        return json_dump
 
-    def output(self, out: tftbase.TftAggregateOutput) -> None:
-        # Return machine-readable output to top level
-        assert isinstance(
-            self._output, IperfOutput
-        ), f"Expected variable to be of type IperfOutput, got {type(self._output)} instead."
-        out.flow_test = self._output
+    def _aggregate_output(
+        self,
+        result: tftbase.AggregatableOutput,
+        out: tftbase.TftAggregateOutput,
+    ) -> None:
+        assert isinstance(result, IperfOutput)
+
+        out.flow_test = result
 
         # Print summary to console logs
         logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occurred(self._output.result):
+        if self.iperf_error_occurred(result.result):
             logger.error(
-                "Encountered error while running test:\n"
-                f"  {self._output.result['error']}"
+                "Encountered error while running test:\n" f"  {result.result['error']}"
             )
             return
         if self.test_type == TestType.IPERF_TCP:
-            self.print_tcp_results(self._output.result)
+            self.print_tcp_results(result.result)
         if self.test_type == TestType.IPERF_UDP:
-            self.print_udp_results(self._output.result)
+            self.print_udp_results(result.result)
 
     def print_tcp_results(self, data: Mapping[str, Any]) -> None:
         sum_sent = data["end"]["sum_sent"]

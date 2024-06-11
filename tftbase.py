@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any
 from typing import Optional
 
+import host
+
 from common import strict_dataclass
 
 
@@ -165,19 +167,48 @@ class TestMetadata:
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class BaseOutput:
-    command: str
-    result: dict[str, Any]
+    success: bool = True
+    msg: Optional[str] = None
+
+    @property
+    def err_msg(self) -> Optional[str]:
+        if self.success:
+            return None
+        if self.msg is not None:
+            return self.msg
+        return "unspecified failure"
+
+    @staticmethod
+    def from_cmd(
+        result: host.Result, *, success: Optional[bool] = None
+    ) -> "BaseOutput":
+        if success is None:
+            success = result.success
+        return BaseOutput(
+            success=success,
+            msg=result.debug_msg(),
+        )
 
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class IperfOutput(BaseOutput):
+class AggregatableOutput(BaseOutput):
+    pass
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class IperfOutput(AggregatableOutput):
+    command: str
+    result: dict[str, Any]
     tft_metadata: TestMetadata
 
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class PluginOutput(BaseOutput):
+class PluginOutput(AggregatableOutput):
+    command: str
+    result: dict[str, Any]
     plugin_metadata: dict[str, str]
     name: str
 

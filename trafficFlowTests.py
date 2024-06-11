@@ -148,25 +148,26 @@ class TrafficFlowTests:
 
         ts.initialize_clmo_barrier(len(clients) + len(monitors))
 
-        tft_aggregate_output = TftAggregateOutput()
-
-        duration = cfg_descr.get_tft().duration
-
         for tasks in servers + clients + monitors:
-            tasks.setup()
+            tasks.start_setup()
 
         ts.event_server_alive.wait()
 
         for tasks in servers + clients + monitors:
-            tasks.run(duration)
+            tasks.start_task()
 
         ts.event_client_finished.wait()
 
         for tasks in servers + clients + monitors:
-            tasks.stop(duration)
+            tasks.finish_task()
 
         for tasks in servers + clients + monitors:
-            tasks.output(tft_aggregate_output)
+            tasks.finish_setup()
+
+        tft_aggregate_output = TftAggregateOutput()
+
+        for tasks in servers + clients + monitors:
+            tasks.aggregate_output(tft_aggregate_output)
 
         return tft_aggregate_output
 

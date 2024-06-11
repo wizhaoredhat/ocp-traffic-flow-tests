@@ -1,11 +1,16 @@
+import abc
 import sys
 import time
+
+from typing import Optional
 
 import tftbase
 
 from logger import logger
 from task import Task
+from task import TaskOperation
 from testSettings import TestSettings
+from tftbase import BaseOutput
 from tftbase import ConnectionMode
 from tftbase import PodType
 
@@ -13,7 +18,7 @@ from tftbase import PodType
 EXTERNAL_PERF_SERVER = "external-perf-server"
 
 
-class PerfServer(Task):
+class PerfServer(Task, abc.ABC):
     def __init__(self, ts: TestSettings):
         super().__init__(ts, ts.server_index, ts.node_server_name, ts.server_is_tenant)
 
@@ -95,17 +100,64 @@ class PerfServer(Task):
 
         self.ts.event_server_alive.set()
 
-    def run(self, duration: int) -> None:
+    @abc.abstractmethod
+    def _create_setup_operation_get_thread_action_cmd(self) -> str:
         pass
 
-    def output(self, out: tftbase.TftAggregateOutput) -> None:
+    @abc.abstractmethod
+    def _create_setup_operation_get_cancel_action_cmd(self) -> str:
         pass
 
-    def generate_output(self, data: str) -> tftbase.BaseOutput:
-        return tftbase.BaseOutput(command="", result={})
+    def _create_setup_operation(self) -> Optional[TaskOperation]:
+        # We don't chain up super()._create_setup_operation(). Depending on
+        # the connection_mode we call setup_pod().
+
+        th_cmd = self._create_setup_operation_get_thread_action_cmd()
+
+        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+            cmd = f"podman run -it --init --replace --rm -p {self.port} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} {th_cmd}"
+            cancel_cmd = f"podman rm --force {self.pod_name}"
+        else:
+            self.setup_pod()
+            ca_cmd = self._create_setup_operation_get_cancel_action_cmd()
+            cmd = f"exec {self.pod_name} -- {th_cmd}"
+            cancel_cmd = f"exec -t {self.pod_name} -- {ca_cmd}"
+
+        logger.info(f"Running {cmd}")
+
+        def _run_cmd(cmd: str, *, ignore_failure: bool) -> BaseOutput:
+            force_success: Optional[bool] = None
+            if ignore_failure:
+                # We ignore the exit code of the command, that is because this is
+                # commonly a long running process that needs to get killed with the
+                # "cancel_action".  In that case, the exit code will be non-zero, but
+                # it's the normal termination of the command. Suppress such "failures".
+                force_success = True
+
+            if self.connection_mode == ConnectionMode.EXTERNAL_IP:
+                return BaseOutput.from_cmd(self.lh.run(cmd), success=force_success)
+            if self.exec_persistent:
+                return BaseOutput(msg="Server is persistent")
+            return BaseOutput.from_cmd(
+                self.run_oc(cmd, may_fail=ignore_failure),
+                success=force_success,
+            )
+
+        def _thread_action() -> BaseOutput:
+            return _run_cmd(cmd, ignore_failure=True)
+
+        def _cancel_action() -> None:
+            _run_cmd(cancel_cmd, ignore_failure=False)
+
+        return TaskOperation(
+            log_name=self.log_name_setup,
+            thread_action=_thread_action,
+            wait_ready=lambda: self.confirm_server_alive(),
+            cancel_action=_cancel_action,
+        )
 
 
-class PerfClient(Task):
+class PerfClient(Task, abc.ABC):
     def __init__(self, ts: TestSettings, server: PerfServer):
         super().__init__(ts, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
 
@@ -135,7 +187,6 @@ class PerfClient(Task):
         self.test_type = ts.connection.test_type
         self.test_case_id = ts.test_case_id
         self.reverse = ts.reverse
-        self.cmd = ""
         self.in_file_template = in_file_template
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
