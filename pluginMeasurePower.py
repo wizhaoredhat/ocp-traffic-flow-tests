@@ -84,7 +84,7 @@ class TaskMeasurePower(PluginTask):
                 iteration += 1
                 time.sleep(0.2)
 
-            r = Result(f"{total_pwr/iteration}", "", 0)
+            r = Result(json.dumps({"measure_power": f"{total_pwr/iteration}"}), "", 0)
             return r
 
         # 1 report at intervals defined by the duration in seconds.
@@ -101,7 +101,7 @@ class TaskMeasurePower(PluginTask):
         out.plugins.append(self._output)
 
         # Print summary to console logs
-        logger.info(f"measurePower results: {self._output.result}")
+        logger.info(f"measurePower results: {self._output.result['measure_power']}")
 
     def generate_output(self, data: str) -> PluginOutput:
         parsed_data = json.loads(data)
