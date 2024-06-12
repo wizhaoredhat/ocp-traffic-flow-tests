@@ -8,7 +8,6 @@ import tftbase
 
 from host import Result
 from logger import logger
-from syncManager import SyncManager
 from testSettings import TestSettings
 from tftbase import ConnectionMode
 from tftbase import IperfOutput
@@ -77,7 +76,7 @@ class IperfClient(perf.PerfClient):
 
     def run(self, duration: int) -> None:
         def client(self: IperfClient, cmd: str) -> Result:
-            SyncManager.wait_on_barrier()
+            self.ts.clmo_barrier.wait()
             r = self.run_oc(cmd)
             self.ts.event_client_finished.set()
             return r
