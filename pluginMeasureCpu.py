@@ -9,8 +9,8 @@ import pluginbase
 from common import j2_render
 from host import Result
 from logger import logger
-from pluginbase import PluginTask
 from syncManager import SyncManager
+from task import PluginTask
 from testConfig import TestConfig
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG

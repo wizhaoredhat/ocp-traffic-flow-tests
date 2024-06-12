@@ -10,9 +10,10 @@ import host
 import tftbase
 
 from logger import logger
-from testConfig import ClusterMode
 from testConfig import TestConfig
+from tftbase import ClusterMode
 from thread import ReturnValueThread
+from pluginbase import Plugin
 
 
 class Task(ABC):
@@ -43,11 +44,7 @@ class Task(ABC):
         self.tc = tc
 
     def run_oc(self, cmd: str) -> host.Result:
-        if self.tenant:
-            r = self.tc.client_tenant.oc(cmd)
-        else:
-            r = self.tc.client_infra.oc(cmd)
-        return r
+        return self.tc.client(tenant=self.tenant).oc(cmd)
 
     def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml")
@@ -145,3 +142,10 @@ class Task(ABC):
     @abstractmethod
     def generate_output(self, data: str) -> tftbase.BaseOutput:
         raise NotImplementedError("Must implement generate_output()")
+
+
+class PluginTask(Task):
+    @property
+    @abstractmethod
+    def plugin(self) -> Plugin:
+        pass

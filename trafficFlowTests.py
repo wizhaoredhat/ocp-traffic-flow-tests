@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-import pluginbase
+import testConfig
 
 from common import serialize_enum
 from evaluator import Evaluator
@@ -27,13 +27,14 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self, tc: TestConfig):
-        self._tc: TestConfig = tc
+    def __init__(self, tc: TestConfig, eval_config: str):
+        self.tc = tc
         self.test_settings: TestSettings
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
         self.tft_output: list[TftAggregateOutput] = []
+        self.eval_config = eval_config
 
     def _create_iperf_server_client(
         self, test_settings: TestSettings
@@ -42,8 +43,8 @@ class TrafficFlowTests:
             f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
         )
 
-        s = IperfServer(tc=self._tc, ts=self.test_settings)
-        c = IperfClient(tc=self._tc, ts=self.test_settings, server=s)
+        s = IperfServer(tc=self.tc, ts=self.test_settings)
+        c = IperfClient(tc=self.tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def _create_netperf_server_client(
@@ -53,13 +54,13 @@ class TrafficFlowTests:
             f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
         )
 
-        s = NetPerfServer(tc=self._tc, ts=self.test_settings)
-        c = NetPerfClient(tc=self._tc, ts=self.test_settings, server=s)
+        s = NetPerfServer(tc=self.tc, ts=self.test_settings)
+        c = NetPerfClient(tc=self.tc, ts=self.test_settings, server=s)
         return (s, c)
 
     def _configure_namespace(self, namespace: str) -> None:
         logger.info(f"Configuring namespace {namespace}")
-        r = self._tc.client_tenant.oc(
+        r = self.tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false"
@@ -73,13 +74,13 @@ class TrafficFlowTests:
 
     def _cleanup_previous_testspace(self, namespace: str) -> None:
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = self._tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
+        r = self.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = self._tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        r = self.tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
@@ -90,7 +91,7 @@ class TrafficFlowTests:
         cmd = f"podman stop --time 10 {perf.EXTERNAL_PERF_SERVER}; podman rm --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
 
-    def _run_tests(
+    def _run_test_tasks(
         self,
         servers: list[perf.PerfServer],
         clients: list[perf.PerfClient],
@@ -117,9 +118,10 @@ class TrafficFlowTests:
 
         return tft_aggregate_output
 
-    def _create_log_paths_from_tests(self, tests: dict[str, str]) -> None:
-        if "logs" in tests:
-            self.log_path = Path(tests["logs"])
+    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
+        # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"
+        # method. Storing per-test data in the object is ugly.
+        self.log_path = test.logs
         self.log_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self.log_file = self.log_path / f"{timestamp}.json"
@@ -162,45 +164,39 @@ class TrafficFlowTests:
 
         return res.result
 
-    def _run(
+    def _run_test_case_instance(
         self,
-        connections: dict[str, Any],
-        test_type: TestType,
+        connection: testConfig.ConfConnection,
         test_id: TestCaseType,
-        index: int,
+        instance_index: int,
         duration: int,
         reverse: bool = False,
     ) -> None:
         servers: list[perf.PerfServer] = []
         clients: list[perf.PerfClient] = []
         monitors: list[Task] = []
-        node_server_name = connections["server"][0]["name"]
-        node_client_name = connections["client"][0]["name"]
+
+        c_server = connection.server[0]
+        c_client = connection.client[0]
 
         self.test_settings = TestSettings(
-            connection_name=connections["name"],
+            connection=connection,
             test_case_id=test_id,
-            node_server_name=node_server_name,
-            node_client_name=node_client_name,
-            server_pod_type=self._tc.pod_type_from_config(connections["server"][0]),
-            client_pod_type=self._tc.pod_type_from_config(connections["client"][0]),
-            server_default_network=self._tc.default_network_from_config(
-                connections["server"][0]
-            ),
-            client_default_network=self._tc.default_network_from_config(
-                connections["client"][0]
-            ),
-            index=index,
-            test_type=test_type,
+            conf_server=c_server,
+            conf_client=c_client,
+            instance_index=instance_index,
             reverse=reverse,
         )
-        if test_type == TestType.IPERF_TCP or test_type == TestType.IPERF_UDP:
+        if (
+            connection.test_type == TestType.IPERF_TCP
+            or connection.test_type == TestType.IPERF_UDP
+        ):
             s, c = self._create_iperf_server_client(self.test_settings)
             servers.append(s)
             clients.append(c)
         elif (
-            test_type == TestType.NETPERF_TCP_STREAM
-            or test_type == TestType.NETPERF_TCP_RR
+            connection.test_type == TestType.NETPERF_TCP_STREAM
+            or connection.test_type == TestType.NETPERF_TCP_RR
         ):
             s, c = self._create_netperf_server_client(self.test_settings)
             servers.append(s)
@@ -208,59 +204,49 @@ class TrafficFlowTests:
         else:
             logger.error("http connections not currently supported")
             raise Exception("http connections not currently supported")
-        if connections["plugins"]:
-            for plugins in connections["plugins"]:
-                plugin = pluginbase.get_by_name(plugins["name"])
-                m = plugin.enable(
-                    tc=self._tc,
-                    node_server_name=node_server_name,
-                    node_client_name=node_client_name,
-                    perf_server=servers[-1],
-                    perf_client=clients[-1],
-                    tenant=True,
-                )
-                monitors.extend(m)
+        for plugin in connection.plugins:
+            m = plugin.plugin.enable(
+                tc=self.tc,
+                node_server_name=c_server.name,
+                node_client_name=c_client.name,
+                perf_server=servers[-1],
+                perf_client=clients[-1],
+                tenant=True,
+            )
+            monitors.extend(m)
 
         SyncManager.reset(len(clients) + len(monitors))
-        output = self._run_tests(servers, clients, monitors, duration)
+        output = self._run_test_tasks(servers, clients, monitors, duration)
         self.tft_output.append(output)
 
-    def _run_test_case(self, tests: dict[str, Any], test_id: TestCaseType) -> None:
-        duration = int(tests["duration"])
+    def _run_test_case(self, test: testConfig.ConfTest, test_id: TestCaseType) -> None:
         # TODO Allow for multiple connections / instances to run simultaneously
-        for connections in tests["connections"]:
-            logger.info(f"Starting {connections['name']}")
-            logger.info(
-                f"Number Of Simultaneous connections {connections['instances']}"
-            )
-            for index in range(connections["instances"]):
-                test_type = self._tc.validate_test_type(connections)
+        for connection in test.connections:
+            logger.info(f"Starting {connection.name}")
+            logger.info(f"Number Of Simultaneous connections {connection.instances}")
+            for instance_index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
-                self._run(
-                    connections=connections,
-                    test_type=test_type,
+                self._run_test_case_instance(
+                    connection=connection,
                     test_id=test_id,
-                    index=index,
-                    duration=duration,
+                    instance_index=instance_index,
+                    duration=test.duration,
                 )
-                if test_type == TestType.IPERF_TCP:
-                    self._run(
-                        connections=connections,
-                        test_type=test_type,
+                if connection.test_type == TestType.IPERF_TCP:
+                    self._run_test_case_instance(
+                        connection=connection,
                         test_id=test_id,
-                        index=index,
-                        duration=duration,
+                        instance_index=instance_index,
+                        duration=test.duration,
                         reverse=True,
                     )
-                self._cleanup_previous_testspace(tests["namespace"])
+                self._cleanup_previous_testspace(test.namespace)
 
-    def run(self, tests: dict[str, Any], eval_config: str) -> None:
-        self.eval_config = eval_config
-        self._configure_namespace(tests["namespace"])
-        self._cleanup_previous_testspace(tests["namespace"])
-        self._create_log_paths_from_tests(tests)
-        logger.info(f"Running test {tests['name']} for {tests['duration']} seconds")
-        test_cases = self._tc.parse_test_cases(tests["test_cases"])
-        for test_id in test_cases:
-            self._run_test_case(tests=tests, test_id=test_id)
+    def test_run(self, test: testConfig.ConfTest) -> None:
+        self._configure_namespace(test.namespace)
+        self._cleanup_previous_testspace(test.namespace)
+        self._create_log_paths_from_tests(test)
+        logger.info(f"Running test {test.name} for {test.duration} seconds")
+        for test_id in test.test_cases:
+            self._run_test_case(test=test, test_id=test_id)
         self._dump_result_to_log()

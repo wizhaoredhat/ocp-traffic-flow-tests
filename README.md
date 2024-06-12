@@ -46,7 +46,9 @@ tft:
 
 1. "name" - This is the name of the test. Any string value to identify the test.
 2. "namespace" - The k8s namespace where the test pods will be run on
-3. "test_cases" - A list interpretation of the tests that can be run.
+3. "test_cases" - A list of the tests that can be run. This can be either a string
+     that possibly contains ranges (comma separated, ranged separated by '-'), or a
+     YAML list.
     | ID | Test Name            |
     | -- | -------------------- |
     | 1  | POD_TO_POD_SAME_NODE |

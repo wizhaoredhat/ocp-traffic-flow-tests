@@ -26,13 +26,13 @@ IPERF_REV_OPT = "-R"
 
 class IperfServer(perf.PerfServer):
     def __init__(self, tc: TestConfig, ts: TestSettings):
+        super().__init__(tc, ts)
 
-        self.exec_persistent = ts.server_is_persistent
+        self.exec_persistent = ts.conf_server.persistent
+
         if self.exec_persistent:
             self.template_args["command"] = IPERF_EXE
             self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
-
-        perf.PerfServer.__init__(self, tc, ts)
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
