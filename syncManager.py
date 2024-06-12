@@ -14,7 +14,6 @@ class SyncManager:
     _lock: ClassVar[threading.RLock] = threading.RLock()
     start_barrier: Barrier
     client_finished: Event
-    server_alive: Event
 
     def __new__(cls, barrier_size: int) -> "SyncManager":
         with cls._lock:
@@ -30,7 +29,6 @@ class SyncManager:
         ), "SyncManager._instance is not initialized"
         SyncManager._instance.start_barrier = Barrier(barrier_size)
         SyncManager._instance.client_finished = Event()
-        SyncManager._instance.server_alive = Event()
 
     @classmethod
     def reset(cls, barrier_size: int) -> None:
@@ -46,11 +44,6 @@ class SyncManager:
         if cls._instance:
             cls._instance.client_finished.set()
 
-    @classmethod
-    def set_server_alive(cls) -> None:
-        if cls._instance:
-            cls._instance.server_alive.set()
-
     # .wait() on a barrier decrements it
     # once the barrier hits 0, all waiting threads are simultaneously unblocked
     @classmethod
@@ -62,11 +55,6 @@ class SyncManager:
     def wait_on_client_finish(cls) -> None:
         if cls._instance and cls._instance.client_finished:
             cls._instance.client_finished.wait()
-
-    @classmethod
-    def wait_on_server_alive(cls) -> None:
-        if cls._instance and cls._instance.server_alive:
-            cls._instance.server_alive.wait()
 
     @classmethod
     def client_not_finished(cls) -> bool:
