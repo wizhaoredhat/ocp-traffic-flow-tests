@@ -4,7 +4,6 @@ import time
 import tftbase
 
 from logger import logger
-from syncManager import SyncManager
 from task import Task
 from testSettings import TestSettings
 from tftbase import ConnectionMode
@@ -93,7 +92,8 @@ class PerfServer(Task):
         if not r or r.returncode != 0:
             logger.error(f"Failed to start server: {r.err}")
             sys.exit(-1)
-        SyncManager.set_server_alive()
+
+        self.ts.event_server_alive.set()
 
     def run(self, duration: int) -> None:
         pass
