@@ -4,7 +4,6 @@ from typing import ClassVar
 from typing import Optional
 
 from threading import Barrier
-from threading import Event
 
 
 # Singleton class, synchronizes threads using barriers and events
@@ -13,7 +12,6 @@ class SyncManager:
     _instance: ClassVar[Optional["SyncManager"]] = None
     _lock: ClassVar[threading.RLock] = threading.RLock()
     start_barrier: Barrier
-    client_finished: Event
 
     def __new__(cls, barrier_size: int) -> "SyncManager":
         with cls._lock:
@@ -28,7 +26,6 @@ class SyncManager:
             SyncManager._instance is not None
         ), "SyncManager._instance is not initialized"
         SyncManager._instance.start_barrier = Barrier(barrier_size)
-        SyncManager._instance.client_finished = Event()
 
     @classmethod
     def reset(cls, barrier_size: int) -> None:
@@ -39,25 +36,9 @@ class SyncManager:
             else:
                 cls._initialize(barrier_size)
 
-    @classmethod
-    def set_client_finished(cls) -> None:
-        if cls._instance:
-            cls._instance.client_finished.set()
-
     # .wait() on a barrier decrements it
     # once the barrier hits 0, all waiting threads are simultaneously unblocked
     @classmethod
     def wait_on_barrier(cls) -> None:
         if cls._instance and cls._instance.start_barrier:
             cls._instance.start_barrier.wait()
-
-    @classmethod
-    def wait_on_client_finish(cls) -> None:
-        if cls._instance and cls._instance.client_finished:
-            cls._instance.client_finished.wait()
-
-    @classmethod
-    def client_not_finished(cls) -> bool:
-        if cls._instance and cls._instance.client_finished:
-            return not cls._instance.client_finished.is_set()
-        return True

@@ -79,7 +79,7 @@ class IperfClient(perf.PerfClient):
         def client(self: IperfClient, cmd: str) -> Result:
             SyncManager.wait_on_barrier()
             r = self.run_oc(cmd)
-            SyncManager.set_client_finished()
+            self.ts.event_client_finished.set()
             return r
 
         server_ip = self.get_target_ip()

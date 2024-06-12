@@ -189,7 +189,7 @@ class TaskValidateOffload(PluginTask):
                 logger.error("Ethtool command failed")
                 return r1
 
-            SyncManager.wait_on_client_finish()
+            self.ts.event_client_finished.wait()
 
             success2, r2 = self.run_ethtool_cmd(self.ethtool_cmd)
 
