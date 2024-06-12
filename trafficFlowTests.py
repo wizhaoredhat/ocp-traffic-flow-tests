@@ -202,7 +202,7 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.run(duration)
 
-        SyncManager.wait_on_client_finish()
+        ts.event_client_finished.wait()
 
         for tasks in servers + clients + monitors:
             tasks.stop(duration)

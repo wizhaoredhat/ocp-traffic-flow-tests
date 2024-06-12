@@ -79,7 +79,7 @@ class TaskMeasurePower(PluginTask):
             SyncManager.wait_on_barrier()
             total_pwr = 0
             iteration = 0
-            while SyncManager.client_not_finished():
+            while not self.ts.event_client_finished.is_set():
                 r = self.run_oc(cmd)
                 if r.returncode != 0:
                     logger.error(f"Failed to get power {cmd}: {r}")

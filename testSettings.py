@@ -25,6 +25,10 @@ class TestSettings:
         init=False, default_factory=threading.Event
     )
 
+    event_client_finished: threading.Event = dataclasses.field(
+        init=False, default_factory=threading.Event
+    )
+
     def _post_check(self) -> None:
         # Check that the cfg_descr has a connection/test_case_id
         self.connection
