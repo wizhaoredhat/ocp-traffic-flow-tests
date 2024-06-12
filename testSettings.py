@@ -1,5 +1,6 @@
 import dataclasses
 import threading
+import typing
 
 import common
 import testConfig
@@ -30,9 +31,40 @@ class TestSettings:
     )
 
     def _post_check(self) -> None:
+        # As threading.Lock is not a regular type, @strict_dataclass
+        # cannot handle fields of it. Set the attribute here.
+        self._lock: threading.Lock
+        object.__setattr__(self, "_lock", threading.Lock())
+
         # Check that the cfg_descr has a connection/test_case_id
         self.connection
         self.test_case_id
+
+    @property
+    def clmo_barrier(self) -> threading.Barrier:
+        with self._lock:
+            b = getattr(self, "_clmo_barrier", None)
+            if b is None:
+                raise RuntimeError(
+                    "Cannot access the client-monitor barrier before calling initialize_clmo_barrier()"
+                )
+            return typing.cast(threading.Barrier, b)
+
+    def initialize_clmo_barrier(self, parties: int) -> None:
+        with self._lock:
+            if hasattr(self, "_clmo_barrier"):
+                raise RuntimeError("initialize_clmo_barrier() can only be called once")
+
+            b = threading.Barrier(parties=parties)
+
+            # TestSettings is for the most part an immutable, frozen object.
+            # Here we lie about it. We do initialize the _clmo_barrier only
+            # during initialize_clmo_barrier().
+            #
+            # Note that clmo_barrier will raise an exception if called before
+            # initializing it. So you will only ever see one instance of the
+            # barrier that never changes. That almost counts as "immutable".
+            object.__setattr__(self, "_clmo_barrier", b)
 
     @property
     def connection(self) -> testConfig.ConfConnection:

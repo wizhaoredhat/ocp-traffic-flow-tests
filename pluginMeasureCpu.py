@@ -8,7 +8,6 @@ import pluginbase
 
 from host import Result
 from logger import logger
-from syncManager import SyncManager
 from task import PluginTask
 from testSettings import TestSettings
 from tftbase import PluginOutput
@@ -68,7 +67,7 @@ class TaskMeasureCPU(PluginTask):
 
     def run(self, duration: int) -> None:
         def stat(self: TaskMeasureCPU, cmd: str) -> Result:
-            SyncManager.wait_on_barrier()
+            self.ts.clmo_barrier.wait()
             return self.run_oc(cmd)
 
         # 1 report at intervals defined by the duration in seconds.
