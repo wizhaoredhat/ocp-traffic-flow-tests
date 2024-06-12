@@ -200,9 +200,9 @@ class TaskValidateOffload(PluginTask):
         self.exec_thread.start()
 
     def output(self, out: TftAggregateOutput) -> None:
-        assert isinstance(
-            self._output, PluginOutput
-        ), f"Expected variable to be of type PluginOutput, got {type(self._output)} instead."
+        if not isinstance(self._output, PluginOutput):
+            return
+
         out.plugins.append(self._output)
 
         if self.perf_pod_type == PodType.HOSTBACKED:
