@@ -33,11 +33,6 @@ test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_R
 
 
 class NetPerfServer(perf.PerfServer):
-    def __init__(self, ts: TestSettings):
-        super().__init__(ts)
-
-        self.exec_persistent = ts.conf_server.persistent
-
     def get_template_args(self) -> dict[str, str]:
 
         extra_args: dict[str, str] = {}
@@ -58,9 +53,6 @@ class NetPerfServer(perf.PerfServer):
 
 
 class NetPerfClient(perf.PerfClient):
-    def __init__(self, ts: TestSettings, server: NetPerfServer):
-        super().__init__(ts, server)
-
     def _create_task_operation(self) -> TaskOperation:
         assert not self.reverse
 

@@ -79,11 +79,6 @@ test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
 
 
 class IperfServer(perf.PerfServer):
-    def __init__(self, ts: TestSettings):
-        super().__init__(ts)
-
-        self.exec_persistent = ts.conf_server.persistent
-
     def get_template_args(self) -> dict[str, str]:
 
         extra_args: dict[str, str] = {}
@@ -104,9 +99,6 @@ class IperfServer(perf.PerfServer):
 
 
 class IperfClient(perf.PerfClient):
-    def __init__(self, ts: TestSettings, server: IperfServer):
-        super().__init__(ts, server)
-
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {self.get_duration()}"
