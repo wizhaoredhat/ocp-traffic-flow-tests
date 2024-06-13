@@ -20,7 +20,7 @@ from thread import ReturnValueThread
 class PluginMeasurePower(pluginbase.Plugin):
     PLUGIN_NAME = "measure_power"
 
-    def enable(
+    def _enable(
         self,
         *,
         tc: TestConfig,

@@ -4,6 +4,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
+from logger import logger
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import TestMetadata
@@ -12,8 +13,33 @@ from tftbase import TestMetadata
 class Plugin(ABC):
     PLUGIN_NAME = ""
 
-    @abstractmethod
+    @property
+    def log_name(self) -> str:
+        return f"plugin[{self.PLUGIN_NAME}"
+
     def enable(
+        self,
+        *,
+        tc: "TestConfig",
+        node_server_name: str,
+        node_client_name: str,
+        perf_server: "PerfServer",
+        perf_client: "PerfClient",
+        tenant: bool,
+    ) -> list["PluginTask"]:
+        tasks = self._enable(
+            tc=tc,
+            node_server_name=node_server_name,
+            node_client_name=node_client_name,
+            perf_server=perf_server,
+            perf_client=perf_client,
+            tenant=tenant,
+        )
+        logger.debug(f"{self.log_name}: enable ({len(tasks)} tasks, {tasks})")
+        return tasks
+
+    @abstractmethod
+    def _enable(
         self,
         *,
         tc: "TestConfig",
