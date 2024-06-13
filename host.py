@@ -13,7 +13,7 @@ from typing import Any
 from logger import logger
 
 
-@dataclass
+@dataclass(frozen=True)
 class Result:
     out: str
     err: str

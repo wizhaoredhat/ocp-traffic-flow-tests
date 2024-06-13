@@ -1,6 +1,7 @@
-import sys
+import dataclasses
 import os
 import pytest
+import sys
 import typing
 
 from enum import Enum
@@ -192,20 +193,6 @@ def test_test_metadata() -> None:
     assert metadata.server == server
     assert metadata.client == client
 
-    # Test with dictionary input
-    metadata_dict = TestMetadata(
-        reverse=True,
-        test_case_id=TestCaseType.POD_TO_POD_DIFF_NODE,
-        test_type=TestType.IPERF_UDP,
-        server=server.__dict__,
-        client=client.__dict__,
-    )
-    assert metadata_dict.reverse is True
-    assert metadata_dict.test_case_id == TestCaseType.POD_TO_POD_DIFF_NODE
-    assert metadata_dict.test_type == TestType.IPERF_UDP
-    assert isinstance(metadata_dict.server, PodInfo)
-    assert isinstance(metadata_dict.client, PodInfo)
-
 
 def test_iperf_output() -> None:
     server = PodInfo(
@@ -216,15 +203,31 @@ def test_iperf_output() -> None:
     )
     metadata = TestMetadata(
         reverse=False,
-        test_case_id="POD_TO_POD_SAME_NODE",
-        test_type="IPERF_TCP",
-        server=server.__dict__,
-        client=client.__dict__,
+        test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
+        test_type=TestType.IPERF_TCP,
+        server=server,
+        client=client,
     )
     IperfOutput(command="command", result={}, tft_metadata=metadata)
 
-    with pytest.raises(ValueError):
-        IperfOutput(command="command", result={}, tft_metadata="string")  # type: ignore
+    common.dataclass_from_dict(
+        IperfOutput,
+        {
+            "command": "command",
+            "result": {},
+            "tft_metadata": metadata,
+        },
+    )
+
+    with pytest.raises(TypeError):
+        common.dataclass_from_dict(
+            IperfOutput,
+            {
+                "command": "command",
+                "result": {},
+                "tft_metadata": "string",
+            },
+        )
 
 
 def test_serialize_enum() -> None:
@@ -336,3 +339,114 @@ def test_test_case_type_to_client_pod_type() -> None:
             assert _alternative(
                 test_case_type, pod_type
             ) == tftbase.test_case_type_to_client_pod_type(test_case_type, pod_type)
+
+
+def test_strict_dataclass() -> None:
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C2:
+        a: str
+        b: int
+        c: typing.Optional[str] = None
+
+    C2("a", 5)
+    C2("a", 5, None)
+    C2("a", 5, "")
+    with pytest.raises(TypeError):
+        C2("a", "5")  # type: ignore
+    with pytest.raises(TypeError):
+        C2(3, 5)  # type: ignore
+    with pytest.raises(TypeError):
+        C2("a", 5, [])  # type: ignore
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C3:
+        a: typing.List[str]
+
+    C3([])
+    C3([""])
+    with pytest.raises(TypeError):
+        C3(1)  # type: ignore
+    with pytest.raises(TypeError):
+        C3([1])  # type: ignore
+    with pytest.raises(TypeError):
+        C3(None)  # type: ignore
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C4:
+        a: typing.Optional[typing.List[str]]
+
+    C4(None)
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C5:
+        a: typing.Optional[typing.List[typing.Dict[str, str]]] = None
+
+    C5(None)
+    C5([])
+    with pytest.raises(TypeError):
+        C5([1])  # type: ignore
+    C5([{}])
+    C5([{"a": "b"}])
+    C5([{"a": "b"}, {}])
+    C5([{"a": "b"}, {"c": "", "d": "x"}])
+    with pytest.raises(TypeError):
+        C5([{"a": None}])  # type: ignore
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C6:
+        a: typing.Optional[typing.Tuple[str, str]] = None
+
+    C6()
+    C6(None)
+    C6(("a", "b"))
+    with pytest.raises(TypeError):
+        C6(1)  # type: ignore
+    with pytest.raises(TypeError):
+        C6(("a",))  # type: ignore
+    with pytest.raises(TypeError):
+        C6(("a", "b", "c"))  # type: ignore
+    with pytest.raises(TypeError):
+        C6(("a", 1))  # type: ignore
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C7:
+        addr_info: typing.List[PodInfo]
+
+        def _post_check(self) -> None:
+            pass
+
+    with pytest.raises(TypeError):
+        C7(None)  # type: ignore
+    C7([])
+    C7([PodInfo("name", PodType.NORMAL, True, 5)])
+    with pytest.raises(TypeError):
+        C7([PodInfo("name", PodType.NORMAL, True, 5), None])  # type:ignore
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C8:
+        a: str
+
+        def _post_check(self) -> None:
+            if self.a == "invalid":
+                raise ValueError("_post_check() failed")
+
+    with pytest.raises(TypeError):
+        C8(None)  # type: ignore
+    C8("hi")
+    with pytest.raises(ValueError):
+        C8("invalid")
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C9:
+        a: "str"
+
+    with pytest.raises(NotImplementedError):
+        C9("foo")

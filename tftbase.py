@@ -4,11 +4,9 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-from typing import Mapping
 from typing import Optional
 
-from common import dataclass_from_dict
-from common import enum_convert
+from common import strict_dataclass
 
 
 TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
@@ -75,7 +73,8 @@ class NodeLocation(Enum):
     DIFF_NODE = 2
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PodInfo:
     name: str
     pod_type: PodType
@@ -83,7 +82,8 @@ class PodInfo:
     index: int
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PluginResult:
     """Result of a single plugin from a given run
 
@@ -100,7 +100,8 @@ class PluginResult:
     success: bool
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class TestMetadata:
     reverse: bool
     test_case_id: TestCaseType
@@ -108,61 +109,28 @@ class TestMetadata:
     server: PodInfo
     client: PodInfo
 
-    def __init__(
-        self,
-        reverse: bool,
-        test_case_id: TestCaseType | str | int,
-        test_type: TestType | str | int,
-        server: PodInfo | dict[str, Any],
-        client: PodInfo | dict[str, Any],
-    ):
-        if isinstance(server, dict):
-            server = dataclass_from_dict(PodInfo, server)
-        if isinstance(client, dict):
-            client = dataclass_from_dict(PodInfo, client)
-        self.reverse = reverse
-        self.test_case_id = enum_convert(TestCaseType, test_case_id)
-        self.test_type = enum_convert(TestType, test_type)
-        self.server = server
-        self.client = client
 
-
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class BaseOutput:
     command: str
-    result: dict[str, str | int]
-
-    def __init__(self, command: str, result: Mapping[str, str | int]):
-        if not isinstance(result, dict):
-            result = dict(result)
-        self.command = command
-        self.result = result
+    result: dict[str, Any]
 
 
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
-    def __init__(
-        self,
-        command: str,
-        result: Mapping[str, str | int],
-        tft_metadata: TestMetadata | dict[str, Any],
-    ):
-        if isinstance(tft_metadata, dict):
-            tft_metadata = dataclass_from_dict(TestMetadata, tft_metadata)
-        elif not isinstance(tft_metadata, TestMetadata):
-            raise ValueError("tft_metadata must be a TestMetadata instance or a dict")
-        super().__init__(command, result)
-        self.tft_metadata = tft_metadata
 
-
-@dataclass
+@strict_dataclass
+@dataclass(frozen=True)
 class PluginOutput(BaseOutput):
     plugin_metadata: dict[str, str]
     name: str
 
 
+@strict_dataclass
 @dataclass
 class TftAggregateOutput:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
@@ -177,21 +145,6 @@ class TftAggregateOutput:
 
     flow_test: Optional[IperfOutput] = None
     plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        if isinstance(self.flow_test, dict):
-            self.flow_test = dataclass_from_dict(IperfOutput, self.flow_test)
-        elif self.flow_test is not None and not isinstance(self.flow_test, IperfOutput):
-            raise ValueError("flow_test must be an IperfOutput instance or a dict")
-
-        self.plugins = [
-            (
-                dataclass_from_dict(PluginOutput, plugin)
-                if isinstance(plugin, dict)
-                else plugin
-            )
-            for plugin in self.plugins
-        ]
 
 
 class TestCaseTypInfo(typing.NamedTuple):

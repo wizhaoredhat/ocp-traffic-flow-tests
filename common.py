@@ -1,4 +1,7 @@
+import dataclasses
 import jinja2
+import typing
+import collections
 
 from dataclasses import fields
 from dataclasses import is_dataclass
@@ -236,15 +239,152 @@ T = TypeVar("T")
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
 def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
-    assert is_dataclass(
-        cls
-    ), "dataclass_from_dict() should only be used with dataclasses."
-    field_values = {}
-    for f in fields(cls):
-        field_name = f.name
-        field_type = f.type
-        if is_dataclass(field_type) and field_name in data:
-            field_values[field_name] = dataclass_from_dict(field_type, data[field_name])
-        elif field_name in data:
-            field_values[field_name] = data[field_name]
-    return cast(T, cls(**field_values))
+    if not is_dataclass(cls):
+        raise ValueError(
+            f"dataclass_from_dict() should only be used with dataclasses but is called with {cls}"
+        )
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"requires a dictionary to in initialize dataclass {cls} but got {type(data)}"
+        )
+    for k in data:
+        if not isinstance(k, str):
+            raise ValueError(
+                f"requires a strdict to in initialize dataclass {cls} but has key {type(k)}"
+            )
+    data = dict(data)
+    create_kwargs = {}
+    for field in fields(cls):
+        if field.name not in data:
+            if (
+                field.default is dataclasses.MISSING
+                and field.default_factory is dataclasses.MISSING
+            ):
+                raise ValueError(
+                    f'Missing mandatory argument "{field.name}" for dataclass {cls}'
+                )
+            continue
+
+        if not field.init:
+            continue
+
+        actual_type = typing.get_origin(field.type)
+
+        value = data.pop(field.name)
+
+        if is_dataclass(field.type) and isinstance(value, dict):
+            value = dataclass_from_dict(field.type, value)
+        elif actual_type is None and issubclass(field.type, Enum):
+            value = enum_convert(field.type, value)
+
+        if not check_type(value, field.type):
+            raise TypeError(
+                f"Expected type '{field.type}' for attribute '{field.name}' but received type '{type(value)}' ({value})"
+            )
+
+        create_kwargs[field.name] = value
+
+    if data:
+        raise ValueError(
+            f"There are left over keys {list(data)} to create dataclass {cls}"
+        )
+
+    return cast(T, cls(**create_kwargs))
+
+
+def check_type(value: typing.Any, type_hint: type[typing.Any]) -> bool:
+
+    # Some naive type checking. This is used for ensuring that data classes
+    # contain the expected types (see @strict_dataclass).
+    #
+    # That is most interesting, when we initialize the data class with
+    # data from an untrusted source (like elements from a JSON parser).
+
+    actual_type = typing.get_origin(type_hint)
+    if actual_type is None:
+        if isinstance(type_hint, str):
+            raise NotImplementedError(
+                f'Type hint "{type_hint}" as string is not implemented by check_type()'
+            )
+
+        if type_hint is typing.Any:
+            return True
+        return isinstance(value, type_hint)
+
+    if actual_type is typing.Union:
+        args = typing.get_args(type_hint)
+        return any(check_type(value, a) for a in args)
+
+    if actual_type is list:
+        args = typing.get_args(type_hint)
+        (arg,) = args
+        return isinstance(value, list) and all(check_type(v, arg) for v in value)
+
+    if actual_type is dict or actual_type is collections.abc.Mapping:
+        args = typing.get_args(type_hint)
+        (arg_key, arg_val) = args
+        return isinstance(value, dict) and all(
+            check_type(k, arg_key) and check_type(v, arg_val) for k, v in value.items()
+        )
+
+    if actual_type is tuple:
+        # https://docs.python.org/3/library/typing.html#annotating-tuples
+        if not isinstance(value, tuple):
+            return False
+        args = typing.get_args(type_hint)
+        if len(args) == 1 and args[0] == ():
+            # This is an empty tuple tuple[()].
+            return len(value) == 0
+        if len(args) == 2 and args[1] is ...:
+            # This is a tuple[T, ...].
+            return all(check_type(v, args[0]) for v in value)
+        return len(value) == len(args) and all(
+            check_type(v, args[idx]) for idx, v in enumerate(value)
+        )
+
+    raise NotImplementedError(
+        f'Type hint "{type_hint}" with origin type "{actual_type}" is not implemented by check_type()'
+    )
+
+
+if typing.TYPE_CHECKING:
+    # https://github.com/python/typeshed/tree/main/stdlib/_typeshed#api-stability
+    # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
+    from _typeshed import DataclassInstance
+
+
+def dataclass_check(
+    instance: "DataclassInstance",
+    *,
+    with_post_check: bool = True,
+) -> None:
+
+    for field in dataclasses.fields(instance):
+        value = getattr(instance, field.name)
+        if not check_type(value, field.type):
+            raise TypeError(
+                f"Expected type '{field.type}' for attribute '{field.name}' but received type '{type(value)}' ({value})"
+            )
+
+    if with_post_check:
+        # Normally, data classes support __post_init__(), which is called by __init__()
+        # already. Add a way for a @strict_dataclass to add additional validation *after*
+        # the original check.
+        _post_check = getattr(type(instance), "_post_check", None)
+        if _post_check is not None:
+            _post_check(instance)
+
+
+TCallable = typing.TypeVar("TCallable", bound=typing.Callable[..., typing.Any])
+
+
+def strict_dataclass(cls: TCallable) -> TCallable:
+
+    init = getattr(cls, "__init__")
+
+    def wrapped_init(self: Any, *args: Any, **argv: Any) -> None:
+        init(self, *args, **argv)
+        dataclass_check(self)
+
+    setattr(cls, "__init__", wrapped_init)
+    return cls
