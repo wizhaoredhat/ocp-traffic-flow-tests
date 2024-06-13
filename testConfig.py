@@ -543,6 +543,7 @@ class TestConfig:
 
         s = json.dumps(full_config["tft"])
         logger.info(f"config: {s}")
+        logger.debug(f"config-full: {self.config.serialize_json()}")
 
     def client(self, *, tenant: bool) -> K8sClient:
         if tenant:
