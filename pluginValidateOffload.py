@@ -138,18 +138,16 @@ class TaskValidateOffload(PluginTask):
         )
         return typing.cast(str, data["containers"][0]["podSandboxId"][:15])
 
-    def run_ethtool_cmd(self, ethtool_cmd: str) -> Result:
+    def run_ethtool_cmd(self, ethtool_cmd: str) -> tuple[bool, Result]:
         logger.info(f"Running {ethtool_cmd}")
+        success = True
         r = self.run_oc(ethtool_cmd)
         if self.perf_pod_type != PodType.HOSTBACKED:
             if r.returncode != 0:
                 if "already exists" not in r.err:
                     logger.error(f"Run_ethtool_cmd: {r.err}, {r.returncode}")
-                    raise RuntimeError(
-                        f"ValidateOffload error: {r.err} returncode: {r.returncode}"
-                    )
-
-        return r
+                    success = False
+        return success, r
 
     def parse_packets(self, output: str, packet_type: str) -> int:
         # Case1: Try to parse rx_packets and tx_packets from ethtool output
@@ -184,16 +182,16 @@ class TaskValidateOffload(PluginTask):
             if vf_rep == "external":
                 return Result(out="External Iperf Server", err="", returncode=0)
 
-            r1 = self.run_ethtool_cmd(self.ethtool_cmd)
-            if r1.returncode != 0:
+            success1, r1 = self.run_ethtool_cmd(self.ethtool_cmd)
+            if not success1 or not r1.returncode != 0:
                 logger.error("Ethtool command failed")
                 return r1
 
             SyncManager.wait_on_client_finish()
-            r2 = self.run_ethtool_cmd(self.ethtool_cmd)
+
+            success2, r2 = self.run_ethtool_cmd(self.ethtool_cmd)
 
             combined_out = f"{r1.out}--DELIMIT--{r2.out}"
-
             return Result(out=combined_out, err=r2.err, returncode=r2.returncode)
 
         self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
