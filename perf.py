@@ -1,7 +1,6 @@
 import sys
 import time
 
-import common
 import tftbase
 
 from logger import logger
@@ -18,44 +17,57 @@ EXTERNAL_PERF_SERVER = "external-perf-server"
 
 class PerfServer(Task):
     def __init__(self, tc: TestConfig, ts: TestSettings):
-        Task.__init__(
-            self, tc, ts.server_index, ts.node_server_name, ts.server_is_tenant
-        )
+        super().__init__(tc, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+
+        connection_mode = ts.connection_mode
+        pod_type = ts.server_pod_type
+        node_name = self.node_name
+        port = 5201 + self.index
+
+        if connection_mode == ConnectionMode.EXTERNAL_IP:
+            in_file_template = ""
+            out_file_yaml = ""
+            pod_name = EXTERNAL_PERF_SERVER
+        elif pod_type == PodType.SRIOV:
+            in_file_template = "./manifests/sriov-pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/sriov-pod-{node_name}-server.yaml"
+            pod_name = f"sriov-pod-{node_name}-server-{port}"
+        elif pod_type == PodType.NORMAL:
+            in_file_template = "./manifests/pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/pod-{node_name}-server.yaml"
+            pod_name = f"normal-pod-{node_name}-server-{port}"
+        elif pod_type == PodType.HOSTBACKED:
+            in_file_template = "./manifests/host-pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/host-pod-{node_name}-server.yaml"
+            pod_name = f"host-pod-{node_name}-server-{port}"
+        else:
+            raise ValueError("Invalid pod_type {pod_type}")
+
         self.exec_persistent = ts.conf_server.persistent
-        self.port = 5201 + self.index
-        self.pod_type = ts.server_pod_type
+        self.port = port
+        self.pod_type = pod_type
         self.connection_mode = ts.connection_mode
+        self.ts = ts
+        self.in_file_template = in_file_template
+        self.out_file_yaml = out_file_yaml
+        self.pod_name = pod_name
 
-        self.template_args["default_network"] = ts.conf_server.default_network
-        if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            self.pod_name = EXTERNAL_PERF_SERVER
-            return
-        if self.pod_type == PodType.SRIOV:
-            self.in_file_template = "./manifests/sriov-pod.yaml.j2"
-            self.out_file_yaml = (
-                f"./manifests/yamls/sriov-pod-{self.node_name}-server.yaml"
-            )
-            s = f"sriov-pod-{self.node_name}-server-{self.port}"
-            self.template_args["pod_name"] = s
-        elif self.pod_type == PodType.NORMAL:
-            self.in_file_template = "./manifests/pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-server.yaml"
-            s = f"normal-pod-{self.node_name}-server-{self.port}"
-            self.template_args["pod_name"] = s
-        elif self.pod_type == PodType.HOSTBACKED:
-            self.in_file_template = "./manifests/host-pod.yaml.j2"
-            self.out_file_yaml = (
-                f"./manifests/yamls/host-pod-{self.node_name}-server.yaml"
-            )
-            s = f"host-pod-{self.node_name}-server-{self.port}"
-            self.template_args["pod_name"] = s
+    def get_template_args(self) -> dict[str, str]:
 
-        self.template_args["port"] = f"{self.port}"
+        extra_args: dict[str, str] = {}
+        if self.connection_mode != ConnectionMode.EXTERNAL_IP:
+            extra_args["pod_name"] = self.pod_name
+            extra_args["port"] = f"{self.port}"
 
-        self.pod_name = self.template_args["pod_name"]
+        return {
+            **super().get_template_args(),
+            "default_network": self.ts.conf_server.default_network,
+            **extra_args,
+        }
 
-        common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
-        logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
+    def initialize(self) -> None:
+        super().initialize()
+        self.render_file("Server Pod Yaml")
 
         self.cluster_ip_addr = self.create_cluster_ip_service()
         self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
@@ -93,44 +105,50 @@ class PerfServer(Task):
 
 class PerfClient(Task):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: PerfServer):
-        Task.__init__(
-            self, tc, ts.client_index, ts.conf_client.name, ts.client_is_tenant
-        )
+        super().__init__(tc, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
+
+        pod_type = ts.client_pod_type
+        node_name = self.node_name
+        port = server.port
+
+        if pod_type == PodType.SRIOV:
+            in_file_template = "./manifests/sriov-pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/sriov-pod-{node_name}-client.yaml"
+            pod_name = f"sriov-pod-{node_name}-client-{port}"
+        elif pod_type == PodType.NORMAL:
+            in_file_template = "./manifests/pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/pod-{node_name}-client.yaml"
+            pod_name = f"normal-pod-{node_name}-client-{port}"
+        elif pod_type == PodType.HOSTBACKED:
+            in_file_template = "./manifests/host-pod.yaml.j2"
+            out_file_yaml = f"./manifests/yamls/host-pod-{node_name}-client.yaml"
+            pod_name = f"host-pod-{node_name}-client-{port}"
+        else:
+            raise ValueError("Invalid pod_type {pod_type}")
+
         self.server = server
-        self.port = self.server.port
-        self.pod_type = ts.client_pod_type
+        self.port = port
+        self.pod_type = pod_type
         self.connection_mode = ts.connection_mode
         self.test_type = ts.connection.test_type
         self.test_case_id = ts.test_case_id
         self.ts = ts
         self.reverse = ts.reverse
         self.cmd = ""
+        self.in_file_template = in_file_template
+        self.out_file_yaml = out_file_yaml
+        self.pod_name = pod_name
 
-        self.template_args["default_network"] = ts.conf_client.default_network
-        if self.pod_type == PodType.SRIOV:
-            self.in_file_template = "./manifests/sriov-pod.yaml.j2"
-            self.out_file_yaml = (
-                f"./manifests/yamls/sriov-pod-{self.node_name}-client.yaml"
-            )
-            s = f"sriov-pod-{self.node_name}-client-{self.port}"
-            self.template_args["pod_name"] = s
-        elif self.pod_type == PodType.NORMAL:
-            self.in_file_template = "./manifests/pod.yaml.j2"
-            self.out_file_yaml = f"./manifests/yamls/pod-{self.node_name}-client.yaml"
-            s = f"normal-pod-{self.node_name}-client-{self.port}"
-            self.template_args["pod_name"] = s
-        elif self.pod_type == PodType.HOSTBACKED:
-            self.in_file_template = "./manifests/host-pod.yaml.j2"
-            self.out_file_yaml = (
-                f"./manifests/yamls/host-pod-{self.node_name}-client.yaml"
-            )
-            s = f"host-pod-{self.node_name}-client-{self.port}"
-            self.template_args["pod_name"] = s
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            **super().get_template_args(),
+            "default_network": self.ts.conf_client.default_network,
+            "pod_name": self.pod_name,
+        }
 
-        self.pod_name = self.template_args["pod_name"]
-
-        common.j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
-        logger.info(f"Generated Client Pod Yaml {self.out_file_yaml}")
+    def initialize(self) -> None:
+        super().initialize()
+        self.render_file("Client Pod Yaml")
 
     def get_target_ip(self) -> str:
         if self.connection_mode == ConnectionMode.CLUSTER_IP:

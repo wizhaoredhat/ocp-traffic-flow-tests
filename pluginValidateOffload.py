@@ -5,7 +5,6 @@ from typing import Optional
 import perf
 import pluginbase
 
-from common import j2_render
 from host import Result
 from logger import logger
 from syncManager import SyncManager
@@ -103,17 +102,22 @@ class TaskValidateOffload(PluginTask):
         self.out_file_yaml = (
             f"./manifests/yamls/tools-pod-{self.node_name}-validate-offload.yaml"
         )
-        self.template_args["pod_name"] = f"tools-pod-{self.node_name}-validate-offload"
-        self.template_args["test_image"] = TFT_TOOLS_IMG
-
-        self.pod_name = self.template_args["pod_name"]
+        self.pod_name = f"tools-pod-{self.node_name}-validate-offload"
         self._perf_instance = perf_instance
         self.perf_pod_name = perf_instance.pod_name
         self.perf_pod_type = perf_instance.pod_type
         self.ethtool_cmd = ""
 
-        j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
-        logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            **super().get_template_args(),
+            "pod_name": self.pod_name,
+            "test_image": TFT_TOOLS_IMG,
+        }
+
+    def initialize(self) -> None:
+        super().initialize()
+        self.render_file("Server Pod Yaml")
 
     def extract_vf_rep(self) -> str:
         if self.perf_pod_type == PodType.HOSTBACKED:

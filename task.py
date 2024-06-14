@@ -4,6 +4,7 @@ import yaml
 
 from abc import ABC
 from abc import abstractmethod
+from typing import Optional
 
 import common
 import host
@@ -20,28 +21,49 @@ class Task(ABC):
     def __init__(
         self, tc: TestConfig, index: int, node_name: str, tenant: bool
     ) -> None:
-        self.template_args: dict[str, str] = {}
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
         self.exec_thread: ReturnValueThread
         self.lh = host.LocalHost()
-
-        self.template_args["name_space"] = "default"
-        self.template_args["test_image"] = tftbase.TFT_TOOLS_IMG
-        self.template_args["command"] = "/sbin/init"
-        self.template_args["args"] = ""
-        self.template_args["index"] = f"{index}"
-
         self.index = index
         self.node_name = node_name
         self.tenant = tenant
-        if not self.tenant and tc.mode == ClusterMode.SINGLE:
-            logger.error("Cannot have non-tenant Task when cluster mode is single.")
-            sys.exit(-1)
-
-        self.template_args["node_name"] = self.node_name
         self.tc = tc
+
+        if not self.tenant and tc.mode == ClusterMode.SINGLE:
+            raise ValueError("Cannot have non-tenant Task when cluster mode is single")
+
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            "name_space": "default",
+            "test_image": tftbase.TFT_TOOLS_IMG,
+            "command": "/sbin/init",
+            "args": "",
+            "index": f"{self.index}",
+            "node_name": self.node_name,
+        }
+
+    def render_file(
+        self,
+        log_info: str,
+        in_file_template: Optional[str] = None,
+        out_file_yaml: Optional[str] = None,
+        template_args: Optional[dict[str, str]] = None,
+    ) -> None:
+        if in_file_template is None:
+            in_file_template = self.in_file_template
+        if out_file_yaml is None:
+            out_file_yaml = self.out_file_yaml
+        if template_args is None:
+            template_args = self.get_template_args()
+        logger.info(
+            f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}")'
+        )
+        common.j2_render(in_file_template, out_file_yaml, template_args)
+
+    def initialize(self) -> None:
+        pass
 
     def run_oc(self, cmd: str) -> host.Result:
         return self.tc.client(tenant=self.tenant).oc(cmd)
@@ -59,8 +81,7 @@ class Task(ABC):
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
-        common.j2_render(in_file_template, out_file_yaml, self.template_args)
-        logger.info(f"Creating Cluster IP Service {out_file_yaml}")
+        self.render_file("Cluster IP Service", in_file_template, out_file_yaml)
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:
             if "already exists" not in r.err:
@@ -74,10 +95,15 @@ class Task(ABC):
     def create_node_port_service(self, nodeport: int) -> str:
         in_file_template = "./manifests/svc-node-port.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-node-port.yaml"
-        self.template_args["nodeport_svc_port"] = f"{nodeport}"
 
-        common.j2_render(in_file_template, out_file_yaml, self.template_args)
-        logger.info(f"Creating Node Port Service {out_file_yaml}")
+        template_args = {
+            **self.get_template_args(),
+            "nodeport_svc_port": f"{nodeport}",
+        }
+
+        self.render_file(
+            "Node Port Service", in_file_template, out_file_yaml, template_args
+        )
         r = self.run_oc(f"apply -f {out_file_yaml}")
         if r.returncode != 0:
             if "already exists" not in r.err:

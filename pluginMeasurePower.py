@@ -5,7 +5,6 @@ import time
 import perf
 import pluginbase
 
-from common import j2_render
 from host import Result
 from logger import logger
 from syncManager import SyncManager
@@ -51,15 +50,20 @@ class TaskMeasurePower(PluginTask):
         self.out_file_yaml = (
             f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         )
-        self.template_args["pod_name"] = f"tools-pod-{self.node_name}-measure-cpu"
-        self.template_args["test_image"] = TFT_TOOLS_IMG
-
-        self.pod_name = self.template_args["pod_name"]
+        self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
         self.node_name = node_name
         self.cmd = ""
 
-        j2_render(self.in_file_template, self.out_file_yaml, self.template_args)
-        logger.info(f"Generated Server Pod Yaml {self.out_file_yaml}")
+    def get_template_args(self) -> dict[str, str]:
+        return {
+            **super().get_template_args(),
+            "pod_name": self.pod_name,
+            "test_image": TFT_TOOLS_IMG,
+        }
+
+    def initialize(self) -> None:
+        super().initialize()
+        self.render_file("Server Pod Yaml")
 
     def run(self, duration: int) -> None:
         def extract(r: Result) -> int:

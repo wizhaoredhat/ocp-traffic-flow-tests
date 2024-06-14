@@ -30,9 +30,17 @@ class IperfServer(perf.PerfServer):
 
         self.exec_persistent = ts.conf_server.persistent
 
+    def get_template_args(self) -> dict[str, str]:
+
+        extra_args: dict[str, str] = {}
         if self.exec_persistent:
-            self.template_args["command"] = IPERF_EXE
-            self.template_args["args"] = f'["-s", "-p", "{self.port}"]'
+            extra_args["command"] = IPERF_EXE
+            extra_args["args"] = f'["-s", "-p", "{self.port}"]'
+
+        return {
+            **super().get_template_args(),
+            **extra_args,
+        }
 
     def setup(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
@@ -65,7 +73,7 @@ class IperfServer(perf.PerfServer):
 
 class IperfClient(perf.PerfClient):
     def __init__(self, tc: TestConfig, ts: TestSettings, server: IperfServer):
-        perf.PerfClient.__init__(self, tc, ts, server)
+        super().__init__(tc, ts, server)
 
     def run(self, duration: int) -> None:
         def client(self: IperfClient, cmd: str) -> Result:

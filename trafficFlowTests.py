@@ -215,6 +215,9 @@ class TrafficFlowTests:
             )
             monitors.extend(m)
 
+        for t in servers + clients + monitors:
+            t.initialize()
+
         SyncManager.reset(len(clients) + len(monitors))
         output = self._run_test_tasks(servers, clients, monitors, duration)
         self.tft_output.append(output)
