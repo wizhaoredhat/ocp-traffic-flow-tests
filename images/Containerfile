@@ -6,4 +6,6 @@ RUN curl -L -o /etc/yum.repos.d/benchmark:openSUSE_Factory.repo https://download
 
 RUN INSTALL_PKGS="vim wget jq python3 git cri-tools net-tools iptables iproute pciutils ethtool httpd iperf3 tcpdump sysstat ipmitool util-linux netperf nc iputils" && yum install -y ${INSTALL_PKGS}
 
+RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
+
 CMD ["/bin/bash"]
