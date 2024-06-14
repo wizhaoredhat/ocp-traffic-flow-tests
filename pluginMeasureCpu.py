@@ -21,7 +21,7 @@ from thread import ReturnValueThread
 class PluginMeasureCpu(pluginbase.Plugin):
     PLUGIN_NAME = "measure_cpu"
 
-    def enable(
+    def _enable(
         self,
         *,
         tc: TestConfig,

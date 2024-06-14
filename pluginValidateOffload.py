@@ -34,7 +34,7 @@ def no_traffic_on_vf_rep(
 class PluginValidateOffload(pluginbase.Plugin):
     PLUGIN_NAME = "validate_offload"
 
-    def enable(
+    def _enable(
         self,
         *,
         tc: TestConfig,
