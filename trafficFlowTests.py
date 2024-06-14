@@ -88,7 +88,7 @@ class TrafficFlowTests:
         logger.info(
             f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"
         )
-        cmd = f"podman stop --time 10 {perf.EXTERNAL_PERF_SERVER}; podman rm --time 10 {perf.EXTERNAL_PERF_SERVER}"
+        cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
         self.lh.run(cmd)
 
     def _run_test_tasks(
