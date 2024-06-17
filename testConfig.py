@@ -3,7 +3,9 @@ import json
 import pathlib
 import typing
 import yaml
+import dataclasses
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
@@ -484,6 +486,7 @@ class TestConfig:
     kc_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
     _client_infra: Optional[K8sClient]
+    evaluator_config: Optional[str]
 
     @staticmethod
     def _detect_mode_args() -> tuple[ClusterMode, str, Optional[str]]:
@@ -519,6 +522,7 @@ class TestConfig:
         full_config: Optional[dict[str, Any]] = None,
         config_path: Optional[str] = None,
         mode_args: Optional[tuple[ClusterMode, str, Optional[str]]] = None,
+        evaluator_config: Optional[str] = None,
     ) -> None:
 
         if config_path is not None:
@@ -550,6 +554,8 @@ class TestConfig:
         self._client_infra = None
 
         self.mode, self.kc_tenant, self.kc_infra = mode_args
+
+        self.evaluator_config = evaluator_config
 
         s = json.dumps(full_config["tft"])
         logger.info(f"config: {s}")
@@ -583,3 +589,71 @@ class TestConfig:
     @property
     def client_infra(self) -> K8sClient:
         return self.client(tenant=False)
+
+
+@strict_dataclass
+@dataclass(frozen=True)
+class ConfigDescriptor:
+    tc: TestConfig
+    tft_idx: int = dataclasses.field(default=-1, kw_only=True)
+    test_cases_idx: int = dataclasses.field(default=-1, kw_only=True)
+    connections_idx: int = dataclasses.field(default=-1, kw_only=True)
+
+    def _post_check(self) -> None:
+        if self.tft_idx < -1 or self.tft_idx >= len(self.tc.config.tft):
+            raise ValueError("tft_idx out of range")
+
+        if self.test_cases_idx < -1:
+            raise ValueError("test_cases_idx out of range")
+        if self.test_cases_idx >= 0:
+            if self.tft_idx < 0:
+                raise ValueError("test_cases_idx requires tft_idx")
+            if self.test_cases_idx >= len(self.tc.config.tft[self.tft_idx].test_cases):
+                raise ValueError("test_cases_idx out or range")
+
+        if self.connections_idx < -1:
+            raise ValueError("connections_idx out of range")
+        if self.connections_idx >= 0:
+            if self.tft_idx < 0:
+                raise ValueError("connections_idx requires tft_idx")
+            if self.connections_idx >= len(
+                self.tc.config.tft[self.tft_idx].connections
+            ):
+                raise ValueError("connections_idx out or range")
+
+    def get_tft(self) -> ConfTest:
+        if self.tft_idx < 0:
+            raise RuntimeError("No tft_idx set")
+        return self.tc.config.tft[self.tft_idx]
+
+    def get_test_case(self) -> TestCaseType:
+        if self.test_cases_idx < 0:
+            raise RuntimeError("No test_cases_idx set")
+        return self.get_tft().test_cases[self.test_cases_idx]
+
+    def get_connection(self) -> ConfConnection:
+        if self.connections_idx < 0:
+            raise RuntimeError("No connections_idx set")
+        return self.get_tft().connections[self.connections_idx]
+
+    def describe_all_tft(self) -> Generator["ConfigDescriptor", None, None]:
+        for tft_idx in range(len(self.tc.config.tft)):
+            yield ConfigDescriptor(tc=self.tc, tft_idx=tft_idx)
+
+    def describe_all_test_cases(self) -> Generator["ConfigDescriptor", None, None]:
+        for test_cases_idx in range(len(self.get_tft().test_cases)):
+            yield ConfigDescriptor(
+                tc=self.tc,
+                tft_idx=self.tft_idx,
+                connections_idx=self.connections_idx,
+                test_cases_idx=test_cases_idx,
+            )
+
+    def describe_all_connections(self) -> Generator["ConfigDescriptor", None, None]:
+        for connections_idx in range(len(self.get_tft().connections)):
+            yield ConfigDescriptor(
+                tc=self.tc,
+                tft_idx=self.tft_idx,
+                test_cases_idx=self.test_cases_idx,
+                connections_idx=connections_idx,
+            )

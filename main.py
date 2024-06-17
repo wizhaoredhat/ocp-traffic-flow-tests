@@ -5,6 +5,7 @@ from pathlib import Path
 
 from logger import configure_logger
 from testConfig import TestConfig
+from testConfig import ConfigDescriptor
 from trafficFlowTests import TrafficFlowTests
 
 
@@ -56,15 +57,16 @@ def main() -> None:
     args = parse_args()
 
     tft = TrafficFlowTests(
-        TestConfig(config_path=args.config),
-        args.evaluator_config,
+        TestConfig(
+            config_path=args.config,
+            evaluator_config=args.evaluator_config,
+        )
     )
 
-    for test in tft.tc.config.tft:
-        tft.test_run(test)
-        if args.evaluator_config:
-            if not tft.evaluate_run_success():
-                print(f"Failure detected in {test.name} results")
+    for cfg_descr in ConfigDescriptor(tft.tc).describe_all_tft():
+        tft.test_run(cfg_descr)
+        if not tft.evaluate_run_success():
+            print(f"Failure detected in {cfg_descr.get_tft().name} results")
 
 
 if __name__ == "__main__":

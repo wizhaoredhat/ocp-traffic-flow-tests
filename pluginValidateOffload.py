@@ -9,7 +9,7 @@ from host import Result
 from logger import logger
 from syncManager import SyncManager
 from task import PluginTask
-from testConfig import TestConfig
+from testSettings import TestSettings
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import PodType
@@ -36,7 +36,7 @@ class PluginValidateOffload(pluginbase.Plugin):
     def _enable(
         self,
         *,
-        tc: TestConfig,
+        ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
         perf_server: perf.PerfServer,
@@ -45,8 +45,8 @@ class PluginValidateOffload(pluginbase.Plugin):
     ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
         return [
-            TaskValidateOffload(tc, perf_server, tenant),
-            TaskValidateOffload(tc, perf_client, tenant),
+            TaskValidateOffload(ts, perf_server, tenant),
+            TaskValidateOffload(ts, perf_client, tenant),
         ]
 
     def eval_log(
@@ -92,11 +92,11 @@ class TaskValidateOffload(PluginTask):
 
     def __init__(
         self,
-        tft: TestConfig,
+        ts: TestSettings,
         perf_instance: perf.PerfServer | perf.PerfClient,
         tenant: bool,
     ):
-        super().__init__(tft, 0, perf_instance.node_name, tenant)
+        super().__init__(ts, 0, perf_instance.node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (

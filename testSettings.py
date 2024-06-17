@@ -3,7 +3,6 @@ import tftbase
 
 from tftbase import NodeLocation
 from tftbase import PodInfo
-from tftbase import TestCaseType
 from tftbase import TestMetadata
 
 
@@ -12,13 +11,16 @@ class TestSettings:
 
     def __init__(
         self,
-        connection: testConfig.ConfConnection,
-        test_case_id: TestCaseType,
+        cfg_descr: testConfig.ConfigDescriptor,
         conf_server: testConfig.ConfServer,
         conf_client: testConfig.ConfClient,
         instance_index: int,
         reverse: bool = False,
     ):
+        connection = cfg_descr.get_connection()
+        test_case_id = cfg_descr.get_test_case()
+
+        self.cfg_descr = cfg_descr
         self.connection = connection
         self.test_case_id = test_case_id
         self.conf_server = conf_server

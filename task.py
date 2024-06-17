@@ -11,7 +11,7 @@ import host
 import tftbase
 
 from logger import logger
-from testConfig import TestConfig
+from testSettings import TestSettings
 from tftbase import ClusterMode
 from thread import ReturnValueThread
 from pluginbase import Plugin
@@ -19,7 +19,7 @@ from pluginbase import Plugin
 
 class Task(ABC):
     def __init__(
-        self, tc: TestConfig, index: int, node_name: str, tenant: bool
+        self, ts: TestSettings, index: int, node_name: str, tenant: bool
     ) -> None:
         self.in_file_template = ""
         self.out_file_yaml = ""
@@ -29,14 +29,15 @@ class Task(ABC):
         self.index = index
         self.node_name = node_name
         self.tenant = tenant
-        self.tc = tc
+        self.ts = ts
+        self.tc = ts.cfg_descr.tc
 
-        if not self.tenant and tc.mode == ClusterMode.SINGLE:
+        if not self.tenant and self.tc.mode == ClusterMode.SINGLE:
             raise ValueError("Cannot have non-tenant Task when cluster mode is single")
 
     def get_template_args(self) -> dict[str, str]:
         return {
-            "name_space": "default",
+            "name_space": self.ts.cfg_descr.get_tft().namespace,
             "test_image": tftbase.TFT_TOOLS_IMG,
             "command": "/sbin/init",
             "args": "",

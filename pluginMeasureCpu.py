@@ -10,7 +10,7 @@ from host import Result
 from logger import logger
 from syncManager import SyncManager
 from task import PluginTask
-from testConfig import TestConfig
+from testSettings import TestSettings
 from tftbase import PluginOutput
 from tftbase import TFT_TOOLS_IMG
 from tftbase import TftAggregateOutput
@@ -23,7 +23,7 @@ class PluginMeasureCpu(pluginbase.Plugin):
     def _enable(
         self,
         *,
-        tc: TestConfig,
+        ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
         perf_server: perf.PerfServer,
@@ -31,8 +31,8 @@ class PluginMeasureCpu(pluginbase.Plugin):
         tenant: bool,
     ) -> list[PluginTask]:
         return [
-            TaskMeasureCPU(tc, node_server_name, tenant),
-            TaskMeasureCPU(tc, node_client_name, tenant),
+            TaskMeasureCPU(ts, node_server_name, tenant),
+            TaskMeasureCPU(ts, node_client_name, tenant),
         ]
 
 
@@ -44,8 +44,8 @@ class TaskMeasureCPU(PluginTask):
     def plugin(self) -> pluginbase.Plugin:
         return plugin
 
-    def __init__(self, tc: TestConfig, node_name: str, tenant: bool):
-        super().__init__(tc, 0, node_name, tenant)
+    def __init__(self, ts: TestSettings, node_name: str, tenant: bool):
+        super().__init__(ts, 0, node_name, tenant)
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (
