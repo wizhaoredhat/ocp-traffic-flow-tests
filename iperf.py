@@ -42,13 +42,14 @@ class IperfServer(perf.PerfServer):
         }
 
     def setup(self) -> None:
+        cmd = f"{IPERF_EXE} -s -p {self.port} --one-off --json"
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --rm -p {self.port} --entrypoint {IPERF_EXE} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} -s --one-off"
+            cmd = f"podman run -it --init --replace --rm -p {self.port} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} {cmd}"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
         else:
             # Create the server pods
             super().setup()
-            cmd = f"exec {self.pod_name} -- {IPERF_EXE} -s -p {self.port} --one-off --json"
+            cmd = f"exec {self.pod_name} -- {cmd}"
             cleanup_cmd = f"exec -t {self.pod_name} -- killall {IPERF_EXE}"
 
         logger.info(f"Running {cmd}")
