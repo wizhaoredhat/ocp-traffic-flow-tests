@@ -34,13 +34,14 @@ class NetPerfServer(perf.PerfServer):
         }
 
     def setup(self) -> None:
+        cmd = f"{NETPERF_SERVER_EXE} -p {self.port} -N"
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --rm -p {self.port} --entrypoint {NETPERF_SERVER_EXE} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} -p {self.port} -N"
+            cmd = f"podman run -it --init --replace --rm -p {self.port} --name={self.pod_name} {tftbase.TFT_TOOLS_IMG} {cmd}"
             cleanup_cmd = f"podman rm --force {self.pod_name}"
         else:
             # Create the server pods
             super().setup()
-            cmd = f"exec {self.pod_name} -- {NETPERF_SERVER_EXE} -p {self.port} -N"
+            cmd = f"exec {self.pod_name} -- {cmd}"
             cleanup_cmd = f"exec -t {self.pod_name} -- killall {NETPERF_SERVER_EXE}"
 
         logger.info(f"Running {cmd}")
