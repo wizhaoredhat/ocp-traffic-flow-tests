@@ -67,10 +67,14 @@ class PerfServer(Task):
 
     def initialize(self) -> None:
         super().initialize()
-        self.render_file("Server Pod Yaml")
 
-        self.cluster_ip_addr = self.create_cluster_ip_service()
-        self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
+        assert (self.in_file_template == "") == (self.out_file_yaml == "")
+
+        if self.in_file_template != "":
+            self.render_file("Server Pod Yaml")
+
+            self.cluster_ip_addr = self.create_cluster_ip_service()
+            self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
 
     def confirm_server_alive(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
