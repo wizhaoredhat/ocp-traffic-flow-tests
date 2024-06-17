@@ -29,7 +29,7 @@ from tftbase import TftAggregateOutput
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig, eval_config: str):
         self.tc = tc
-        self.test_settings: TestSettings
+        self.ts: TestSettings
         self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
@@ -37,25 +37,25 @@ class TrafficFlowTests:
         self.eval_config = eval_config
 
     def _create_iperf_server_client(
-        self, test_settings: TestSettings
+        self, ts: TestSettings
     ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
-            f"Initializing iperf server/client for test:\n {test_settings.get_test_info()}"
+            f"Initializing iperf server/client for test:\n {ts.get_test_info()}"
         )
 
-        s = IperfServer(tc=self.tc, ts=self.test_settings)
-        c = IperfClient(tc=self.tc, ts=self.test_settings, server=s)
+        s = IperfServer(tc=self.tc, ts=self.ts)
+        c = IperfClient(tc=self.tc, ts=self.ts, server=s)
         return (s, c)
 
     def _create_netperf_server_client(
-        self, test_settings: TestSettings
+        self, ts: TestSettings
     ) -> tuple[perf.PerfServer, perf.PerfClient]:
         logger.info(
-            f"Initializing Netperf server/client for test:\n {test_settings.get_test_info()}"
+            f"Initializing Netperf server/client for test:\n {ts.get_test_info()}"
         )
 
-        s = NetPerfServer(tc=self.tc, ts=self.test_settings)
-        c = NetPerfClient(tc=self.tc, ts=self.test_settings, server=s)
+        s = NetPerfServer(tc=self.tc, ts=self.ts)
+        c = NetPerfClient(tc=self.tc, ts=self.ts, server=s)
         return (s, c)
 
     def _configure_namespace(self, namespace: str) -> None:
@@ -152,7 +152,7 @@ class TrafficFlowTests:
         c_server = connection.server[0]
         c_client = connection.client[0]
 
-        self.test_settings = TestSettings(
+        self.ts = TestSettings(
             cfg_descr,
             conf_server=c_server,
             conf_client=c_client,
@@ -163,14 +163,14 @@ class TrafficFlowTests:
             connection.test_type == TestType.IPERF_TCP
             or connection.test_type == TestType.IPERF_UDP
         ):
-            s, c = self._create_iperf_server_client(self.test_settings)
+            s, c = self._create_iperf_server_client(self.ts)
             servers.append(s)
             clients.append(c)
         elif (
             connection.test_type == TestType.NETPERF_TCP_STREAM
             or connection.test_type == TestType.NETPERF_TCP_RR
         ):
-            s, c = self._create_netperf_server_client(self.test_settings)
+            s, c = self._create_netperf_server_client(self.ts)
             servers.append(s)
             clients.append(c)
         else:
