@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import shlex
@@ -82,18 +81,6 @@ class BinResult(BaseResult[bytes]):
 
 
 class Host(ABC):
-    def ipa(self) -> list[dict[str, Any]]:
-        r = json.loads(self.run("ip -json a").out)
-        return typing.cast(list[dict[str, Any]], r)
-
-    def ipr(self) -> list[dict[str, Any]]:
-        r = json.loads(self.run("ip -json r").out)
-        return typing.cast(list[dict[str, Any]], r)
-
-    def all_ports(self) -> list[dict[str, Any]]:
-        r = json.loads(self.run("ip -json link").out)
-        return typing.cast(list[dict[str, Any]], r)
-
     @abstractmethod
     def pretty_str(self) -> str:
         pass
