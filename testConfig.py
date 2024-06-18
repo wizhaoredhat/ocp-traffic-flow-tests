@@ -497,13 +497,12 @@ class TestConfig:
         kc_tenant: str
         kc_infra: Optional[str] = None
 
-        lh = host.LocalHost()
-        if lh.file_exists(TestConfig.kubeconfig_single):
+        if host.local.file_exists(TestConfig.kubeconfig_single):
             kc_tenant = TestConfig.kubeconfig_single
-        elif lh.file_exists(TestConfig.kubeconfig_cx):
+        elif host.local.file_exists(TestConfig.kubeconfig_cx):
             kc_tenant = TestConfig.kubeconfig_cx
-        elif lh.file_exists(TestConfig.kubeconfig_tenant):
-            if lh.file_exists(TestConfig.kubeconfig_infra):
+        elif host.local.file_exists(TestConfig.kubeconfig_tenant):
+            if host.local.file_exists(TestConfig.kubeconfig_infra):
                 mode = ClusterMode.DPU
                 kc_tenant = TestConfig.kubeconfig_tenant
                 kc_infra = TestConfig.kubeconfig_infra

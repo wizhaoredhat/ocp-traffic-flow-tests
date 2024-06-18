@@ -6,11 +6,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+import host
 import testConfig
 
 from common import serialize_enum
 from evaluator import Evaluator
-from host import LocalHost
 from iperf import IperfClient
 from iperf import IperfServer
 from logger import logger
@@ -29,7 +29,6 @@ from tftbase import TftAggregateOutput
 class TrafficFlowTests:
     def __init__(self, tc: TestConfig):
         self.tc = tc
-        self.lh = LocalHost()
         self.log_path: Path = Path("ft-logs")
         self.log_file: Path
         self.tft_output: list[TftAggregateOutput] = []
@@ -87,7 +86,7 @@ class TrafficFlowTests:
             f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"
         )
         cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
-        self.lh.run(cmd)
+        host.local.run(cmd)
 
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
         # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"

@@ -4,11 +4,11 @@ import sys
 import typing
 import yaml
 
+from collections.abc import Mapping
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from typing import Mapping
 
 import pluginbase
 import tftbase
