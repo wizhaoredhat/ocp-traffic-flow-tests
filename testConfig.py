@@ -14,7 +14,13 @@ from typing import TypeVar
 import common
 import host
 
+from common import StructParseBase
+from common import StructParseBaseNamed
 from common import strict_dataclass
+from common import structparse_check_and_pop_name
+from common import structparse_check_and_pop_name_required
+from common import structparse_check_empty_dict
+from common import structparse_check_strdict
 from k8sClient import K8sClient
 from logger import logger
 from pluginbase import Plugin
@@ -25,33 +31,6 @@ from tftbase import TestType
 
 
 T1 = TypeVar("T1")
-
-
-def _check_strdict(arg: Any, yamlpath: str) -> dict[str, Any]:
-    if not isinstance(arg, dict):
-        raise ValueError(f'"{yamlpath}": expects a dictionary but got {type(arg)}')
-    for k, v in arg.items():
-        if not isinstance(k, str):
-            raise ValueError(
-                f'"{yamlpath}": expects all dictionary keys to be strings but got {type(k)}'
-            )
-        if v is None:
-            # None is not allowed, because we use that to indicate a missing key.
-            # I also think that yaml.safe_load() cannot ever create None entries,
-            # so this limitation is fine (and the code actually shouldn't be reachable)
-            raise ValueError(f'"{yamlpath}.{k}": cannot have None values')
-
-    # We shallow-copy the dictionary, because the caller will remove entries
-    # to find unknown entries (see _check_empty_dict()).
-    return dict(arg)
-
-
-def _check_empty_dict(vdict: dict[str, Any], yamlpath: str) -> None:
-    length = len(vdict)
-    if length == 1:
-        raise ValueError(f'"{yamlpath}": unknown key "{list(vdict)[0]}"')
-    if length > 1:
-        raise ValueError(f'"{yamlpath}": unknown keys {list(vdict)}')
 
 
 def _check_plugin_name(name: str, yamlpath: str, is_plain_name: bool) -> Plugin:
@@ -66,54 +45,12 @@ def _check_plugin_name(name: str, yamlpath: str, is_plain_name: bool) -> Plugin:
         )
 
 
-def _check_and_pop_name(
-    vdict: dict[str, Any], yamlpath: str, *, required: bool = False
-) -> Optional[str]:
-    name = vdict.pop("name", None)
-    if name is None:
-        if required:
-            raise ValueError(f'"{yamlpath}.name": mandatory key missing')
-        return None
-    if not isinstance(name, str):
-        raise ValueError(f'"{yamlpath}.name": expects a string but got {name}')
-    return name
-
-
-def _check_and_pop_name_required(vdict: dict[str, Any], yamlpath: str) -> str:
-    return typing.cast(str, _check_and_pop_name(vdict, yamlpath, required=True))
-
-
-@strict_dataclass
-@dataclass(frozen=True)
-class _ConfBase(abc.ABC):
-    yamlpath: str
-    yamlidx: int
-
-    @abc.abstractmethod
-    def serialize(self) -> dict[str, Any]:
-        pass
-
-    def serialize_json(self) -> str:
-        return json.dumps(self.serialize())
-
-
-@strict_dataclass
-@dataclass(frozen=True)
-class _ConfBaseNamed(_ConfBase, abc.ABC):
-    name: str
-
-    def serialize(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-        }
-
-
 T2 = TypeVar("T2", bound="ConfServer | ConfClient")
 
 
 @strict_dataclass
 @dataclass(frozen=True)
-class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
+class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
     sriov: bool
     pod_type: PodType
     default_network: str
@@ -132,9 +69,9 @@ class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
         yamlpath: str,
         arg: Any,
     ) -> T2:
-        vdict = _check_strdict(arg, yamlpath)
+        vdict = structparse_check_strdict(arg, yamlpath)
 
-        name = _check_and_pop_name_required(vdict, yamlpath)
+        name = structparse_check_and_pop_name_required(vdict, yamlpath)
 
         pod_type = PodType.NORMAL
         v = vdict.pop("sriov", None)
@@ -162,7 +99,7 @@ class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
                 )
             type_specific_kwargs["persistent"] = persistent
 
-        _check_empty_dict(vdict, yamlpath)
+        structparse_check_empty_dict(vdict, yamlpath)
 
         result = conf_type(
             yamlidx=yamlidx,
@@ -179,7 +116,7 @@ class _ConfBaseClientServer(_ConfBaseNamed, abc.ABC):
 
 @strict_dataclass
 @dataclass(frozen=True)
-class ConfPlugin(_ConfBaseNamed):
+class ConfPlugin(StructParseBaseNamed):
     plugin: Plugin
 
     @staticmethod
@@ -192,11 +129,11 @@ class ConfPlugin(_ConfBaseNamed):
             # of a dictionary with "name" entry.
             name = arg
         else:
-            vdict = _check_strdict(arg, yamlpath)
+            vdict = structparse_check_strdict(arg, yamlpath)
 
-            name = _check_and_pop_name_required(vdict, yamlpath)
+            name = structparse_check_and_pop_name_required(vdict, yamlpath)
 
-            _check_empty_dict(vdict, yamlpath)
+            structparse_check_empty_dict(vdict, yamlpath)
 
         plugin = _check_plugin_name(name, yamlpath, is_plain_name)
 
@@ -234,7 +171,7 @@ class ConfClient(_ConfBaseClientServer):
 
 @strict_dataclass
 @dataclass(frozen=True)
-class ConfConnection(_ConfBaseNamed):
+class ConfConnection(StructParseBaseNamed):
     test_type: TestType
     instances: int
     server: tuple[ConfServer, ...]
@@ -256,9 +193,9 @@ class ConfConnection(_ConfBaseNamed):
         yamlidx: int, yamlpath: str, arg: Any, *, test_name: str
     ) -> "ConfConnection":
         v: Any
-        vdict = _check_strdict(arg, yamlpath)
+        vdict = structparse_check_strdict(arg, yamlpath)
 
-        name = _check_and_pop_name(vdict, yamlpath)
+        name = structparse_check_and_pop_name(vdict, yamlpath)
         if name is None:
             name = f"Connection {test_name}/{yamlidx+1}"
 
@@ -310,7 +247,7 @@ class ConfConnection(_ConfBaseNamed):
                     ConfPlugin.parse(yamlidx2, f"{yamlpath}.plugins[{yamlidx}]", arg)
                 )
 
-        _check_empty_dict(vdict, yamlpath)
+        structparse_check_empty_dict(vdict, yamlpath)
 
         if len(server) > 1:
             raise ValueError(
@@ -336,7 +273,7 @@ class ConfConnection(_ConfBaseNamed):
 
 @strict_dataclass
 @dataclass(frozen=True)
-class ConfTest(_ConfBaseNamed):
+class ConfTest(StructParseBaseNamed):
     namespace: str
     test_cases: tuple[TestCaseType, ...]
     duration: int
@@ -356,9 +293,9 @@ class ConfTest(_ConfBaseNamed):
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfTest":
         v: Any
-        vdict = _check_strdict(arg, yamlpath)
+        vdict = structparse_check_strdict(arg, yamlpath)
 
-        name = _check_and_pop_name(vdict, yamlpath)
+        name = structparse_check_and_pop_name(vdict, yamlpath)
         if name is None:
             name = f"Test {yamlidx+1}"
 
@@ -418,7 +355,7 @@ class ConfTest(_ConfBaseNamed):
                 raise ValueError(f'"{yamlpath}.logs": expects a string but got {v}')
             logs = v
 
-        _check_empty_dict(vdict, yamlpath)
+        structparse_check_empty_dict(vdict, yamlpath)
 
         return ConfTest(
             yamlidx=yamlidx,
@@ -434,7 +371,7 @@ class ConfTest(_ConfBaseNamed):
 
 @strict_dataclass
 @dataclass(frozen=True)
-class ConfConfig(_ConfBase):
+class ConfConfig(StructParseBase):
     tft: tuple[ConfTest, ...]
 
     def serialize(self) -> dict[str, Any]:
@@ -445,7 +382,7 @@ class ConfConfig(_ConfBase):
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfConfig":
         v: Any
-        vdict = _check_strdict(arg, yamlpath)
+        vdict = structparse_check_strdict(arg, yamlpath)
 
         v = vdict.pop("tft", None)
         if v is None:
@@ -464,7 +401,7 @@ class ConfConfig(_ConfBase):
                 f'"{yamlpath}.tft" must contain a list of tests but list is empty'
             )
 
-        _check_empty_dict(vdict, yamlpath)
+        structparse_check_empty_dict(vdict, yamlpath)
 
         return ConfConfig(
             yamlidx=yamlidx,
