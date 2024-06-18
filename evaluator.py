@@ -1,13 +1,14 @@
 import argparse
 import json
 import sys
-import typing
 import yaml
 
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
+import evalConfig
 import pluginbase
 import tftbase
 
@@ -66,27 +67,23 @@ class Evaluator:
         with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
-            config = {
-                test_type: {
-                    int(item["id"]): {
-                        "normal": item["Normal"]["threshold"],
-                        "reverse": item["Reverse"]["threshold"],
-                    }
-                    for item in test_cases
-                }
-                for test_type, test_cases in c.items()
-            }
-
-        self.config = config
+        self.eval_config = evalConfig.Config.parse(c)
 
     def _eval_flow_test(self, run: IperfOutput) -> TestResult:
         md = run.tft_metadata
 
-        bitrate_threshold = self.get_threshold(
-            md.test_case_id, md.test_type, md.reverse
-        )
+        bitrate_gbps = Bitrate.NA
+        bitrate_threshold: Optional[float] = None
 
-        bitrate_gbps = TestTypeHandler.get(md.test_type).calculate_gbps(run.result)
+        # We accept a missing eval_config entry. That is also because we can
+        # generate a eval_config with "generate_new_eval_config.py", but for
+        # that we require to successfully generate a RESULT first.
+        cfg = self.eval_config.configs.get(md.test_type)
+        if cfg is not None:
+            cfg_test_case = cfg.test_cases.get(md.test_case_id)
+            if cfg_test_case is not None:
+                bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
+            bitrate_gbps = TestTypeHandler.get(cfg.test_type).calculate_gbps(run.result)
 
         return TestResult(
             test_id=md.test_case_id,
@@ -125,20 +122,6 @@ class Evaluator:
                     plugin_results.append(plugin_result)
 
         return test_results, plugin_results
-
-    def get_threshold(
-        self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
-    ) -> int:
-        traffic_direction = "reverse" if is_reverse else "normal"
-        try:
-            return typing.cast(
-                int, self.config[test_type.name][test_case_id.value][traffic_direction]
-            )
-        except KeyError as e:
-            logger.error(
-                f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"
-            )
-            raise Exception("get_threshold(): Failed to parse evaluator config")
 
     def dump_to_json(
         self,
