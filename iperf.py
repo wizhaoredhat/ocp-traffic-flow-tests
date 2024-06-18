@@ -1,8 +1,8 @@
 import json
 import perf
 
+from collections.abc import Mapping
 from typing import Any
-from typing import Mapping
 
 import tftbase
 
