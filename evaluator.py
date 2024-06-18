@@ -66,7 +66,7 @@ class Evaluator:
         with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
-            self.config = {
+            config = {
                 test_type: {
                     int(item["id"]): {
                         "normal": item["Normal"]["threshold"],
@@ -77,10 +77,9 @@ class Evaluator:
                 for test_type, test_cases in c.items()
             }
 
-        self.test_results: list[TestResult] = []
-        self.plugin_results: list[tftbase.PluginResult] = []
+        self.config = config
 
-    def _eval_flow_test(self, run: IperfOutput) -> None:
+    def _eval_flow_test(self, run: IperfOutput) -> TestResult:
         md = run.tft_metadata
 
         bitrate_threshold = self.get_threshold(
@@ -89,16 +88,17 @@ class Evaluator:
 
         bitrate_gbps = TestTypeHandler.get(md.test_type).calculate_gbps(run.result)
 
-        result = TestResult(
+        return TestResult(
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,
             success=bitrate_gbps.is_passing(bitrate_threshold),
             bitrate_gbps=bitrate_gbps,
         )
-        self.test_results.append(result)
 
-    def eval_log(self, log_path: Path) -> None:
+    def eval_log(
+        self, log_path: str | Path
+    ) -> tuple[list[TestResult], list[tftbase.PluginResult]]:
         try:
             with open(log_path, "r") as file:
                 runs = json.load(file)[TFT_TESTS]
@@ -106,11 +106,15 @@ class Evaluator:
             logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
 
+        test_results: list[TestResult] = []
+        plugin_results: list[tftbase.PluginResult] = []
+
         for run in runs:
             if "flow_test" in run and run["flow_test"] is not None:
                 run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
 
-            self._eval_flow_test(run["flow_test"])
+            result = self._eval_flow_test(run["flow_test"])
+            test_results.append(result)
             for plugin_output in run["plugins"]:
                 plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
                 plugin = pluginbase.get_by_name(plugin_output.name)
@@ -118,7 +122,9 @@ class Evaluator:
                     plugin_output, run["flow_test"].tft_metadata
                 )
                 if plugin_result is not None:
-                    self.plugin_results.append(plugin_result)
+                    plugin_results.append(plugin_result)
+
+        return test_results, plugin_results
 
     def get_threshold(
         self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
@@ -134,14 +140,16 @@ class Evaluator:
             )
             raise Exception("get_threshold(): Failed to parse evaluator config")
 
-    def dump_to_json(self) -> str:
-        passing = [asdict(result) for result in self.test_results if result.success]
-        failing = [asdict(result) for result in self.test_results if not result.success]
-        plugin_passing = [
-            asdict(result) for result in self.plugin_results if result.success
-        ]
+    def dump_to_json(
+        self,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> str:
+        passing = [asdict(result) for result in test_results if result.success]
+        failing = [asdict(result) for result in test_results if not result.success]
+        plugin_passing = [asdict(result) for result in plugin_results if result.success]
         plugin_failing = [
-            asdict(result) for result in self.plugin_results if not result.success
+            asdict(result) for result in plugin_results if not result.success
         ]
 
         return json.dumps(
@@ -153,10 +161,14 @@ class Evaluator:
             }
         )
 
-    def evaluate_pass_fail_status(self) -> PassFailStatus:
+    def evaluate_pass_fail_status(
+        self,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> PassFailStatus:
         tft_passing = 0
         tft_failing = 0
-        for result in self.test_results:
+        for result in test_results:
             if result.success:
                 tft_passing += 1
             else:
@@ -164,7 +176,7 @@ class Evaluator:
 
         plugin_passing = 0
         plugin_failing = 0
-        for plugin_result in self.plugin_results:
+        for plugin_result in plugin_results:
             if plugin_result.success:
                 plugin_passing += 1
             else:
@@ -212,16 +224,17 @@ def main() -> None:
 
     # Hand evaluator log file to evaluate
     file = Path(args.logs)
-    evaluator.eval_log(file)
+
+    test_results, plugin_results = evaluator.eval_log(file)
 
     # Generate Resulting Json
-    data = evaluator.dump_to_json()
+    data = evaluator.dump_to_json(test_results, plugin_results)
     file_path = args.output
     with open(file_path, "w") as json_file:
         json_file.write(data)
     logger.info(data)
 
-    res = evaluator.evaluate_pass_fail_status()
+    res = evaluator.evaluate_pass_fail_status(test_results, plugin_results)
     logger.info(f"RESULT OF TEST: Success = {res.result}.")
     logger.info(
         f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
