@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import os
 import pathlib
 import pytest
@@ -385,3 +386,31 @@ def test_host_file_exists() -> None:
 
     assert host.local.file_exists(pathlib.Path(__file__))
     assert host.Host.file_exists(host.local, pathlib.Path(__file__))
+
+
+def test_dataclass_tofrom_dict() -> None:
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C1:
+        foo: int
+        str: typing.Optional[str]
+
+    c1 = C1(1, "str")
+    d1 = common.dataclass_to_dict(c1)
+    assert c1 == common.dataclass_from_dict(C1, d1)
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C2:
+        enum_val: TstTestType
+        c1_opt: typing.Optional[C1]
+        c1_opt_2: typing.Optional[C1]
+        c1_list: list[C1]
+
+    c2 = C2(TstTestType.IPERF_UDP, C1(2, "2"), None, [C1(3, "3"), C1(4, "4")])
+    d2 = common.dataclass_to_dict(c2)
+    assert (
+        json.dumps(d2)
+        == '{"enum_val": "IPERF_UDP", "c1_opt": {"foo": 2, "str": "2"}, "c1_opt_2": null, "c1_list": [{"foo": 3, "str": "3"}, {"foo": 4, "str": "4"}]}'
+    )
+    assert c2 == common.dataclass_from_dict(C2, d2)
