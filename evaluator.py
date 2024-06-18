@@ -12,15 +12,12 @@ import evalConfig
 import pluginbase
 import tftbase
 
-from common import dataclass_from_dict
 from common import serialize_enum
 from common import strict_dataclass
 from logger import logger
 from testType import TestTypeHandler
 from tftbase import Bitrate
 from tftbase import IperfOutput
-from tftbase import PluginOutput
-from tftbase import TFT_TESTS
 from tftbase import TestCaseType
 from tftbase import TestType
 
@@ -97,26 +94,24 @@ class Evaluator:
         self, log_path: str | Path
     ) -> tuple[list[TestResult], list[tftbase.PluginResult]]:
         try:
-            with open(log_path, "r") as file:
-                runs = json.load(file)[TFT_TESTS]
+            runs = tftbase.output_list_parse_file(log_path)
         except Exception as e:
-            logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
-            raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
+            logger.error(f"error parsing {log_path}: {e}")
+            raise Exception(f"error parsing {log_path}: {e}")
 
         test_results: list[TestResult] = []
         plugin_results: list[tftbase.PluginResult] = []
 
-        for run in runs:
-            if "flow_test" in run and run["flow_test"] is not None:
-                run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
-
-            result = self._eval_flow_test(run["flow_test"])
+        for run_idx, run in enumerate(runs):
+            if run.flow_test is None:
+                logger.error(f'invalid result #{run_idx}: missing "flow_test"')
+                raise Exception(f'invalid result #{run_idx}: missing "flow_test"')
+            result = self._eval_flow_test(run.flow_test)
             test_results.append(result)
-            for plugin_output in run["plugins"]:
-                plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
+            for plugin_output in run.plugins:
                 plugin = pluginbase.get_by_name(plugin_output.name)
                 plugin_result = plugin.eval_log(
-                    plugin_output, run["flow_test"].tft_metadata
+                    plugin_output, run.flow_test.tft_metadata
                 )
                 if plugin_result is not None:
                     plugin_results.append(plugin_result)

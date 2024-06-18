@@ -2,20 +2,17 @@ import datetime
 import json
 import perf
 
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any
 
 import host
 import testConfig
+import tftbase
 
-from common import serialize_enum
 from evaluator import Evaluator
 from logger import logger
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
-from tftbase import TFT_TESTS
 from tftbase import TftAggregateOutput
 
 
@@ -68,12 +65,9 @@ class TrafficFlowTests:
     def _dump_result_to_log(
         self, tft_output: list[TftAggregateOutput], *, log_file: str
     ) -> None:
-        # Dump test outputs into log file
-        json_out: dict[str, list[dict[str, Any]]] = {TFT_TESTS: []}
-        for out in tft_output:
-            json_out[TFT_TESTS].append(asdict(out))
-        with open(log_file, "w") as output_file:
-            json.dump(serialize_enum(json_out), output_file)
+        out = tftbase.output_list_serialize(tft_output)
+        with open(log_file, "w") as f:
+            json.dump(out, f)
 
     def evaluate_run_success(self, cfg_descr: ConfigDescriptor, log_file: Path) -> bool:
         # For the result of every test run, check the status of each run log to
