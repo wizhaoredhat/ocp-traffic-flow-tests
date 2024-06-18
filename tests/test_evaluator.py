@@ -29,6 +29,14 @@ evaluator_file = os.path.join(parent_dir, "evaluator.py")
 
 COMMON_COMMAND = ["python", evaluator_file, config_path]
 
+TEST_INPUT_FILES = [
+    "input1.json",
+    "input2.json",
+    "input3.json",
+    "input4.json",
+    "input5.json",
+]
+
 
 def run_subprocess(
     command: list[str], **kwargs: Any
@@ -143,3 +151,40 @@ def test_eval_config() -> None:
 
     _check(config_path)
     _check(config_path2)
+
+
+def test_output_list_parse() -> None:
+    for test_input_file in TEST_INPUT_FILES:
+        filename = os.path.join(current_dir, test_input_file)
+        assert os.path.isfile(filename)
+
+        with open(filename, "r") as f:
+            data = f.read()
+
+        file_is_good = True
+        if test_input_file in ("input2.json", "input3.json", "input4.json"):
+            with pytest.raises(RuntimeError):
+                tftbase.output_list_parse_file(filename)
+
+            file_is_good = False
+            data = data.replace('"invalid_test_case_id"', '"POD_TO_POD_SAME_NODE"')
+            data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
+            data = data.replace('"invalid_pod_type"', '"SRIOV"')
+
+        def _check(output: list[tftbase.TftAggregateOutput]) -> None:
+            assert isinstance(output, list)
+            assert output
+
+        jdata = json.loads(data)
+
+        output = tftbase.output_list_parse(jdata, filename=filename)
+        _check(output)
+
+        if file_is_good:
+            output = tftbase.output_list_parse_file(filename)
+            _check(output)
+
+        data2 = tftbase.output_list_serialize(output)
+        output2 = tftbase.output_list_parse(data2)
+        _check(output2)
+        assert output == output2
