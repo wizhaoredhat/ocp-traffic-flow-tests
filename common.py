@@ -448,7 +448,7 @@ class StructParseBase(abc.ABC):
     yamlidx: int
 
     @abc.abstractmethod
-    def serialize(self) -> dict[str, Any]:
+    def serialize(self) -> dict[str, Any] | list[Any]:
         pass
 
     def serialize_json(self) -> str:
