@@ -1,4 +1,5 @@
 import enum
+import json
 import shlex
 import sys
 import threading
@@ -276,7 +277,10 @@ class Task(ABC):
         logger.info(
             f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}", for {self.log_name})'
         )
-        common.j2_render(in_file_template, out_file_yaml, template_args)
+        rendered = common.j2_render(in_file_template, out_file_yaml, template_args)
+
+        rendered_dict = yaml.safe_load(rendered)
+        logger.debug(f'"{in_file_template}" contains: {json.dumps(rendered_dict)}')
 
     def initialize(self) -> None:
         pass
