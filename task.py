@@ -1,9 +1,11 @@
+import shlex
 import sys
 import typing
 import yaml
 
 from abc import ABC
 from abc import abstractmethod
+from collections.abc import Iterable
 from typing import Optional
 
 import common
@@ -83,6 +85,25 @@ class Task(ABC):
             namespace = self.get_namespace()
         return self.tc.client(tenant=self.tenant).oc(
             cmd,
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+            namespace=namespace,
+        )
+
+    def run_oc_exec(
+        self,
+        cmd: str | Iterable[str],
+        *,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+        namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
+    ) -> host.Result:
+        if isinstance(cmd, str):
+            argv = shlex.split(cmd)
+        else:
+            argv = list(cmd)
+        return self.run_oc(
+            f"exec {shlex.quote(self.pod_name)} -- {shlex.join(argv)}",
             may_fail=may_fail,
             die_on_error=die_on_error,
             namespace=namespace,
