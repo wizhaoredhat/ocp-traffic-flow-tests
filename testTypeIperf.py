@@ -101,15 +101,17 @@ class IperfServer(perf.PerfServer):
 class IperfClient(perf.PerfClient):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
-        cmd = f"exec {self.pod_name} -- {IPERF_EXE} -c {server_ip} -p {self.port} --json -t {self.get_duration()}"
+        cmd = (
+            f"{IPERF_EXE} -c {server_ip} -p {self.port} --json -t {self.get_duration()}"
+        )
         if self.test_type == TestType.IPERF_UDP:
-            cmd = f" {cmd} {IPERF_UDP_OPT}"
+            cmd += f" {IPERF_UDP_OPT}"
         if self.reverse:
-            cmd = f" {cmd} {IPERF_REV_OPT}"
+            cmd += f" {IPERF_REV_OPT}"
 
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            r = self.run_oc(cmd)
+            r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
             if not r.success:
                 return BaseOutput.from_cmd(r)

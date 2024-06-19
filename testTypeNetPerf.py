@@ -58,13 +58,13 @@ class NetPerfClient(perf.PerfClient):
 
         server_ip = self.get_target_ip()
         if self.test_type == TestType.NETPERF_TCP_STREAM:
-            cmd = f"exec {self.pod_name} -- {NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_STREAM -l {self.get_duration()}"
+            cmd = f"{NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_STREAM -l {self.get_duration()}"
         else:
-            cmd = f"exec {self.pod_name} -- {NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_RR -l {self.get_duration()}"
+            cmd = f"{NETPERF_CLIENT_EXE} -H {server_ip} -p {self.port} -t TCP_RR -l {self.get_duration()}"
 
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            r = self.run_oc(cmd)
+            r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
             if not r.success:
                 return BaseOutput.from_cmd(r)
