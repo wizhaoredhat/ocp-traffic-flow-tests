@@ -286,6 +286,8 @@ def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
                 return dataclass_from_dict(ck_type, value)
             if actual_type is None and issubclass(ck_type, Enum):
                 return enum_convert(ck_type, value)
+            if ck_type is float and isinstance(value, int):
+                return float(value)
             return value
 
         actual_type = typing.get_origin(field.type)

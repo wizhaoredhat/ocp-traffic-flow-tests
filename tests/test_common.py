@@ -340,6 +340,15 @@ def test_strict_dataclass() -> None:
     with pytest.raises(NotImplementedError):
         C9("foo")
 
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C10:
+        x: float
+
+    C10(1.0)
+    with pytest.raises(TypeError):
+        C10(1)
+
 
 def test_host_result_bin() -> None:
     res = host.local.run("echo -n out; echo -n err >&2", text=False)
@@ -414,3 +423,28 @@ def test_dataclass_tofrom_dict() -> None:
         == '{"enum_val": "IPERF_UDP", "c1_opt": {"foo": 2, "str": "2"}, "c1_opt_2": null, "c1_list": [{"foo": 3, "str": "3"}, {"foo": 4, "str": "4"}]}'
     )
     assert c2 == common.dataclass_from_dict(C2, d2)
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C10:
+        x: float
+
+    assert common.dataclass_to_dict(C10(1.0)) == {"x": 1.0}
+
+    c10 = C10(1.0)
+    assert type(c10.x) is float
+    common.dataclass_check(c10)
+    c10.x = 1
+    assert type(c10.x) is int
+    with pytest.raises(TypeError):
+        common.dataclass_check(c10)
+    assert common.dataclass_to_dict(c10) == {"x": 1}
+
+    assert common.dataclass_from_dict(C10, {"x": 1.0}) == c10
+    assert common.dataclass_from_dict(C10, {"x": 1.0}) == C10(1.0)
+    assert common.dataclass_from_dict(C10, {"x": 1}) == c10
+    assert common.dataclass_from_dict(C10, {"x": 1}) == C10(1.0)
+    assert type(common.dataclass_from_dict(C10, {"x": 1}).x) is float
+    assert type(common.dataclass_from_dict(C10, {"x": 1.0}).x) is float
+    assert type(c10.x) is int
+    assert type(C10(1.0).x) is float
