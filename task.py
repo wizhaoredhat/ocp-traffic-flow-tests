@@ -274,7 +274,7 @@ class Task(ABC):
         if template_args is None:
             template_args = self.get_template_args()
         logger.info(
-            f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}")'
+            f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}", for {self.log_name})'
         )
         common.j2_render(in_file_template, out_file_yaml, template_args)
 
