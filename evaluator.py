@@ -3,7 +3,6 @@ import json
 import sys
 import yaml
 
-from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -12,7 +11,7 @@ import evalConfig
 import pluginbase
 import tftbase
 
-from common import serialize_enum
+from common import dataclass_to_dict
 from common import strict_dataclass
 from logger import logger
 from testType import TestTypeHandler
@@ -123,19 +122,17 @@ class Evaluator:
         test_results: list[TestResult],
         plugin_results: list[tftbase.PluginResult],
     ) -> str:
-        passing = [asdict(result) for result in test_results if result.success]
-        failing = [asdict(result) for result in test_results if not result.success]
-        plugin_passing = [asdict(result) for result in plugin_results if result.success]
-        plugin_failing = [
-            asdict(result) for result in plugin_results if not result.success
-        ]
+        passing = [dataclass_to_dict(r) for r in test_results if r.success]
+        failing = [dataclass_to_dict(r) for r in test_results if not r.success]
+        plugin_passing = [dataclass_to_dict(r) for r in plugin_results if r.success]
+        plugin_failing = [dataclass_to_dict(r) for r in plugin_results if not r.success]
 
         return json.dumps(
             {
-                "passing": serialize_enum(passing),
-                "failing": serialize_enum(failing),
-                "plugin_passing": serialize_enum(plugin_passing),
-                "plugin_failing": serialize_enum(plugin_failing),
+                "passing": passing,
+                "failing": failing,
+                "plugin_passing": plugin_passing,
+                "plugin_failing": plugin_failing,
             }
         )
 
