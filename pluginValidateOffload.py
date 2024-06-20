@@ -21,6 +21,78 @@ from tftbase import TestMetadata
 VF_REP_TRAFFIC_THRESHOLD = 1000
 
 
+def ethtool_stat_parse(output: str) -> dict[str, str]:
+    result = {}
+    for line in output.splitlines():
+        try:
+            key, val = line.split(":", 2)
+        except Exception:
+            continue
+        if val == "" and " " in key:
+            # This is a section heading.
+            continue
+        result[key.strip()] = val.strip()
+    return result
+
+
+def ethtool_stat_get_packets(data: dict[str, str], packet_type: str) -> Optional[int]:
+
+    # Case1: Try to parse rx_packets and tx_packets from ethtool output
+    val = data.get(f"{packet_type}_packets")
+    if val is not None:
+        try:
+            return int(val)
+        except KeyError:
+            return None
+
+    # Case2: Ethtool output does not provide these fields, so we need to sum
+    # the queues manually.
+    total_packets = 0
+    prefix = f"{packet_type}_queue_"
+    packet_suffix = "_xdp_packets"
+    any_match = False
+
+    for k, v in data.items():
+        if k.startswith(prefix) and k.endswith(packet_suffix):
+            try:
+                total_packets += int(v)
+            except KeyError:
+                return None
+            any_match = True
+    if not any_match:
+        return None
+    return total_packets
+
+
+def ethtool_stat_get_startend(
+    parsed_data: dict[str, int],
+    ethtool_data: str,
+    suffix: typing.Literal["start", "end"],
+) -> bool:
+    ethtool_dict = ethtool_stat_parse(ethtool_data)
+    success = True
+    KEY_NAMES = {
+        "start": {
+            "rx": "rx_start",
+            "tx": "tx_start",
+        },
+        "end": {
+            "rx": "rx_end",
+            "tx": "tx_end",
+        },
+    }
+    for ethtool_name in ("rx", "tx"):
+        # Don't construct key_name as f"{ethtool_name}_{suffix}", because the
+        # keys should appear verbatim in source code, so we can grep for them.
+        key_name = KEY_NAMES[suffix][ethtool_name]
+        v = ethtool_stat_get_packets(ethtool_dict, ethtool_name)
+        if v is None:
+            success = False
+            continue
+        parsed_data[key_name] = v
+    return success
+
+
 def no_traffic_on_vf_rep(
     rx_start: int, tx_start: int, rx_end: int, tx_end: int
 ) -> bool:
@@ -52,26 +124,17 @@ class PluginValidateOffload(pluginbase.Plugin):
     def eval_log(
         self, plugin_output: PluginOutput, md: TestMetadata
     ) -> Optional[PluginResult]:
-        rx_start = plugin_output.result.get("rx_start")
-        tx_start = plugin_output.result.get("tx_start")
-        rx_end = plugin_output.result.get("rx_end")
-        tx_end = plugin_output.result.get("tx_end")
-
-        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
+        if not plugin_output.success:
             logger.error(
                 f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
             )
             success = False
         else:
-            assert isinstance(rx_start, int)
-            assert isinstance(tx_start, int)
-            assert isinstance(rx_end, int)
-            assert isinstance(tx_end, int)
             success = no_traffic_on_vf_rep(
-                rx_start=rx_start,
-                tx_start=tx_start,
-                rx_end=rx_end,
-                tx_end=tx_end,
+                rx_start=plugin_output.result_get("rx_start", int),
+                tx_start=plugin_output.result_get("tx_start", int),
+                rx_end=plugin_output.result_get("rx_end", int),
+                tx_end=plugin_output.result_get("tx_end", int),
             )
 
         return PluginResult(
@@ -150,27 +213,6 @@ class TaskValidateOffload(PluginTask):
             success = r.success or ("already exists" not in r.err)
         return success, r
 
-    def parse_packets(self, output: str, packet_type: str) -> int:
-        # Case1: Try to parse rx_packets and tx_packets from ethtool output
-        prefix = f"{packet_type}_packets"
-        if prefix in output:
-            for line in output.splitlines():
-                stripped_line = line.strip()
-                if stripped_line.startswith(prefix):
-                    return int(stripped_line.split(":")[1])
-        # Case2: Ethtool output does not provide these fields, so we need to sum the queues manually
-        total_packets = 0
-        prefix = f"{packet_type}_queue_"
-        packet_suffix = "_xdp_packets:"
-
-        for line in output.splitlines():
-            stripped_line = line.strip()
-            if prefix in stripped_line and packet_suffix in stripped_line:
-                packet_count = int(stripped_line.split(":")[1].strip())
-                total_packets += packet_count
-
-        return total_packets
-
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
@@ -197,15 +239,13 @@ class TaskValidateOffload(PluginTask):
             if success2 and r2.success:
                 data2 = r2.out
 
-            parsed_data: dict[str, str | int] = {}
+            success_result = success2 and r2.success
 
-            if data1:
-                parsed_data["rx_start"] = self.parse_packets(data1, "rx")
-                parsed_data["tx_start"] = self.parse_packets(data1, "tx")
-
-            if data2:
-                parsed_data["rx_end"] = self.parse_packets(data2, "rx")
-                parsed_data["tx_end"] = self.parse_packets(data2, "tx")
+            parsed_data: dict[str, int] = {}
+            if not ethtool_stat_get_startend(parsed_data, data1, "start"):
+                success_result = False
+            if not ethtool_stat_get_startend(parsed_data, data2, "end"):
+                success_result = False
 
             logger.info(
                 f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
@@ -214,7 +254,7 @@ class TaskValidateOffload(PluginTask):
                 f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
             )
             return PluginOutput(
-                success=success2 and r2.success,
+                success=success_result,
                 command=ethtool_cmd,
                 plugin_metadata={
                     "name": "GetEthtoolStats",
