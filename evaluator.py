@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional
 
 import evalConfig
-import pluginbase
 import tftbase
 
 from common import dataclass_to_dict
@@ -108,8 +107,7 @@ class Evaluator:
             result = self._eval_flow_test(run.flow_test)
             test_results.append(result)
             for plugin_output in run.plugins:
-                plugin = pluginbase.get_by_name(plugin_output.name)
-                plugin_result = plugin.eval_log(
+                plugin_result = plugin_output.plugin.eval_log(
                     plugin_output, run.flow_test.tft_metadata
                 )
                 if plugin_result is not None:

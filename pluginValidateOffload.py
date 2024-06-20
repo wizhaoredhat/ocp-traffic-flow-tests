@@ -252,15 +252,10 @@ class TaskValidateOffload(PluginTask):
                 f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
             )
             return PluginOutput(
+                plugin_metadata=self.get_plugin_metadata(),
                 success=success_result,
                 command=ethtool_cmd,
-                plugin_metadata={
-                    "name": "GetEthtoolStats",
-                    "node_name": self.node_name,
-                    "pod_name": self.pod_name,
-                },
                 result=parsed_data,
-                name=plugin.PLUGIN_NAME,
             )
 
         return TaskOperation(

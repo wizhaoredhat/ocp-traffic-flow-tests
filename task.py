@@ -442,3 +442,10 @@ class PluginTask(Task):
     @abstractmethod
     def plugin(self) -> Plugin:
         pass
+
+    def get_plugin_metadata(self) -> tftbase.PluginMetadata:
+        return tftbase.PluginMetadata(
+            plugin_name=self.plugin.PLUGIN_NAME,
+            node_name=self.node_name,
+            pod_name=self.pod_name,
+        )

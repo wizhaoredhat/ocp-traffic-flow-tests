@@ -192,6 +192,14 @@ class PodInfo:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
+class PluginMetadata:
+    plugin_name: str
+    node_name: str
+    pod_name: str
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
 class PluginResult:
     """Result of a single plugin from a given run
 
@@ -263,14 +271,13 @@ class IperfOutput(AggregatableOutput):
 class PluginOutput(AggregatableOutput):
     command: str
     result: dict[str, Any]
-    plugin_metadata: dict[str, str]
-    name: str
+    plugin_metadata: PluginMetadata
 
     @property
     def plugin(self) -> "Plugin":
         import pluginbase
 
-        return pluginbase.get_by_name(self.name)
+        return pluginbase.get_by_name(self.plugin_metadata.plugin_name)
 
     def result_get(self, key: str, vtype: type[T]) -> T:
         return common.dict_get_typed(self.result, key, vtype)
@@ -565,7 +572,7 @@ def output_list_parse(
                 plugin_output.plugin
             except ValueError:
                 raise RuntimeError(
-                    f'{err} has invalid plugin name "{plugin_output.name}" in result #{r_idx}'
+                    f'{err} has invalid plugin name "{plugin_output.plugin_metadata.plugin_name}" in result #{r_idx}'
                 )
 
     return output_list

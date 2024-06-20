@@ -1011,11 +1011,10 @@
             "time": "19:28:52"
           },
           "plugin_metadata": {
-            "name": "MeasureCPU",
+            "plugin_name": "measure_cpu",
             "node_name": "worker-246",
             "pod_name": "tools-pod-worker-246-measure-cpu"
-          },
-          "name": "measure_cpu"
+          }
         },
         {
           "success": true,
@@ -1037,11 +1036,10 @@
             "time": "19:28:52"
           },
           "plugin_metadata": {
-            "name": "MeasureCPU",
+            "plugin_name": "measure_cpu",
             "node_name": "worker-247",
             "pod_name": "tools-pod-worker-247-measure-cpu"
-          },
-          "name": "measure_cpu"
+          }
         },
         {
           "success": true,
@@ -1051,11 +1049,10 @@
             "measure_power": "356.21590909090907"
           },
           "plugin_metadata": {
-            "name": "MeasurePower",
+            "plugin_name": "measure_power",
             "node_name": "worker-246",
             "pod_name": "tools-pod-worker-246-measure-cpu"
-          },
-          "name": "measure_power"
+          }
         },
         {
           "success": true,
@@ -1065,11 +1062,10 @@
             "measure_power": "385.264367816092"
           },
           "plugin_metadata": {
-            "name": "MeasurePower",
+            "plugin_name": "measure_power",
             "node_name": "worker-247",
             "pod_name": "tools-pod-worker-247-measure-cpu"
-          },
-          "name": "measure_power"
+          }
         }
       ]
     },
@@ -1904,11 +1900,10 @@
             "time": "19:29:25"
           },
           "plugin_metadata": {
-            "name": "MeasureCPU",
+            "plugin_name": "measure_cpu",
             "node_name": "worker-246",
             "pod_name": "tools-pod-worker-246-measure-cpu"
-          },
-          "name": "measure_cpu"
+          }
         },
         {
           "success": true,
@@ -1930,11 +1925,10 @@
             "time": "19:29:25"
           },
           "plugin_metadata": {
-            "name": "MeasureCPU",
+            "plugin_name": "measure_cpu",
             "node_name": "worker-247",
             "pod_name": "tools-pod-worker-247-measure-cpu"
-          },
-          "name": "measure_cpu"
+          }
         },
         {
           "success": true,
@@ -1944,11 +1938,10 @@
             "measure_power": "355.65168539325845"
           },
           "plugin_metadata": {
-            "name": "MeasurePower",
+            "plugin_name": "measure_power",
             "node_name": "worker-246",
             "pod_name": "tools-pod-worker-246-measure-cpu"
-          },
-          "name": "measure_power"
+          }
         },
         {
           "success": true,
@@ -1958,11 +1951,10 @@
             "measure_power": "382.75"
           },
           "plugin_metadata": {
-            "name": "MeasurePower",
+            "plugin_name": "measure_power",
             "node_name": "worker-247",
             "pod_name": "tools-pod-worker-247-measure-cpu"
-          },
-          "name": "measure_power"
+          }
         }
       ]
     }
