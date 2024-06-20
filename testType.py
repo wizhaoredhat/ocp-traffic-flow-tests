@@ -19,9 +19,7 @@ class TestTypeHandler(ABC):
     def create_server_client(
         self, ts: "TestSettings"
     ) -> tuple["PerfServer", "PerfClient"]:
-        logger.info(
-            f"Initializing {self.test_type} server/client for test:\n {ts.get_test_info()}"
-        )
+        logger.info(f"Starting test {ts.get_test_info()}")
         assert ts.connection.test_type == self.test_type
         return self._create_server_client(ts)
 
