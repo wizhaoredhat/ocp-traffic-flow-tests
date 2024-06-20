@@ -2,7 +2,6 @@ import json
 import typing
 from typing import Optional
 
-import host
 import perf
 import pluginbase
 import tftbase
@@ -181,71 +180,70 @@ class TaskValidateOffload(PluginTask):
         super().initialize()
         self.render_file("Server Pod Yaml")
 
-    def extract_vf_rep(self) -> str:
-        if self.perf_pod_type == PodType.HOSTBACKED:
-            logger.info("The VF representor is: ovn-k8s-mp0")
-            return "ovn-k8s-mp0"
-
-        if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
-            logger.info("There is no VF on an external server")
-            return "external"
-
+    def extract_vf_rep(self) -> Optional[str]:
         r = self.run_oc_exec(
             f"crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
         )
 
-        if r.returncode != 0:
-            if "already exists" not in r.err:
-                logger.error(f"Extract_vf_rep: {r.err}, {r.returncode}")
+        iface: Optional[str] = None
+        if r.success:
+            try:
+                data = json.loads(r.out)
+                v = data["containers"][0]["podSandboxId"][:15]
+                if isinstance(v, str) and v:
+                    iface = v
+            except Exception:
+                pass
+            if iface is None:
+                logger.info("Error parsing VF representor")
+            else:
+                logger.info(f"The VF representor is: {iface}")
 
-        vf_rep_json = r.out
-        data = json.loads(vf_rep_json)
-        logger.info(
-            f"The VF representor is: {data['containers'][0]['podSandboxId'][:15]}"
-        )
-        return typing.cast(str, data["containers"][0]["podSandboxId"][:15])
-
-    def run_ethtool_cmd(self, ethtool_cmd: str) -> tuple[bool, host.Result]:
-        logger.info(f"Running {ethtool_cmd}")
-        success = True
-        r = self.run_oc_exec(ethtool_cmd)
-        if self.perf_pod_type != PodType.HOSTBACKED:
-            success = r.success or ("already exists" not in r.err)
-        return success, r
+        return iface
 
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            vf_rep = self.extract_vf_rep()
-            ethtool_cmd = f"ethtool -S {vf_rep}"
-            if vf_rep == "ovn-k8s-mp0":
+
+            if self.perf_pod_type == PodType.HOSTBACKED:
+                logger.info("The VF representor is: ovn-k8s-mp0")
                 return BaseOutput(msg="Hostbacked pod")
-            if vf_rep == "external":
+
+            if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
+                logger.info("There is no VF on an external server")
                 return BaseOutput(msg="External Iperf Server")
 
-            success1, r1 = self.run_ethtool_cmd(ethtool_cmd)
-            if not success1 or not r1.success:
-                return BaseOutput(success=False, msg="ethtool command failed")
-
-            self.ts.event_client_finished.wait()
-
-            success2, r2 = self.run_ethtool_cmd(ethtool_cmd)
-
-            # Different behavior has been seen from the ethtool output depending on the driver in question
-            # Log the output of ethtool temporarily until this is more stable.
-
-            data1 = r1.out
+            data1 = ""
             data2 = ""
-            if success2 and r2.success:
-                data2 = r2.out
-
-            success_result = success2 and r2.success
-
+            success_result = True
+            ethtool_cmd = "ethtool -S VF_REP"
             parsed_data: dict[str, int] = {}
-            if not ethtool_stat_get_startend(parsed_data, data1, "start"):
-                success_result = False
-            if not ethtool_stat_get_startend(parsed_data, data2, "end"):
-                success_result = False
+
+            vf_rep = self.extract_vf_rep()
+
+            if vf_rep is not None:
+                ethtool_cmd = f"ethtool -S {vf_rep}"
+
+                r1 = self.run_oc_exec(ethtool_cmd)
+
+                self.ts.event_client_finished.wait()
+
+                r2 = self.run_oc_exec(ethtool_cmd)
+
+                if r1.success:
+                    data1 = r1.out
+                if r2.success:
+                    data2 = r2.out
+
+                if not r1.success:
+                    success_result = False
+                if not r2.success:
+                    success_result = False
+
+                if not ethtool_stat_get_startend(parsed_data, data1, "start"):
+                    success_result = False
+                if not ethtool_stat_get_startend(parsed_data, data2, "end"):
+                    success_result = False
 
             logger.info(
                 f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
