@@ -99,6 +99,7 @@ class NetPerfClient(perf.PerfClient):
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,
                 result=parsed_data,
+                bitrate_gbps=tftbase.Bitrate.NA,
             )
 
         return TaskOperation(

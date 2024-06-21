@@ -24,6 +24,30 @@ IPERF_UDP_OPT = "-u -b 25G"
 IPERF_REV_OPT = "-R"
 
 
+def _calculate_gbps_tcp(result: Mapping[str, Any]) -> Bitrate:
+    sum_sent = result["end"]["sum_sent"]
+    sum_received = result["end"]["sum_received"]
+
+    bitrate_sent = sum_sent["bits_per_second"] / 1e9
+    bitrate_received = sum_received["bits_per_second"] / 1e9
+
+    return Bitrate(tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_received:.5g}"))
+
+
+def _calculate_gbps_udp(result: Mapping[str, Any]) -> Bitrate:
+    sum_data = result["end"]["sum"]
+
+    # UDP tests only have sender traffic
+    bitrate_sent = sum_data["bits_per_second"] / 1e9
+    return Bitrate(tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_sent:.5g}"))
+
+
+def _calculate_gbps(test_type: TestType, result: Mapping[str, Any]) -> Bitrate:
+    if test_type == TestType.IPERF_TCP:
+        return _calculate_gbps_tcp(result)
+    return _calculate_gbps_udp(result)
+
+
 @dataclass(frozen=True)
 class TestTypeHandlerIperf(TestTypeHandler):
     def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
@@ -35,43 +59,6 @@ class TestTypeHandlerIperf(TestTypeHandler):
         if self.test_type == TestType.IPERF_TCP:
             return True
         return False
-
-    def _calculate_gbps_tcp(self, result: Mapping[str, Any]) -> Bitrate:
-        try:
-            sum_sent = result["end"]["sum_sent"]
-            sum_received = result["end"]["sum_received"]
-        except KeyError as e:
-            logger.error(
-                f"KeyError: {e}. Malformed results when parsing iperf tcp for sum_sent/received"
-            )
-            raise Exception(
-                "calculate_gbps_iperf_tcp(): failed to parse iperf test results"
-            )
-
-        bitrate_sent = sum_sent["bits_per_second"] / 1e9
-        bitrate_received = sum_received["bits_per_second"] / 1e9
-
-        return Bitrate(
-            tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_received:.5g}")
-        )
-
-    def _calculate_gbps_udp(self, result: Mapping[str, Any]) -> Bitrate:
-
-        sum_data = result["end"]["sum"]
-
-        # UDP tests only have sender traffic
-        bitrate_sent = sum_data["bits_per_second"] / 1e9
-        return Bitrate(tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_sent:.5g}"))
-
-    def calculate_gbps(self, result: Mapping[str, Any]) -> Bitrate:
-        # If an error occurred, bitrate = 0
-        if "error" in result:
-            logger.error(f"An error occurred during iperf test: {result['error']}")
-            return Bitrate.NA
-
-        if self.test_type == TestType.IPERF_TCP:
-            return self._calculate_gbps_tcp(result)
-        return self._calculate_gbps_udp(result)
 
 
 test_type_handler_iperf_tcp = TestTypeHandlerIperf(TestType.IPERF_TCP)
@@ -113,16 +100,33 @@ class IperfClient(perf.PerfClient):
             self.ts.clmo_barrier.wait()
             r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
-            if not r.success:
-                return BaseOutput.from_cmd(r)
 
-            data = r.out
+            parsed_data: dict[str, Any] = {}
 
-            parsed_data = json.loads(data)
+            success_result = False
+
+            if r.success:
+                data = r.out
+                try:
+                    parsed_data = json.loads(data)
+                except Exception:
+                    pass
+
+                if parsed_data and "error" not in parsed_data:
+                    success_result = True
+
+            try:
+                bitrate_gbps = _calculate_gbps(self.test_type, parsed_data)
+            except Exception:
+                success_result = False
+                bitrate_gbps = Bitrate.NA
+
             return IperfOutput(
+                success=success_result,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,
                 result=parsed_data,
+                bitrate_gbps=bitrate_gbps,
             )
 
         return TaskOperation(

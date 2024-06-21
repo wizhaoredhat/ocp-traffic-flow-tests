@@ -59,7 +59,12 @@ def test_iperf_output() -> None:
         server=server,
         client=client,
     )
-    IperfOutput(command="command", result={}, tft_metadata=metadata)
+    IperfOutput(
+        command="command",
+        result={},
+        tft_metadata=metadata,
+        bitrate_gbps=tftbase.Bitrate.NA,
+    )
 
     common.dataclass_from_dict(
         IperfOutput,
@@ -67,9 +72,31 @@ def test_iperf_output() -> None:
             "command": "command",
             "result": {},
             "tft_metadata": metadata,
+            "bitrate_gbps": {"tx": 0.0, "rx": 0.0},
         },
     )
 
+    o = common.dataclass_from_dict(
+        IperfOutput,
+        {
+            "command": "command",
+            "result": {},
+            "tft_metadata": metadata,
+            "bitrate_gbps": {"tx": None, "rx": 0},
+        },
+    )
+    assert o.bitrate_gbps.tx is None
+    assert o.bitrate_gbps.rx == 0.0
+
+    with pytest.raises(ValueError):
+        common.dataclass_from_dict(
+            IperfOutput,
+            {
+                "command": "command",
+                "result": {},
+                "tft_metadata": metadata,
+            },
+        )
     with pytest.raises(TypeError):
         common.dataclass_from_dict(
             IperfOutput,
@@ -77,6 +104,7 @@ def test_iperf_output() -> None:
                 "command": "command",
                 "result": {},
                 "tft_metadata": "string",
+                "bitrate_gbps": {"tx": 0.0, "rx": 0.0},
             },
         )
 

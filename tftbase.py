@@ -219,9 +219,9 @@ class PluginResult:
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class TestMetadata:
-    reverse: bool
     test_case_id: TestCaseType
     test_type: TestType
+    reverse: bool
     server: PodInfo
     client: PodInfo
 
@@ -261,9 +261,10 @@ class AggregatableOutput(BaseOutput):
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class IperfOutput(AggregatableOutput):
+    tft_metadata: TestMetadata
     command: str
     result: dict[str, Any]
-    tft_metadata: TestMetadata
+    bitrate_gbps: Bitrate
 
 
 @strict_dataclass
