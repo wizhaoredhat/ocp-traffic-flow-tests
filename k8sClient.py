@@ -1,4 +1,6 @@
 import kubernetes  # type: ignore
+import logging
+import shlex
 import yaml
 
 import host
@@ -23,5 +25,15 @@ class K8sClient:
             for e in self._client.list_node(label_selector=label_selector).items
         ]
 
-    def oc(self, cmd: str) -> host.Result:
-        return host.local.run(f"kubectl --kubeconfig {self._kc} {cmd} ")
+    def oc(
+        self,
+        cmd: str,
+        *,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+    ) -> host.Result:
+        return host.local.run(
+            ["kubectl", "--kubeconfig", self._kc, *shlex.split(cmd)],
+            die_on_error=die_on_error,
+            log_level_fail=logging.DEBUG if may_fail else logging.ERROR,
+        )

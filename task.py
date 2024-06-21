@@ -66,15 +66,21 @@ class Task(ABC):
     def initialize(self) -> None:
         pass
 
-    def run_oc(self, cmd: str) -> host.Result:
-        return self.tc.client(tenant=self.tenant).oc(cmd)
+    def run_oc(
+        self,
+        cmd: str,
+        *,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+    ) -> host.Result:
+        return self.tc.client(tenant=self.tenant).oc(
+            cmd,
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+        )
 
     def get_pod_ip(self) -> str:
-        r = self.run_oc(f"get pod {self.pod_name} -o yaml")
-        if r.returncode != 0:
-            logger.info(r)
-            sys.exit(-1)
-
+        r = self.run_oc(f"get pod {self.pod_name} -o yaml", die_on_error=True)
         y = yaml.safe_load(r.out)
         return typing.cast(str, y["status"]["podIP"])
 
@@ -83,10 +89,10 @@ class Task(ABC):
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
         self.render_file("Cluster IP Service", in_file_template, out_file_yaml)
-        r = self.run_oc(f"apply -f {out_file_yaml}")
+        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
         if r.returncode != 0:
             if "already exists" not in r.err:
-                logger.info(r)
+                logger.error(r)
                 sys.exit(-1)
 
         return self.run_oc(
@@ -105,10 +111,10 @@ class Task(ABC):
         self.render_file(
             "Node Port Service", in_file_template, out_file_yaml, template_args
         )
-        r = self.run_oc(f"apply -f {out_file_yaml}")
+        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
         if r.returncode != 0:
             if "already exists" not in r.err:
-                logger.info(r)
+                logger.error(r)
                 sys.exit(-1)
 
         return self.run_oc(
@@ -117,22 +123,19 @@ class Task(ABC):
 
     def setup(self) -> None:
         # Check if pod already exists
-        r = self.run_oc(f"get pod {self.pod_name} --output=json")
+        r = self.run_oc(f"get pod {self.pod_name} --output=json", may_fail=True)
         if r.returncode != 0:
             # otherwise create the pod
             logger.info(f"Creating Pod {self.pod_name}.")
-            r = self.run_oc(f"apply -f {self.out_file_yaml}")
-            if r.returncode != 0:
-                logger.info(r)
-                sys.exit(-1)
+            r = self.run_oc(f"apply -f {self.out_file_yaml}", die_on_error=True)
         else:
             logger.info(f"Pod {self.pod_name} already exists.")
 
         logger.info(f"Waiting for Pod {self.pod_name} to become ready.")
-        r = self.run_oc(f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m")
-        if r.returncode != 0:
-            logger.info(r)
-            sys.exit(-1)
+        r = self.run_oc(
+            f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m",
+            die_on_error=True,
+        )
 
     @abstractmethod
     def run(self, duration: int) -> None:
