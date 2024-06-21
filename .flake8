@@ -2,6 +2,7 @@
 extend-ignore =
     E203
     E501
+    W291
 extend-exclude =
     *venv/
 filename =
