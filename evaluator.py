@@ -84,7 +84,7 @@ class Evaluator:
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,
-            success=bitrate_gbps.is_passing(bitrate_threshold),
+            success=run.success and bitrate_gbps.is_passing(bitrate_threshold),
             bitrate_gbps=bitrate_gbps,
         )
 
