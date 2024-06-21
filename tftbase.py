@@ -1,4 +1,5 @@
 import dataclasses
+import math
 import typing
 
 from dataclasses import dataclass
@@ -71,6 +72,57 @@ class ConnectionMode(Enum):
 class NodeLocation(Enum):
     SAME_NODE = 1
     DIFF_NODE = 2
+
+
+@strict_dataclass
+@dataclass(frozen=True)
+class Bitrate:
+    tx: Optional[float]
+    rx: Optional[float]
+
+    NA: typing.ClassVar["Bitrate"]
+
+    def __init__(
+        self,
+        *,
+        tx: None | int | float = None,
+        rx: None | int | float = None,
+    ) -> None:
+        if isinstance(tx, int):
+            tx = float(tx)
+        if isinstance(rx, int):
+            rx = float(rx)
+        object.__setattr__(self, "tx", tx)
+        object.__setattr__(self, "rx", rx)
+
+    def _valid_x(self, f: Optional[float]) -> bool:
+        return f is None or (f >= 0.0 and not math.isinf(f) and not math.isnan(f))
+
+    def _post_init(self) -> None:
+        if not self._valid_x(self.tx):
+            raise ValueError("tx is not a valid bitrange")
+        if not self._valid_x(self.rx):
+            raise ValueError("rx is not a valid bitrange")
+
+    def is_passing(
+        self,
+        threshold: Optional[float],
+        *,
+        tx: bool = False,
+        rx: bool = False,
+    ) -> bool:
+        if threshold is None:
+            return True
+        if tx or not rx:
+            if self.tx is not None and self.tx < threshold:
+                return False
+        if rx or not tx:
+            if self.rx is not None and self.rx < threshold:
+                return False
+        return True
+
+
+Bitrate.NA = Bitrate()
 
 
 @strict_dataclass
