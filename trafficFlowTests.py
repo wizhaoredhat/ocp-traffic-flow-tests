@@ -18,7 +18,6 @@ from netperf import NetPerfClient
 from netperf import NetPerfServer
 from syncManager import SyncManager
 from task import Task
-from testConfig import TestConfig
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TFT_TESTS
@@ -27,12 +26,6 @@ from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def __init__(self, tc: TestConfig):
-        self.tc = tc
-        self.log_path: Path = Path("ft-logs")
-        self.log_file: Path
-        self.tft_output: list[TftAggregateOutput] = []
-
     def _create_iperf_server_client(
         self, ts: TestSettings
     ) -> tuple[perf.PerfServer, perf.PerfClient]:
@@ -55,9 +48,10 @@ class TrafficFlowTests:
         c = NetPerfClient(ts, server=s)
         return (s, c)
 
-    def _configure_namespace(self, namespace: str) -> None:
+    def _configure_namespace(self, cfg_descr: ConfigDescriptor) -> None:
+        namespace = cfg_descr.get_tft().namespace
         logger.info(f"Configuring namespace {namespace}")
-        r = self.tc.client_tenant.oc(
+        r = cfg_descr.tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false"
@@ -69,15 +63,18 @@ class TrafficFlowTests:
             )
         logger.info(f"Configured namespace {namespace}")
 
-    def _cleanup_previous_testspace(self, namespace: str) -> None:
+    def _cleanup_previous_testspace(self, cfg_descr: ConfigDescriptor) -> None:
+        namespace = cfg_descr.get_tft().namespace
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = self.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
+        r = cfg_descr.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
         logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = self.tc.client_tenant.oc(f"delete services -n {namespace} -l tft-tests")
+        r = cfg_descr.tc.client_tenant.oc(
+            f"delete services -n {namespace} -l tft-tests"
+        )
         if r.returncode != 0:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
@@ -88,38 +85,37 @@ class TrafficFlowTests:
         cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
         host.local.run(cmd)
 
-    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> None:
-        # FIXME: TrafficFlowTests can handle a list of tests (having a "run()"
-        # method. Storing per-test data in the object is ugly.
-        self.log_path = test.logs
-        self.log_path.mkdir(parents=True, exist_ok=True)
+    def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
+        log_path = test.logs
+        log_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.log_file = self.log_path / f"{timestamp}.json"
-        logger.info(f"Logs will be written to {self.log_file}")
+        log_file = log_path / f"{timestamp}.json"
+        logger.info(f"Logs will be written to {log_file}")
+        return log_file
 
-    def _dump_result_to_log(self) -> None:
+    def _dump_result_to_log(
+        self, tft_output: list[TftAggregateOutput], *, log_file: str
+    ) -> None:
         # Dump test outputs into log file
-        log = self.log_file
         json_out: dict[str, list[dict[str, Any]]] = {TFT_TESTS: []}
-        for out in self.tft_output:
+        for out in tft_output:
             json_out[TFT_TESTS].append(asdict(out))
-        with open(log, "w") as output_file:
+        with open(log_file, "w") as output_file:
             json.dump(serialize_enum(json_out), output_file)
 
-    def evaluate_run_success(self) -> bool:
+    def evaluate_run_success(self, cfg_descr: ConfigDescriptor, log_file: Path) -> bool:
         # For the result of every test run, check the status of each run log to
         # ensure all test passed
 
-        if not self.tc.evaluator_config:
+        if not cfg_descr.tc.evaluator_config:
             return True
 
-        evaluator = Evaluator(self.tc.evaluator_config)
+        evaluator = Evaluator(cfg_descr.tc.evaluator_config)
 
-        logger.info(f"Evaluating results of tests {self.log_file}")
-        results_file = str(self.log_file.stem) + "-RESULTS"
-        results_path = self.log_path / results_file
+        logger.info(f"Evaluating results of tests {log_file}")
+        results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
 
-        evaluator.eval_log(self.log_file)
+        evaluator.eval_log(log_file)
 
         # Generate Resulting Json
         logger.info(f"Dumping results to {results_path}")
@@ -144,7 +140,7 @@ class TrafficFlowTests:
         cfg_descr: ConfigDescriptor,
         instance_index: int,
         reverse: bool = False,
-    ) -> None:
+    ) -> TftAggregateOutput:
         connection = cfg_descr.get_connection()
 
         servers: list[perf.PerfServer] = []
@@ -214,34 +210,44 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.output(tft_aggregate_output)
 
-        self.tft_output.append(tft_aggregate_output)
+        return tft_aggregate_output
 
-    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> None:
+    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftAggregateOutput]:
         # TODO Allow for multiple connections / instances to run simultaneously
+        tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_connections():
             connection = cfg_descr2.get_connection()
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
                 # if test_type is iperf_TCP run both forward and reverse tests
-                self._run_test_case_instance(
-                    cfg_descr2,
-                    instance_index=instance_index,
-                )
-                if connection.test_type == TestType.IPERF_TCP:
+                tft_output.append(
                     self._run_test_case_instance(
                         cfg_descr2,
                         instance_index=instance_index,
-                        reverse=True,
                     )
-                self._cleanup_previous_testspace(cfg_descr2.get_tft().namespace)
+                )
+                if connection.test_type == TestType.IPERF_TCP:
+                    tft_output.append(
+                        self._run_test_case_instance(
+                            cfg_descr2,
+                            instance_index=instance_index,
+                            reverse=True,
+                        )
+                    )
+                self._cleanup_previous_testspace(cfg_descr2)
+        return tft_output
 
     def test_run(self, cfg_descr: ConfigDescriptor) -> None:
         test = cfg_descr.get_tft()
-        self._configure_namespace(test.namespace)
-        self._cleanup_previous_testspace(test.namespace)
-        self._create_log_paths_from_tests(test)
+        self._configure_namespace(cfg_descr)
+        self._cleanup_previous_testspace(cfg_descr)
+        log_file = self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
+        tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
-            self._run_test_case(cfg_descr2)
-        self._dump_result_to_log()
+            tft_output.extend(self._run_test_case(cfg_descr2))
+        self._dump_result_to_log(tft_output, log_file=str(log_file))
+
+        if not self.evaluate_run_success(cfg_descr, log_file):
+            print(f"Failure detected in {cfg_descr.get_tft().name} results")
