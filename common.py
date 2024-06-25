@@ -1,8 +1,11 @@
+import abc
+import collections
 import dataclasses
 import jinja2
+import json
 import typing
-import collections
 
+from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import is_dataclass
 from enum import Enum
@@ -388,3 +391,76 @@ def strict_dataclass(cls: TCallable) -> TCallable:
 
     setattr(cls, "__init__", wrapped_init)
     return cls
+
+
+def structparse_check_strdict(arg: Any, yamlpath: str) -> dict[str, Any]:
+    if not isinstance(arg, dict):
+        raise ValueError(f'"{yamlpath}": expects a dictionary but got {type(arg)}')
+    for k, v in arg.items():
+        if not isinstance(k, str):
+            raise ValueError(
+                f'"{yamlpath}": expects all dictionary keys to be strings but got {type(k)}'
+            )
+        if v is None:
+            # None is not allowed, because we use that to indicate a missing key.
+            # I also think that yaml.safe_load() cannot ever create None entries,
+            # so this limitation is fine (and the code actually shouldn't be reachable)
+            raise ValueError(f'"{yamlpath}.{k}": cannot have None values')
+
+    # We shallow-copy the dictionary, because the caller will remove entries
+    # to find unknown entries (see _check_empty_dict()).
+    return dict(arg)
+
+
+def structparse_check_empty_dict(vdict: dict[str, Any], yamlpath: str) -> None:
+    length = len(vdict)
+    if length == 1:
+        raise ValueError(f'"{yamlpath}": unknown key "{list(vdict)[0]}"')
+    if length > 1:
+        raise ValueError(f'"{yamlpath}": unknown keys {list(vdict)}')
+
+
+def structparse_check_and_pop_name(
+    vdict: dict[str, Any], yamlpath: str, *, required: bool = False
+) -> Optional[str]:
+    name = vdict.pop("name", None)
+    if name is None:
+        if required:
+            raise ValueError(f'"{yamlpath}.name": mandatory key missing')
+        return None
+    if not isinstance(name, str):
+        raise ValueError(f'"{yamlpath}.name": expects a string but got {name}')
+    return name
+
+
+def structparse_check_and_pop_name_required(
+    vdict: dict[str, Any], yamlpath: str
+) -> str:
+    return typing.cast(
+        str, structparse_check_and_pop_name(vdict, yamlpath, required=True)
+    )
+
+
+@strict_dataclass
+@dataclass(frozen=True)
+class StructParseBase(abc.ABC):
+    yamlpath: str
+    yamlidx: int
+
+    @abc.abstractmethod
+    def serialize(self) -> dict[str, Any] | list[Any]:
+        pass
+
+    def serialize_json(self) -> str:
+        return json.dumps(self.serialize())
+
+
+@strict_dataclass
+@dataclass(frozen=True)
+class StructParseBaseNamed(StructParseBase, abc.ABC):
+    name: str
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+        }
