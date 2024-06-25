@@ -322,6 +322,12 @@ def test_case_type_is_same_node(test_case_type: TestCaseType) -> bool:
     return _test_case_typ_infos[test_case_type].is_same_node
 
 
+def test_case_type_get_node_location(test_case_type: TestCaseType) -> NodeLocation:
+    if test_case_type_is_same_node(test_case_type):
+        return NodeLocation.SAME_NODE
+    return NodeLocation.DIFF_NODE
+
+
 def test_case_type_to_server_pod_type(
     test_case_type: TestCaseType,
     pod_type: PodType,
