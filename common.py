@@ -15,6 +15,11 @@ from typing import Type
 from typing import TypeVar
 from typing import cast
 
+if typing.TYPE_CHECKING:
+    # https://github.com/python/typeshed/tree/main/stdlib/_typeshed#api-stability
+    # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
+    from _typeshed import DataclassInstance
+
 
 # This is used as default value for some arguments, to recognize that the
 # caller didn't specify the argument. This is useful, when we want to
@@ -239,6 +244,11 @@ def serialize_enum(
 T = TypeVar("T")
 
 
+def dataclass_to_dict(obj: "DataclassInstance") -> dict[str, Any]:
+    d = dataclasses.asdict(obj)
+    return typing.cast(dict[str, Any], serialize_enum(d))
+
+
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
 def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
@@ -271,21 +281,51 @@ def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
         if not field.init:
             continue
 
+        def convert_simple(ck_type: Any, value: Any) -> Any:
+            if is_dataclass(ck_type) and isinstance(value, dict):
+                return dataclass_from_dict(ck_type, value)
+            if actual_type is None and issubclass(ck_type, Enum):
+                return enum_convert(ck_type, value)
+            if ck_type is float and isinstance(value, int):
+                return float(value)
+            return value
+
         actual_type = typing.get_origin(field.type)
 
         value = data.pop(field.name)
 
-        if is_dataclass(field.type) and isinstance(value, dict):
-            value = dataclass_from_dict(field.type, value)
-        elif actual_type is None and issubclass(field.type, Enum):
-            value = enum_convert(field.type, value)
+        converted = False
 
-        if not check_type(value, field.type):
+        if actual_type is typing.Union:
+            # This is an Optional[]. We already have a value, we check for the requested
+            # type. check_type() already implements this, but we need to also check
+            # it here, for the dataclass/enum handling below.
+            args = typing.get_args(field.type)
+            ck_type = None
+            if len(args) == 2:
+                NoneType = type(None)
+                if args[0] is NoneType:
+                    ck_type = args[1]
+                elif args[1] is NoneType:
+                    ck_type = args[0]
+            if ck_type is not None:
+                value_converted = convert_simple(ck_type, value)
+                converted = True
+        elif actual_type is list:
+            args = typing.get_args(field.type)
+            if isinstance(value, list) and len(args) == 1:
+                value_converted = [convert_simple(args[0], v) for v in value]
+                converted = True
+
+        if not converted:
+            value_converted = convert_simple(field.type, value)
+
+        if not check_type(value_converted, field.type):
             raise TypeError(
                 f"Expected type '{field.type}' for attribute '{field.name}' but received type '{type(value)}' ({value})"
             )
 
-        create_kwargs[field.name] = value
+        create_kwargs[field.name] = value_converted
 
     if data:
         raise ValueError(
@@ -348,12 +388,6 @@ def check_type(value: typing.Any, type_hint: type[typing.Any]) -> bool:
     raise NotImplementedError(
         f'Type hint "{type_hint}" with origin type "{actual_type}" is not implemented by check_type()'
     )
-
-
-if typing.TYPE_CHECKING:
-    # https://github.com/python/typeshed/tree/main/stdlib/_typeshed#api-stability
-    # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
-    from _typeshed import DataclassInstance
 
 
 def dataclass_check(

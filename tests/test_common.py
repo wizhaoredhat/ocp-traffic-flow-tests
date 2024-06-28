@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import os
 import pathlib
 import pytest
@@ -339,6 +340,15 @@ def test_strict_dataclass() -> None:
     with pytest.raises(NotImplementedError):
         C9("foo")
 
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C10:
+        x: float
+
+    C10(1.0)
+    with pytest.raises(TypeError):
+        C10(1)
+
 
 def test_host_result_bin() -> None:
     res = host.local.run("echo -n out; echo -n err >&2", text=False)
@@ -385,3 +395,56 @@ def test_host_file_exists() -> None:
 
     assert host.local.file_exists(pathlib.Path(__file__))
     assert host.Host.file_exists(host.local, pathlib.Path(__file__))
+
+
+def test_dataclass_tofrom_dict() -> None:
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C1:
+        foo: int
+        str: typing.Optional[str]
+
+    c1 = C1(1, "str")
+    d1 = common.dataclass_to_dict(c1)
+    assert c1 == common.dataclass_from_dict(C1, d1)
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C2:
+        enum_val: TstTestType
+        c1_opt: typing.Optional[C1]
+        c1_opt_2: typing.Optional[C1]
+        c1_list: list[C1]
+
+    c2 = C2(TstTestType.IPERF_UDP, C1(2, "2"), None, [C1(3, "3"), C1(4, "4")])
+    d2 = common.dataclass_to_dict(c2)
+    assert (
+        json.dumps(d2)
+        == '{"enum_val": "IPERF_UDP", "c1_opt": {"foo": 2, "str": "2"}, "c1_opt_2": null, "c1_list": [{"foo": 3, "str": "3"}, {"foo": 4, "str": "4"}]}'
+    )
+    assert c2 == common.dataclass_from_dict(C2, d2)
+
+    @common.strict_dataclass
+    @dataclasses.dataclass
+    class C10:
+        x: float
+
+    assert common.dataclass_to_dict(C10(1.0)) == {"x": 1.0}
+
+    c10 = C10(1.0)
+    assert type(c10.x) is float
+    common.dataclass_check(c10)
+    c10.x = 1
+    assert type(c10.x) is int
+    with pytest.raises(TypeError):
+        common.dataclass_check(c10)
+    assert common.dataclass_to_dict(c10) == {"x": 1}
+
+    assert common.dataclass_from_dict(C10, {"x": 1.0}) == c10
+    assert common.dataclass_from_dict(C10, {"x": 1.0}) == C10(1.0)
+    assert common.dataclass_from_dict(C10, {"x": 1}) == c10
+    assert common.dataclass_from_dict(C10, {"x": 1}) == C10(1.0)
+    assert type(common.dataclass_from_dict(C10, {"x": 1}).x) is float
+    assert type(common.dataclass_from_dict(C10, {"x": 1.0}).x) is float
+    assert type(c10.x) is int
+    assert type(C10(1.0).x) is float
