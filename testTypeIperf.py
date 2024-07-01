@@ -140,16 +140,6 @@ class IperfClient(perf.PerfClient):
         out: tftbase.TftAggregateOutput,
     ) -> None:
         assert isinstance(result, IperfOutput)
-
-        out.flow_test = result
-
-        # Print summary to console logs
-        logger.info(f"Results of {self.ts.get_test_str()}:")
-        if self.iperf_error_occurred(result.result):
-            logger.error(
-                "Encountered error while running test:\n" f"  {result.result['error']}"
-            )
-            return
         if self.test_type == TestType.IPERF_TCP:
             self.print_tcp_results(result.result)
         if self.test_type == TestType.IPERF_UDP:
@@ -188,6 +178,3 @@ class IperfClient(perf.PerfClient):
             f"  Total Lost Packets: {total_lost_packets}\n"
             f"  Total Lost Percent: {total_lost_percent:.2f}%"
         )
-
-    def iperf_error_occurred(self, data: Mapping[str, Any]) -> bool:
-        return "error" in data
