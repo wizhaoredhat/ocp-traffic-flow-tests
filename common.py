@@ -249,6 +249,11 @@ def dataclass_to_dict(obj: "DataclassInstance") -> dict[str, Any]:
     return typing.cast(dict[str, Any], serialize_enum(d))
 
 
+def dataclass_to_json(obj: "DataclassInstance") -> str:
+    d = dataclass_to_dict(obj)
+    return json.dumps(d)
+
+
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
 def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
