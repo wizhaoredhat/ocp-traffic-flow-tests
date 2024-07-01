@@ -16,7 +16,6 @@ from iperf import IperfServer
 from logger import logger
 from netperf import NetPerfClient
 from netperf import NetPerfServer
-from syncManager import SyncManager
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
@@ -188,7 +187,7 @@ class TrafficFlowTests:
         for t in servers + clients + monitors:
             t.initialize()
 
-        SyncManager.reset(len(clients) + len(monitors))
+        ts.initialize_clmo_barrier(len(clients) + len(monitors))
 
         tft_aggregate_output = TftAggregateOutput()
 
@@ -197,12 +196,12 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.setup()
 
-        SyncManager.wait_on_server_alive()
+        ts.event_server_alive.wait()
 
         for tasks in servers + clients + monitors:
             tasks.run(duration)
 
-        SyncManager.wait_on_client_finish()
+        ts.event_client_finished.wait()
 
         for tasks in servers + clients + monitors:
             tasks.stop(duration)
