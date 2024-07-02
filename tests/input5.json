@@ -973,6 +973,9 @@
           }
         },
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "reverse": false,
           "test_case_id": "POD_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
@@ -1866,6 +1869,9 @@
           }
         },
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "reverse": true,
           "test_case_id": "POD_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",

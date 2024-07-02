@@ -3,6 +3,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_POD_SAME_NODE",
           "test_type": "invalid_test_type",
           "reverse": false,
@@ -417,6 +420,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -771,6 +777,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -1185,6 +1194,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -1539,6 +1551,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -1953,6 +1968,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -2307,6 +2325,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -2721,6 +2742,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -3075,6 +3099,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -3489,6 +3516,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -3843,6 +3873,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -4257,6 +4290,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -4611,6 +4647,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -5025,6 +5064,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -5379,6 +5421,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -5793,6 +5838,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -6147,6 +6195,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -6561,6 +6612,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -6915,6 +6969,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -7329,6 +7386,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_NODE_PORT_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -7683,6 +7743,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -8097,6 +8160,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -8451,6 +8517,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -8865,6 +8934,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -9219,6 +9291,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -9633,6 +9708,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -9987,6 +10065,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -10401,6 +10482,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -10755,6 +10839,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -11169,6 +11256,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_POD_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -11523,6 +11613,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -11937,6 +12030,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_POD_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -12291,6 +12387,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -12705,6 +12804,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_HOST_SAME_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -13059,6 +13161,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -13473,6 +13578,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -13827,6 +13935,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_EXTERNAL",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -14241,6 +14352,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "POD_TO_EXTERNAL",
           "test_type": "IPERF_TCP",
           "reverse": true,
@@ -14595,6 +14709,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_EXTERNAL",
           "test_type": "IPERF_TCP",
           "reverse": false,
@@ -15009,6 +15126,9 @@
     {
       "flow_test": {
         "tft_metadata": {
+          "tft_idx": 0,
+          "test_cases_idx": 0,
+          "connections_idx": 0,
           "test_case_id": "HOST_TO_EXTERNAL",
           "test_type": "IPERF_TCP",
           "reverse": true,

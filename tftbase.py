@@ -219,6 +219,9 @@ class PluginResult:
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class TestMetadata:
+    tft_idx: int
+    test_cases_idx: int
+    connections_idx: int
     test_case_id: TestCaseType
     test_type: TestType
     reverse: bool
