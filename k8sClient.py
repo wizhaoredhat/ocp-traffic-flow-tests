@@ -1,6 +1,7 @@
 import kubernetes  # type: ignore
 import logging
 import shlex
+import typing
 import yaml
 
 import host
@@ -31,9 +32,13 @@ class K8sClient:
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
+        namespace: typing.Optional[str] = None,
     ) -> host.Result:
+        namespace_args: tuple[str, ...] = ()
+        if namespace:
+            namespace_args = ("-n", namespace)
         return host.local.run(
-            ["kubectl", "--kubeconfig", self._kc, *shlex.split(cmd)],
+            ["kubectl", "--kubeconfig", self._kc, *namespace_args, *shlex.split(cmd)],
             die_on_error=die_on_error,
             log_level_fail=logging.DEBUG if may_fail else logging.ERROR,
         )

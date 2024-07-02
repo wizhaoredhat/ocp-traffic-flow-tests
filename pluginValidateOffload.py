@@ -128,7 +128,7 @@ class TaskValidateOffload(PluginTask):
             logger.info("There is no VF on an external server")
             return "external"
 
-        self.get_vf_rep_cmd = f'exec -n default {self.pod_name} -- /bin/sh -c "crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json "'
+        self.get_vf_rep_cmd = f"exec {self.pod_name} -- crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
         r = self.run_oc(self.get_vf_rep_cmd)
 
         if r.returncode != 0:
@@ -178,9 +178,7 @@ class TaskValidateOffload(PluginTask):
         def stat(self: TaskValidateOffload, duration: int) -> Result:
             SyncManager.wait_on_barrier()
             vf_rep = self.extract_vf_rep()
-            self.ethtool_cmd = (
-                f'exec -n default {self.pod_name} -- /bin/sh -c "ethtool -S {vf_rep}"'
-            )
+            self.ethtool_cmd = f"exec {self.pod_name} -- ethtool -S {vf_rep}"
             if vf_rep == "ovn-k8s-mp0":
                 return Result(out="Hostbacked pod", err="", returncode=0)
             if vf_rep == "external":
