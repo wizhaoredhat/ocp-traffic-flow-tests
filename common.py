@@ -476,7 +476,7 @@ def structparse_check_and_pop_name_required(
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class StructParseBase(abc.ABC):
     yamlpath: str
     yamlidx: int
@@ -490,7 +490,7 @@ class StructParseBase(abc.ABC):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class StructParseBaseNamed(StructParseBase, abc.ABC):
     name: str
 

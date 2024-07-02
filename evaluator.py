@@ -26,7 +26,7 @@ from tftbase import TestType
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PassFailStatus:
     """Pass/Fail ratio and result from evaluating a full tft Flow Test result
 
@@ -43,7 +43,7 @@ class PassFailStatus:
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TestResult:
     """Result of a single test case run
 
