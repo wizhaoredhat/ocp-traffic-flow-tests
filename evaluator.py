@@ -17,18 +17,12 @@ from common import dataclass_from_dict
 from common import serialize_enum
 from common import strict_dataclass
 from logger import logger
+from tftbase import Bitrate
 from tftbase import IperfOutput
 from tftbase import PluginOutput
 from tftbase import TFT_TESTS
 from tftbase import TestCaseType
 from tftbase import TestType
-
-
-@strict_dataclass
-@dataclass(frozen=True)
-class Bitrate:
-    tx: float
-    rx: float
 
 
 @strict_dataclass
@@ -99,7 +93,7 @@ class Evaluator:
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,
-            success=self.is_passing(bitrate_threshold, bitrate_gbps),
+            success=bitrate_gbps.is_passing(bitrate_threshold),
             bitrate_gbps=bitrate_gbps,
         )
         self.test_results.append(result)
@@ -125,9 +119,6 @@ class Evaluator:
                 )
                 if plugin_result is not None:
                     self.plugin_results.append(plugin_result)
-
-    def is_passing(self, threshold: int, bitrate_gbps: Bitrate) -> bool:
-        return bitrate_gbps.tx >= threshold and bitrate_gbps.rx >= threshold
 
     def get_threshold(
         self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
@@ -181,7 +172,7 @@ class Evaluator:
         # If an error occurred, bitrate = 0
         if "error" in result:
             logger.error(f"An error occurred during iperf test: {result['error']}")
-            return Bitrate(0, 0)
+            return Bitrate.NA
 
         try:
             sum_sent = result["end"]["sum_sent"]
@@ -197,19 +188,21 @@ class Evaluator:
         bitrate_sent = sum_sent["bits_per_second"] / 1e9
         bitrate_received = sum_received["bits_per_second"] / 1e9
 
-        return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_received:.5g}"))
+        return Bitrate(
+            tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_received:.5g}")
+        )
 
     def calculate_gbps_iperf_udp(self, result: Mapping[str, Any]) -> Bitrate:
         # If an error occurred, bitrate = 0
         if "error" in result:
             logger.error(f"An error occurred during iperf test: {result['error']}")
-            return Bitrate(0, 0)
+            return Bitrate.NA
 
         sum_data = result["end"]["sum"]
 
         # UDP tests only have sender traffic
         bitrate_sent = sum_data["bits_per_second"] / 1e9
-        return Bitrate(float(f"{bitrate_sent:.5g}"), float(f"{bitrate_sent:.5g}"))
+        return Bitrate(tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_sent:.5g}"))
 
     def calculate_gbps_http(self, result: Mapping[str, Any]) -> Bitrate:
         # TODO: Add http traffic testing
