@@ -7,7 +7,6 @@ import pluginbase
 
 from host import Result
 from logger import logger
-from syncManager import SyncManager
 from task import PluginTask
 from testSettings import TestSettings
 from tftbase import PluginOutput
@@ -76,10 +75,10 @@ class TaskMeasurePower(PluginTask):
             return 0
 
         def stat(self: TaskMeasurePower, cmd: str) -> Result:
-            SyncManager.wait_on_barrier()
+            self.ts.clmo_barrier.wait()
             total_pwr = 0
             iteration = 0
-            while SyncManager.client_not_finished():
+            while not self.ts.event_client_finished.is_set():
                 r = self.run_oc(cmd)
                 if r.returncode != 0:
                     logger.error(f"Failed to get power {cmd}: {r}")

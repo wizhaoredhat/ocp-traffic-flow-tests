@@ -7,7 +7,6 @@ import pluginbase
 
 from host import Result
 from logger import logger
-from syncManager import SyncManager
 from task import PluginTask
 from testSettings import TestSettings
 from tftbase import PluginOutput
@@ -176,7 +175,7 @@ class TaskValidateOffload(PluginTask):
 
     def run(self, duration: int) -> None:
         def stat(self: TaskValidateOffload, duration: int) -> Result:
-            SyncManager.wait_on_barrier()
+            self.ts.clmo_barrier.wait()
             vf_rep = self.extract_vf_rep()
             self.ethtool_cmd = f"exec {self.pod_name} -- ethtool -S {vf_rep}"
             if vf_rep == "ovn-k8s-mp0":
@@ -189,7 +188,7 @@ class TaskValidateOffload(PluginTask):
                 logger.error("Ethtool command failed")
                 return r1
 
-            SyncManager.wait_on_client_finish()
+            self.ts.event_client_finished.wait()
 
             success2, r2 = self.run_ethtool_cmd(self.ethtool_cmd)
 
