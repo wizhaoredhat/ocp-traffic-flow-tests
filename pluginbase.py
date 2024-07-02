@@ -4,6 +4,8 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
+import common
+
 from logger import logger
 from tftbase import PluginOutput
 from tftbase import PluginResult
@@ -51,11 +53,25 @@ class Plugin(ABC):
     ) -> list["PluginTask"]:
         pass
 
-    def eval_log(
-        self, plugin_output: PluginOutput, md: TestMetadata
+    def eval_plugin_output(
+        self,
+        md: TestMetadata,
+        plugin_output: PluginOutput,
     ) -> Optional[PluginResult]:
-        # Some plugins don't have this implemented. They do nothing.
-        return None
+        if not plugin_output.success:
+            logger.error(
+                f"{self.PLUGIN_NAME} plugin failed for {common.dataclass_to_json(md)}: {plugin_output.err_msg}"
+            )
+        else:
+            logger.debug(
+                f"{self.PLUGIN_NAME} plugin succeded for {common.dataclass_to_json(md)}"
+            )
+        return PluginResult(
+            test_id=md.test_case_id,
+            test_type=md.test_type,
+            reverse=md.reverse,
+            success=plugin_output.success,
+        )
 
 
 _plugins: dict[str, Plugin] = {}

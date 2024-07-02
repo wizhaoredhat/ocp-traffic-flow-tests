@@ -104,8 +104,9 @@ class Evaluator:
             result = self._eval_flow_test(run.flow_test)
             test_results.append(result)
             for plugin_output in run.plugins:
-                plugin_result = plugin_output.plugin.eval_log(
-                    plugin_output, run.flow_test.tft_metadata
+                plugin_result = plugin_output.plugin.eval_plugin_output(
+                    run.flow_test.tft_metadata,
+                    plugin_output,
                 )
                 if plugin_result is not None:
                     plugin_results.append(plugin_result)
