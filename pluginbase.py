@@ -67,10 +67,8 @@ class Plugin(ABC):
                 f"{self.PLUGIN_NAME} plugin succeded for {common.dataclass_to_json(md)}"
             )
         return PluginResult(
+            tft_metadata=md,
             plugin_name=self.PLUGIN_NAME,
-            test_id=md.test_case_id,
-            test_type=md.test_type,
-            reverse=md.reverse,
             success=plugin_output.success,
         )
 
