@@ -15,8 +15,7 @@ from common import strict_dataclass
 from logger import logger
 from tftbase import Bitrate
 from tftbase import IperfOutput
-from tftbase import TestCaseType
-from tftbase import TestType
+from tftbase import TestMetadata
 
 
 @strict_dataclass
@@ -42,16 +41,12 @@ class TestResult:
     """Result of a single test case run
 
     Attributes:
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
+        tft_metadata: information about which test ran
         success: boolean representing whether the test passed or failed
         birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
     """
 
-    test_id: TestCaseType
-    test_type: TestType
-    reverse: bool
+    tft_metadata: TestMetadata
     success: bool
     bitrate_gbps: Bitrate
 
@@ -78,9 +73,7 @@ class Evaluator:
                 bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
 
         return TestResult(
-            test_id=md.test_case_id,
-            test_type=md.test_type,
-            reverse=md.reverse,
+            tft_metadata=md,
             success=run.success and run.bitrate_gbps.is_passing(bitrate_threshold),
             bitrate_gbps=run.bitrate_gbps,
         )
