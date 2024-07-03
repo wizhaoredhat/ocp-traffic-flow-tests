@@ -39,6 +39,8 @@ RUN dnf install \
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 
+COPY ./scripts/simple-tcp-server-client.py /usr/bin/simple-tcp-server-client
+
 COPY ./images/container-entry-point.sh /usr/bin/container-entry-point.sh
 
 ENTRYPOINT ["/usr/bin/container-entry-point.sh"]

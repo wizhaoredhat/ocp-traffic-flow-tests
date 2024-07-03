@@ -146,6 +146,15 @@ tft:
        plugins:
          - name: measure_cpu
          - measure_power
+     - name: con2
+       type: simple
+       client:
+         - name: c1
+           args: "foo '-x x'"
+       server:
+         - name: s1
+           args:
+             - "hi x"
 kubeconfig: /path/to/kubeconfig
 kubeconfig_infra: /path/to/kubeconfig_infra
 """
@@ -168,11 +177,16 @@ kubeconfig_infra: /path/to/kubeconfig_infra
         TestCaseType.HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE,
         TestCaseType.HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE,
     )
+    assert tc.config.tft[0].connections[0].test_type == TestType.IPERF_TCP
     assert tc.config.tft[0].connections[0].plugins[0].name == "measure_cpu"
     assert (
         tc.config.tft[0].connections[0].plugins[0].plugin.PLUGIN_NAME == "measure_cpu"
     )
     assert tc.config.tft[0].connections[0].plugins[1].name == "measure_power"
+
+    assert tc.config.tft[0].connections[1].test_type == TestType.SIMPLE
+    assert tc.config.tft[0].connections[1].client[0].args == ("foo", "-x x")
+    assert tc.config.tft[0].connections[1].server[0].args == ("hi x",)
 
     _check_testConfig(tc)
 

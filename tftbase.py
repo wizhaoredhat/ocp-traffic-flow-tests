@@ -81,6 +81,7 @@ class TestType(Enum):
     HTTP = 3
     NETPERF_TCP_STREAM = 4
     NETPERF_TCP_RR = 5
+    SIMPLE = 6
 
 
 class PodType(Enum):

@@ -297,14 +297,14 @@ class ConfConnection(StructParseBaseNamed):
 
         for idx, s in enumerate(server):
             if s.args is not None:
-                if test_type not in ():
+                if test_type not in (TestType.SIMPLE,):
                     raise ValueError(
                         f'"{yamlpath}.server[{idx}].args": args are not supported for test type {test_type}'
                     )
 
         for idx, c in enumerate(client):
             if c.args is not None:
-                if test_type not in ():
+                if test_type not in (TestType.SIMPLE,):
                     raise ValueError(
                         f'"{yamlpath}.client[{idx}].args": args are not supported for test type {test_type}'
                     )
