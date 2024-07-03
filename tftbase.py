@@ -75,7 +75,7 @@ class NodeLocation(Enum):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Bitrate:
     tx: Optional[float]
     rx: Optional[float]
@@ -126,7 +126,7 @@ Bitrate.NA = Bitrate()
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PodInfo:
     name: str
     pod_type: PodType
@@ -135,7 +135,7 @@ class PodInfo:
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PluginResult:
     """Result of a single plugin from a given run
 
@@ -153,7 +153,7 @@ class PluginResult:
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TestMetadata:
     reverse: bool
     test_case_id: TestCaseType
@@ -163,27 +163,27 @@ class TestMetadata:
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class BaseOutput:
     command: str
     result: dict[str, Any]
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class IperfOutput(BaseOutput):
     tft_metadata: TestMetadata
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PluginOutput(BaseOutput):
     plugin_metadata: dict[str, str]
     name: str
 
 
 @strict_dataclass
-@dataclass
+@dataclass(kw_only=True)
 class TftAggregateOutput:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
     pass a reference to an instance of TftAggregateOutput to each task to which the task will append

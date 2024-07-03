@@ -187,7 +187,7 @@ class Task(ABC):
             self._output = self.generate_output(data=r.out)
         else:
             logger.error(f"Thread {class_name} did not return a result")
-            self._output = tftbase.BaseOutput("", {})
+            self._output = tftbase.BaseOutput(command="", result={})
 
     """
     output() should be called to store the results of this task in a PluginOutput class object, and return this by appending the instance to the

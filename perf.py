@@ -102,7 +102,7 @@ class PerfServer(Task):
         pass
 
     def generate_output(self, data: str) -> tftbase.BaseOutput:
-        return tftbase.BaseOutput("", {})
+        return tftbase.BaseOutput(command="", result={})
 
 
 class PerfClient(Task):

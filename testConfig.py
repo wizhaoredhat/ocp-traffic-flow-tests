@@ -49,7 +49,7 @@ T2 = TypeVar("T2", bound="ConfServer | ConfClient")
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
     sriov: bool
     pod_type: PodType
@@ -115,7 +115,7 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfPlugin(StructParseBaseNamed):
     plugin: Plugin
 
@@ -146,7 +146,7 @@ class ConfPlugin(StructParseBaseNamed):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfServer(_ConfBaseClientServer):
     persistent: bool
 
@@ -162,7 +162,7 @@ class ConfServer(_ConfBaseClientServer):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfClient(_ConfBaseClientServer):
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfClient":
@@ -170,7 +170,7 @@ class ConfClient(_ConfBaseClientServer):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfConnection(StructParseBaseNamed):
     test_type: TestType
     instances: int
@@ -272,7 +272,7 @@ class ConfConnection(StructParseBaseNamed):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfTest(StructParseBaseNamed):
     namespace: str
     test_cases: tuple[TestCaseType, ...]
@@ -370,7 +370,7 @@ class ConfTest(StructParseBaseNamed):
 
 
 @strict_dataclass
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ConfConfig(StructParseBase):
     tft: tuple[ConfTest, ...]
 
