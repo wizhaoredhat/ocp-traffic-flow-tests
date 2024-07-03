@@ -85,20 +85,9 @@ class TrafficFlowTests:
 
         # Generate Resulting Json
         logger.info(f"Dumping results to {results_path}")
-        data = evaluator.dump_to_json(test_results, plugin_results)
-        with open(results_path, "w") as file:
-            file.write(data)
+        evaluator.dump_to_json_file(results_path, test_results, plugin_results)
 
-        # Return PassFailStatus
-        res = evaluator.evaluate_pass_fail_status(test_results, plugin_results)
-        logger.info(f"RESULT: Success = {res.result}.")
-        logger.info(
-            f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
-        )
-        logger.info(
-            f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
-        )
-
+        res = evaluator.log_pass_fail_status(test_results, plugin_results)
         return res.result
 
     def _run_test_case_instance(
@@ -202,4 +191,4 @@ class TrafficFlowTests:
         self._dump_result_to_log(tft_output, log_file=str(log_file))
 
         if not self.evaluate_run_success(cfg_descr, log_file):
-            print(f"Failure detected in {cfg_descr.get_tft().name} results")
+            logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")

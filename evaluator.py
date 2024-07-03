@@ -131,6 +131,17 @@ class Evaluator:
             }
         )
 
+    def dump_to_json_file(
+        self,
+        filename: str | Path,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> str:
+        data = self.dump_to_json(test_results, plugin_results)
+        with open(filename, "w") as f:
+            f.write(data)
+        return data
+
     def evaluate_pass_fail_status(
         self,
         test_results: list[TestResult],
@@ -159,6 +170,21 @@ class Evaluator:
             num_plugin_passed=plugin_passing,
             num_plugin_failed=plugin_failing,
         )
+
+    def log_pass_fail_status(
+        self,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> PassFailStatus:
+        res = self.evaluate_pass_fail_status(test_results, plugin_results)
+        logger.info(f"RESULT: Success = {res.result}.")
+        logger.info(
+            f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
+        )
+        logger.info(
+            f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
+        )
+        return res
 
 
 def parse_args() -> argparse.Namespace:
@@ -198,20 +224,10 @@ def main() -> None:
     test_results, plugin_results = evaluator.eval_log(file)
 
     # Generate Resulting Json
-    data = evaluator.dump_to_json(test_results, plugin_results)
-    file_path = args.output
-    with open(file_path, "w") as json_file:
-        json_file.write(data)
+    data = evaluator.dump_to_json_file(args.output, test_results, plugin_results)
     logger.info(data)
 
-    res = evaluator.evaluate_pass_fail_status(test_results, plugin_results)
-    logger.info(f"RESULT OF TEST: Success = {res.result}.")
-    logger.info(
-        f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
-    )
-    logger.info(
-        f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
-    )
+    evaluator.log_pass_fail_status(test_results, plugin_results)
 
 
 if __name__ == "__main__":
