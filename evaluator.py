@@ -4,11 +4,9 @@ import sys
 import typing
 import yaml
 
-from collections.abc import Mapping
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pluginbase
 import tftbase
@@ -17,6 +15,7 @@ from common import dataclass_from_dict
 from common import serialize_enum
 from common import strict_dataclass
 from logger import logger
+from testType import TestTypeHandler
 from tftbase import Bitrate
 from tftbase import IperfOutput
 from tftbase import PluginOutput
@@ -87,7 +86,8 @@ class Evaluator:
         bitrate_threshold = self.get_threshold(
             md.test_case_id, md.test_type, md.reverse
         )
-        bitrate_gbps = self.calculate_gbps(run.result, md.test_type)
+
+        bitrate_gbps = TestTypeHandler.get(md.test_type).calculate_gbps(run.result)
 
         result = TestResult(
             test_id=md.test_case_id,
@@ -134,21 +134,6 @@ class Evaluator:
             )
             raise Exception("get_threshold(): Failed to parse evaluator config")
 
-    def calculate_gbps(
-        self, result: Mapping[str, str | int], test_type: TestType
-    ) -> Bitrate:
-        if test_type == TestType.IPERF_TCP:
-            return self.calculate_gbps_iperf_tcp(result)
-        elif test_type == TestType.IPERF_UDP:
-            return self.calculate_gbps_iperf_udp(result)
-        elif test_type == TestType.HTTP:
-            return self.calculate_gbps_http(result)
-        else:
-            logger.error(
-                f"Error calculating bitrate, Test of type {test_type} is not supported"
-            )
-            raise Exception(f"calculate_gbps(): Invalid test_type {test_type} provided")
-
     def dump_to_json(self) -> str:
         passing = [asdict(result) for result in self.test_results if result.success]
         failing = [asdict(result) for result in self.test_results if not result.success]
@@ -167,46 +152,6 @@ class Evaluator:
                 "plugin_failing": serialize_enum(plugin_failing),
             }
         )
-
-    def calculate_gbps_iperf_tcp(self, result: Mapping[str, Any]) -> Bitrate:
-        # If an error occurred, bitrate = 0
-        if "error" in result:
-            logger.error(f"An error occurred during iperf test: {result['error']}")
-            return Bitrate.NA
-
-        try:
-            sum_sent = result["end"]["sum_sent"]
-            sum_received = result["end"]["sum_received"]
-        except KeyError as e:
-            logger.error(
-                f"KeyError: {e}. Malformed results when parsing iperf tcp for sum_sent/received"
-            )
-            raise Exception(
-                "calculate_gbps_iperf_tcp(): failed to parse iperf test results"
-            )
-
-        bitrate_sent = sum_sent["bits_per_second"] / 1e9
-        bitrate_received = sum_received["bits_per_second"] / 1e9
-
-        return Bitrate(
-            tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_received:.5g}")
-        )
-
-    def calculate_gbps_iperf_udp(self, result: Mapping[str, Any]) -> Bitrate:
-        # If an error occurred, bitrate = 0
-        if "error" in result:
-            logger.error(f"An error occurred during iperf test: {result['error']}")
-            return Bitrate.NA
-
-        sum_data = result["end"]["sum"]
-
-        # UDP tests only have sender traffic
-        bitrate_sent = sum_data["bits_per_second"] / 1e9
-        return Bitrate(tx=float(f"{bitrate_sent:.5g}"), rx=float(f"{bitrate_sent:.5g}"))
-
-    def calculate_gbps_http(self, result: Mapping[str, Any]) -> Bitrate:
-        # TODO: Add http traffic testing
-        raise NotImplementedError("calculate_gbps_http is not yet implemented")
 
     def evaluate_pass_fail_status(self) -> PassFailStatus:
         tft_passing = 0

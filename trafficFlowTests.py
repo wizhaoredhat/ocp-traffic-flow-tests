@@ -11,42 +11,15 @@ import testConfig
 
 from common import serialize_enum
 from evaluator import Evaluator
-from iperf import IperfClient
-from iperf import IperfServer
 from logger import logger
-from netperf import NetPerfClient
-from netperf import NetPerfServer
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TFT_TESTS
-from tftbase import TestType
 from tftbase import TftAggregateOutput
 
 
 class TrafficFlowTests:
-    def _create_iperf_server_client(
-        self, ts: TestSettings
-    ) -> tuple[perf.PerfServer, perf.PerfClient]:
-        logger.info(
-            f"Initializing iperf server/client for test:\n {ts.get_test_info()}"
-        )
-
-        s = IperfServer(ts=ts)
-        c = IperfClient(ts=ts, server=s)
-        return (s, c)
-
-    def _create_netperf_server_client(
-        self, ts: TestSettings
-    ) -> tuple[perf.PerfServer, perf.PerfClient]:
-        logger.info(
-            f"Initializing Netperf server/client for test:\n {ts.get_test_info()}"
-        )
-
-        s = NetPerfServer(ts)
-        c = NetPerfClient(ts, server=s)
-        return (s, c)
-
     def _configure_namespace(self, cfg_descr: ConfigDescriptor) -> None:
         namespace = cfg_descr.get_tft().namespace
         logger.info(f"Configuring namespace {namespace}")
@@ -156,23 +129,9 @@ class TrafficFlowTests:
             instance_index=instance_index,
             reverse=reverse,
         )
-        if (
-            connection.test_type == TestType.IPERF_TCP
-            or connection.test_type == TestType.IPERF_UDP
-        ):
-            s, c = self._create_iperf_server_client(ts)
-            servers.append(s)
-            clients.append(c)
-        elif (
-            connection.test_type == TestType.NETPERF_TCP_STREAM
-            or connection.test_type == TestType.NETPERF_TCP_RR
-        ):
-            s, c = self._create_netperf_server_client(ts)
-            servers.append(s)
-            clients.append(c)
-        else:
-            logger.error("http connections not currently supported")
-            raise Exception("http connections not currently supported")
+        s, c = connection.test_type_handler.create_server_client(ts)
+        servers.append(s)
+        clients.append(c)
         for plugin in connection.plugins:
             m = plugin.plugin.enable(
                 ts=ts,
@@ -219,14 +178,13 @@ class TrafficFlowTests:
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
-                # if test_type is iperf_TCP run both forward and reverse tests
                 tft_output.append(
                     self._run_test_case_instance(
                         cfg_descr2,
                         instance_index=instance_index,
                     )
                 )
-                if connection.test_type == TestType.IPERF_TCP:
+                if connection.test_type_handler.can_run_reverse():
                     tft_output.append(
                         self._run_test_case_instance(
                             cfg_descr2,
