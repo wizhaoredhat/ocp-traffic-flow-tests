@@ -184,7 +184,7 @@ class TaskValidateOffload(PluginTask):
             success_result = True
             msg: Optional[str] = None
             ethtool_cmd = ""
-            parsed_data: dict[str, int] = {}
+            parsed_data: dict[str, typing.Any] = {}
 
             if self.perf_pod_type == PodType.HOSTBACKED:
                 logger.info("The VF representor is: ovn-k8s-mp0")
@@ -207,6 +207,9 @@ class TaskValidateOffload(PluginTask):
                     self.ts.event_client_finished.wait()
 
                     r2 = self.run_oc_exec(ethtool_cmd)
+
+                    parsed_data["ethtool_cmd_1"] = common.dataclass_to_dict(r1)
+                    parsed_data["ethtool_cmd_2"] = common.dataclass_to_dict(r2)
 
                     if r1.success:
                         data1 = r1.out
