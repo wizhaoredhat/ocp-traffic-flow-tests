@@ -2,20 +2,21 @@ import json
 import typing
 from typing import Optional
 
+import host
 import perf
 import pluginbase
+import tftbase
 
-from host import Result
 from logger import logger
 from task import PluginTask
+from task import TaskOperation
 from testSettings import TestSettings
+from tftbase import BaseOutput
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import PodType
 from tftbase import TFT_TOOLS_IMG
 from tftbase import TestMetadata
-from tftbase import TftAggregateOutput
-from thread import ReturnValueThread
 
 VF_REP_TRAFFIC_THRESHOLD = 1000
 
@@ -105,7 +106,6 @@ class TaskValidateOffload(PluginTask):
         self._perf_instance = perf_instance
         self.perf_pod_name = perf_instance.pod_name
         self.perf_pod_type = perf_instance.pod_type
-        self.ethtool_cmd = ""
 
     def get_template_args(self) -> dict[str, str]:
         return {
@@ -127,8 +127,8 @@ class TaskValidateOffload(PluginTask):
             logger.info("There is no VF on an external server")
             return "external"
 
-        self.get_vf_rep_cmd = f"exec {self.pod_name} -- crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
-        r = self.run_oc(self.get_vf_rep_cmd)
+        get_vf_rep_cmd = f"exec {self.pod_name} -- crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
+        r = self.run_oc(get_vf_rep_cmd)
 
         if r.returncode != 0:
             if "already exists" not in r.err:
@@ -141,15 +141,12 @@ class TaskValidateOffload(PluginTask):
         )
         return typing.cast(str, data["containers"][0]["podSandboxId"][:15])
 
-    def run_ethtool_cmd(self, ethtool_cmd: str) -> tuple[bool, Result]:
+    def run_ethtool_cmd(self, ethtool_cmd: str) -> tuple[bool, host.Result]:
         logger.info(f"Running {ethtool_cmd}")
         success = True
         r = self.run_oc(ethtool_cmd)
         if self.perf_pod_type != PodType.HOSTBACKED:
-            if r.returncode != 0:
-                if "already exists" not in r.err:
-                    logger.error(f"Run_ethtool_cmd: {r.err}, {r.returncode}")
-                    success = False
+            success = r.success or ("already exists" not in r.err)
         return success, r
 
     def parse_packets(self, output: str, packet_type: str) -> int:
@@ -173,36 +170,73 @@ class TaskValidateOffload(PluginTask):
 
         return total_packets
 
-    def run(self, duration: int) -> None:
-        def stat(self: TaskValidateOffload, duration: int) -> Result:
+    def _create_task_operation(self) -> TaskOperation:
+        def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
             vf_rep = self.extract_vf_rep()
-            self.ethtool_cmd = f"exec {self.pod_name} -- ethtool -S {vf_rep}"
+            ethtool_cmd = f"exec {self.pod_name} -- ethtool -S {vf_rep}"
             if vf_rep == "ovn-k8s-mp0":
-                return Result(out="Hostbacked pod", err="", returncode=0)
+                return BaseOutput(msg="Hostbacked pod")
             if vf_rep == "external":
-                return Result(out="External Iperf Server", err="", returncode=0)
+                return BaseOutput(msg="External Iperf Server")
 
-            success1, r1 = self.run_ethtool_cmd(self.ethtool_cmd)
-            if not success1 or not r1.returncode != 0:
-                logger.error("Ethtool command failed")
-                return r1
+            success1, r1 = self.run_ethtool_cmd(ethtool_cmd)
+            if not success1 or not r1.success:
+                return BaseOutput(success=False, msg="ethtool command failed")
 
             self.ts.event_client_finished.wait()
 
-            success2, r2 = self.run_ethtool_cmd(self.ethtool_cmd)
+            success2, r2 = self.run_ethtool_cmd(ethtool_cmd)
 
-            combined_out = f"{r1.out}--DELIMIT--{r2.out}"
-            return Result(out=combined_out, err=r2.err, returncode=r2.returncode)
+            # Different behavior has been seen from the ethtool output depending on the driver in question
+            # Log the output of ethtool temporarily until this is more stable.
 
-        self.exec_thread = ReturnValueThread(target=stat, args=(self, duration))
-        self.exec_thread.start()
+            data1 = r1.out
+            data2 = ""
+            if success2 and r2.success:
+                data2 = r2.out
 
-    def output(self, out: TftAggregateOutput) -> None:
-        if not isinstance(self._output, PluginOutput):
-            return
+            parsed_data: dict[str, str | int] = {}
 
-        out.plugins.append(self._output)
+            if data1:
+                parsed_data["rx_start"] = self.parse_packets(data1, "rx")
+                parsed_data["tx_start"] = self.parse_packets(data1, "tx")
+
+            if data2:
+                parsed_data["rx_end"] = self.parse_packets(data2, "rx")
+                parsed_data["tx_end"] = self.parse_packets(data2, "tx")
+
+            logger.info(
+                f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
+                f"tx_packet_start: {parsed_data.get('tx_start', 'N/A')}\n"
+                f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
+                f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
+            )
+            return PluginOutput(
+                success=success2 and r2.success,
+                command=ethtool_cmd,
+                plugin_metadata={
+                    "name": "GetEthtoolStats",
+                    "node_name": self.node_name,
+                    "pod_name": self.pod_name,
+                },
+                result=parsed_data,
+                name=plugin.PLUGIN_NAME,
+            )
+
+        return TaskOperation(
+            log_name=self.log_name,
+            thread_action=_thread_action,
+        )
+
+    def _aggregate_output(
+        self,
+        result: tftbase.AggregatableOutput,
+        out: tftbase.TftAggregateOutput,
+    ) -> None:
+        assert isinstance(result, PluginOutput)
+
+        out.plugins.append(result)
 
         if self.perf_pod_type == PodType.HOSTBACKED:
             if isinstance(self._perf_instance, perf.PerfClient):
@@ -210,42 +244,4 @@ class TaskValidateOffload(PluginTask):
             else:
                 logger.info("The server VF representor ovn-k8s-mp0_0 does not exist")
 
-        logger.info(
-            f"validateOffload results on {self.perf_pod_name}: {self._output.result}"
-        )
-
-    def generate_output(self, data: str) -> PluginOutput:
-        # Different behavior has been seen from the ethtool output depending on the driver in question
-        # Log the output of ethtool temporarily until this is more stable.
-        # TODO: switch to debug
-        logger.info(f"generate hwol output from data: {data}")
-        split_data = data.split("--DELIMIT--")
-        parsed_data: dict[str, str | int] = {}
-
-        if len(split_data) >= 1:
-            parsed_data["rx_start"] = self.parse_packets(split_data[0], "rx")
-            parsed_data["tx_start"] = self.parse_packets(split_data[0], "tx")
-
-        if len(split_data) >= 2:
-            parsed_data["rx_end"] = self.parse_packets(split_data[1], "rx")
-            parsed_data["tx_end"] = self.parse_packets(split_data[1], "tx")
-
-        if len(split_data) >= 3:
-            parsed_data["additional_info"] = "--DELIMIT--".join(split_data[2:])
-
-        logger.info(
-            f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
-            f"tx_packet_start: {parsed_data.get('tx_start', 'N/A')}\n"
-            f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
-            f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
-        )
-        return PluginOutput(
-            command=self.ethtool_cmd,
-            plugin_metadata={
-                "name": "GetEthtoolStats",
-                "node_name": self.node_name,
-                "pod_name": self.pod_name,
-            },
-            result=parsed_data,
-            name=plugin.PLUGIN_NAME,
-        )
+        logger.info(f"validateOffload results on {self.perf_pod_name}: {result.result}")

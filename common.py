@@ -219,13 +219,14 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
     return output
 
 
-def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> None:
+def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> str:
     with open(in_file_name) as inFile:
         contents = inFile.read()
     template = jinja2.Template(contents)
     rendered = template.render(**kwargs)
     with open(out_file_name, "w") as outFile:
         outFile.write(rendered)
+    return rendered
 
 
 def serialize_enum(
