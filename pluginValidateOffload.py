@@ -15,8 +15,8 @@ from tftbase import BaseOutput
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import PodType
-from tftbase import TFT_TOOLS_IMG
 from tftbase import TestMetadata
+
 
 VF_REP_TRAFFIC_THRESHOLD = 1000
 
@@ -111,7 +111,7 @@ class TaskValidateOffload(PluginTask):
         return {
             **super().get_template_args(),
             "pod_name": self.pod_name,
-            "test_image": TFT_TOOLS_IMG,
+            "test_image": tftbase.get_tft_test_image(),
         }
 
     def initialize(self) -> None:

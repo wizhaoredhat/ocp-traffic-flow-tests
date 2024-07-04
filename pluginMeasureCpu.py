@@ -13,7 +13,6 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
-from tftbase import TFT_TOOLS_IMG
 
 
 class PluginMeasureCpu(pluginbase.Plugin):
@@ -57,7 +56,7 @@ class TaskMeasureCPU(PluginTask):
         return {
             **super().get_template_args(),
             "pod_name": self.pod_name,
-            "test_image": TFT_TOOLS_IMG,
+            "test_image": tftbase.get_tft_test_image(),
         }
 
     def initialize(self) -> None:

@@ -1,5 +1,8 @@
 import dataclasses
+import functools
 import math
+import os
+import shlex
 import typing
 
 from dataclasses import dataclass
@@ -10,9 +13,27 @@ from typing import Optional
 import host
 
 from common import strict_dataclass
+from logger import logger
 
 
-TFT_TOOLS_IMG = "quay.io/wizhao/tft-tools:latest"
+ENV_TFT_TEST_IMAGE = "TFT_TEST_IMAGE"
+
+ENV_TFT_TEST_IMAGE_DEFAULT = "quay.io/wizhao/tft-tools:latest"
+
+
+def get_environ(name: str) -> Optional[str]:
+    # Some environment variables are honored as configuration.
+    # Which ones? Run `git grep -w get_environ`!
+    return os.environ.get(name, None)
+
+
+@functools.cache
+def get_tft_test_image() -> str:
+    s = get_environ(ENV_TFT_TEST_IMAGE) or ENV_TFT_TEST_IMAGE_DEFAULT
+    logger.info(f"env: {ENV_TFT_TEST_IMAGE}={shlex.quote(s)}")
+    return s
+
+
 TFT_TESTS = "tft-tests"
 
 
