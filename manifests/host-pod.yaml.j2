@@ -17,7 +17,7 @@ spec:
     command:
       - "{{ command }}"
     args: {{ args }}
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: {{ image_pull_policy }}
     securityContext:
       capabilities:
         add: ["NET_ADMIN","NET_RAW"]

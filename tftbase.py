@@ -17,6 +17,7 @@ from logger import logger
 
 
 ENV_TFT_TEST_IMAGE = "TFT_TEST_IMAGE"
+ENV_TFT_IMAGE_PULL_POLICY = "TFT_IMAGE_PULL_POLICY"
 
 ENV_TFT_TEST_IMAGE_DEFAULT = "quay.io/wizhao/tft-tools:latest"
 
@@ -31,6 +32,30 @@ def get_environ(name: str) -> Optional[str]:
 def get_tft_test_image() -> str:
     s = get_environ(ENV_TFT_TEST_IMAGE) or ENV_TFT_TEST_IMAGE_DEFAULT
     logger.info(f"env: {ENV_TFT_TEST_IMAGE}={shlex.quote(s)}")
+    return s
+
+
+@functools.cache
+def get_tft_image_pull_policy() -> str:
+    s: Optional[str] = None
+    s_env = get_environ(ENV_TFT_IMAGE_PULL_POLICY)
+    if s_env is not None:
+        s0 = s_env.strip().lower()
+        if s0 == "always":
+            s = "Always"
+        if s0 == "ifnotpresent":
+            s = "IfNotPresent"
+        if s0 == "never":
+            s = "Never"
+        logger.error(
+            f'env: invalid environment variable in {ENV_TFT_IMAGE_PULL_POLICY}="{shlex.quote(s_env)}". Set to one of "IfNotPresent", "Always", "Never"'
+        )
+    if s is None:
+        if get_environ(ENV_TFT_TEST_IMAGE):
+            s = "Always"
+        else:
+            s = "IfNotPresent"
+    logger.info(f"env: {ENV_TFT_IMAGE_PULL_POLICY}={shlex.quote(s)}")
     return s
 
 

@@ -15,7 +15,7 @@ spec:
     command:
       - "{{ command }}"
     args: ["{{ args }}"]
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: {{ image_pull_policy }}
     securityContext:
       privileged: true
       runAsUser: 0

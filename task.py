@@ -255,6 +255,7 @@ class Task(ABC):
         return {
             "name_space": self.get_namespace(),
             "test_image": tftbase.get_tft_test_image(),
+            "image_pull_policy": tftbase.get_tft_image_pull_policy(),
             "command": "/sbin/init",
             "args": "",
             "index": f"{self.index}",
