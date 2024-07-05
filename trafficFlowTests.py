@@ -87,16 +87,16 @@ class TrafficFlowTests:
         logger.info(f"Evaluating results of tests {log_file}")
         results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
 
-        evaluator.eval_log(log_file)
+        test_results, plugin_results = evaluator.eval_log(log_file)
 
         # Generate Resulting Json
         logger.info(f"Dumping results to {results_path}")
-        data = evaluator.dump_to_json()
+        data = evaluator.dump_to_json(test_results, plugin_results)
         with open(results_path, "w") as file:
             file.write(data)
 
         # Return PassFailStatus
-        res = evaluator.evaluate_pass_fail_status()
+        res = evaluator.evaluate_pass_fail_status(test_results, plugin_results)
         logger.info(f"RESULT: Success = {res.result}.")
         logger.info(
             f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"

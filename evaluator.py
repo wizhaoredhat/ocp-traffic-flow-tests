@@ -1,13 +1,14 @@
 import argparse
 import json
 import sys
-import typing
 import yaml
 
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
+import evalConfig
 import pluginbase
 import tftbase
 
@@ -66,39 +67,35 @@ class Evaluator:
         with open(config_path, encoding="utf-8") as file:
             c = yaml.safe_load(file)
 
-            self.config = {
-                test_type: {
-                    int(item["id"]): {
-                        "normal": item["Normal"]["threshold"],
-                        "reverse": item["Reverse"]["threshold"],
-                    }
-                    for item in test_cases
-                }
-                for test_type, test_cases in c.items()
-            }
+        self.eval_config = evalConfig.Config.parse(c)
 
-        self.test_results: list[TestResult] = []
-        self.plugin_results: list[tftbase.PluginResult] = []
-
-    def _eval_flow_test(self, run: IperfOutput) -> None:
+    def _eval_flow_test(self, run: IperfOutput) -> TestResult:
         md = run.tft_metadata
 
-        bitrate_threshold = self.get_threshold(
-            md.test_case_id, md.test_type, md.reverse
-        )
+        bitrate_gbps = Bitrate.NA
+        bitrate_threshold: Optional[float] = None
 
-        bitrate_gbps = TestTypeHandler.get(md.test_type).calculate_gbps(run.result)
+        # We accept a missing eval_config entry. That is also because we can
+        # generate a eval_config with "generate_new_eval_config.py", but for
+        # that we require to successfully generate a RESULT first.
+        cfg = self.eval_config.configs.get(md.test_type)
+        if cfg is not None:
+            cfg_test_case = cfg.test_cases.get(md.test_case_id)
+            if cfg_test_case is not None:
+                bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
+            bitrate_gbps = TestTypeHandler.get(cfg.test_type).calculate_gbps(run.result)
 
-        result = TestResult(
+        return TestResult(
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,
             success=bitrate_gbps.is_passing(bitrate_threshold),
             bitrate_gbps=bitrate_gbps,
         )
-        self.test_results.append(result)
 
-    def eval_log(self, log_path: Path) -> None:
+    def eval_log(
+        self, log_path: str | Path
+    ) -> tuple[list[TestResult], list[tftbase.PluginResult]]:
         try:
             with open(log_path, "r") as file:
                 runs = json.load(file)[TFT_TESTS]
@@ -106,11 +103,15 @@ class Evaluator:
             logger.error(f"Exception: {e}. Malformed log handed to eval_log()")
             raise Exception(f"eval_log(): error parsing {log_path} for expected fields")
 
+        test_results: list[TestResult] = []
+        plugin_results: list[tftbase.PluginResult] = []
+
         for run in runs:
             if "flow_test" in run and run["flow_test"] is not None:
                 run["flow_test"] = dataclass_from_dict(IperfOutput, run["flow_test"])
 
-            self._eval_flow_test(run["flow_test"])
+            result = self._eval_flow_test(run["flow_test"])
+            test_results.append(result)
             for plugin_output in run["plugins"]:
                 plugin_output = dataclass_from_dict(PluginOutput, plugin_output)
                 plugin = pluginbase.get_by_name(plugin_output.name)
@@ -118,30 +119,20 @@ class Evaluator:
                     plugin_output, run["flow_test"].tft_metadata
                 )
                 if plugin_result is not None:
-                    self.plugin_results.append(plugin_result)
+                    plugin_results.append(plugin_result)
 
-    def get_threshold(
-        self, test_case_id: TestCaseType, test_type: TestType, is_reverse: bool
-    ) -> int:
-        traffic_direction = "reverse" if is_reverse else "normal"
-        try:
-            return typing.cast(
-                int, self.config[test_type.name][test_case_id.value][traffic_direction]
-            )
-        except KeyError as e:
-            logger.error(
-                f"KeyError: {e}. Config does not contain valid config for test case {test_type.name} id {test_case_id} reverse: {is_reverse}"
-            )
-            raise Exception("get_threshold(): Failed to parse evaluator config")
+        return test_results, plugin_results
 
-    def dump_to_json(self) -> str:
-        passing = [asdict(result) for result in self.test_results if result.success]
-        failing = [asdict(result) for result in self.test_results if not result.success]
-        plugin_passing = [
-            asdict(result) for result in self.plugin_results if result.success
-        ]
+    def dump_to_json(
+        self,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> str:
+        passing = [asdict(result) for result in test_results if result.success]
+        failing = [asdict(result) for result in test_results if not result.success]
+        plugin_passing = [asdict(result) for result in plugin_results if result.success]
         plugin_failing = [
-            asdict(result) for result in self.plugin_results if not result.success
+            asdict(result) for result in plugin_results if not result.success
         ]
 
         return json.dumps(
@@ -153,10 +144,14 @@ class Evaluator:
             }
         )
 
-    def evaluate_pass_fail_status(self) -> PassFailStatus:
+    def evaluate_pass_fail_status(
+        self,
+        test_results: list[TestResult],
+        plugin_results: list[tftbase.PluginResult],
+    ) -> PassFailStatus:
         tft_passing = 0
         tft_failing = 0
-        for result in self.test_results:
+        for result in test_results:
             if result.success:
                 tft_passing += 1
             else:
@@ -164,7 +159,7 @@ class Evaluator:
 
         plugin_passing = 0
         plugin_failing = 0
-        for plugin_result in self.plugin_results:
+        for plugin_result in plugin_results:
             if plugin_result.success:
                 plugin_passing += 1
             else:
@@ -212,16 +207,17 @@ def main() -> None:
 
     # Hand evaluator log file to evaluate
     file = Path(args.logs)
-    evaluator.eval_log(file)
+
+    test_results, plugin_results = evaluator.eval_log(file)
 
     # Generate Resulting Json
-    data = evaluator.dump_to_json()
+    data = evaluator.dump_to_json(test_results, plugin_results)
     file_path = args.output
     with open(file_path, "w") as json_file:
         json_file.write(data)
     logger.info(data)
 
-    res = evaluator.evaluate_pass_fail_status()
+    res = evaluator.evaluate_pass_fail_status(test_results, plugin_results)
     logger.info(f"RESULT OF TEST: Success = {res.result}.")
     logger.info(
         f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
