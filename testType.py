@@ -52,6 +52,10 @@ class TestTypeHandler(ABC):
             if test_type == TestType.NETPERF_TCP_STREAM:
                 return testTypeNetPerf.test_type_handler_netperf_tcp_stream
             return testTypeNetPerf.test_type_handler_netperf_tcp_rr
+        if test_type == TestType.HTTP:
+            import testTypeHttp
+
+            return testTypeHttp.test_type_handler_http
         raise ValueError(f"Unsupported test type {test_type}")
 
 
