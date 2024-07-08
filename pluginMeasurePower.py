@@ -74,12 +74,12 @@ class TaskMeasurePower(PluginTask):
 
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
-            cmd = f"exec -t {self.pod_name} -- ipmitool dcmi power reading"
+            cmd = "ipmitool dcmi power reading"
             self.ts.clmo_barrier.wait()
             total_pwr = 0
             iteration = 0
             while not self.ts.event_client_finished.is_set():
-                r = self.run_oc(cmd)
+                r = self.run_oc_exec(cmd)
                 if r.returncode != 0:
                     logger.error(f"Failed to get power {cmd}: {r}")
                 pwr = _extract(r)

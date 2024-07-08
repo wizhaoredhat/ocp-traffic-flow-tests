@@ -66,10 +66,10 @@ class TaskMeasureCPU(PluginTask):
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
 
-            cmd = f"exec {self.pod_name} -- mpstat -P ALL {self.get_duration()} 1"
             self.ts.clmo_barrier.wait()
 
-            r = self.run_oc(cmd)
+            cmd = f"mpstat -P ALL {self.get_duration()} 1"
+            r = self.run_oc_exec(cmd)
 
             data = r.out
 

@@ -120,8 +120,8 @@ class PerfServer(Task, abc.ABC):
         else:
             self.setup_pod()
             ca_cmd = self._create_setup_operation_get_cancel_action_cmd()
-            cmd = f"exec {self.pod_name} -- {th_cmd}"
-            cancel_cmd = f"exec -t {self.pod_name} -- {ca_cmd}"
+            cmd = f"{th_cmd}"
+            cancel_cmd = f"{ca_cmd}"
 
         logger.info(f"Running {cmd}")
 
@@ -139,7 +139,7 @@ class PerfServer(Task, abc.ABC):
             if self.exec_persistent:
                 return BaseOutput(msg="Server is persistent")
             return BaseOutput.from_cmd(
-                self.run_oc(cmd, may_fail=ignore_failure),
+                self.run_oc_exec(cmd, may_fail=ignore_failure),
                 success=force_success,
             )
 

@@ -64,11 +64,11 @@ class HttpServer(perf.PerfServer):
 class HttpClient(perf.PerfClient):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
-        cmd = f"exec {self.pod_name} -- curl --fail -s http://{server_ip}:{self.port}/data"
+        cmd = f"curl --fail -s http://{server_ip}:{self.port}/data"
 
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            r = self.run_oc(cmd)
+            r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
 
             return IperfOutput(
