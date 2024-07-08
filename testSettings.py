@@ -124,22 +124,20 @@ class TestSettings:
         return tftbase.test_case_type_get_node_location(self.test_case_id)
 
     def get_test_info(self) -> str:
-        return f"""{self.connection.test_type.name} TEST CONFIGURATION
-        Test Case {self.test_case_id}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.nodeLocation.name}
+        return f"""type={self.connection.test_type.name}, test-case={self.test_case_id.name}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.nodeLocation.name}
         Client Node: {self.conf_client.name}
             Tenant={self.client_is_tenant}
             Index={self.client_index}
         Server Node: {self.node_server_name}
             Exec Persistence: {self.conf_server.persistent}
             Tenant={self.server_is_tenant}
-            Index={self.server_index}
-        """
+            Index={self.server_index}"""
 
     def get_test_str(self) -> str:
         direction = ""
         if self.reverse:
             direction = "-REV"
-        return f"{self.test_case_id}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}{direction}"
+        return f"{self.test_case_id.name}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}{direction}"
 
     def get_test_metadata(self) -> TestMetadata:
         return TestMetadata(
