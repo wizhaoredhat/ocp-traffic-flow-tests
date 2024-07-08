@@ -1,16 +1,20 @@
 import dataclasses
 import functools
+import json
 import math
 import os
 import shlex
 import typing
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any
 from typing import Optional
 
 import host
+import common
 
 from common import strict_dataclass
 from logger import logger
@@ -258,6 +262,12 @@ class PluginOutput(AggregatableOutput):
     plugin_metadata: dict[str, str]
     name: str
 
+    @property
+    def plugin(self) -> "Plugin":
+        import pluginbase
+
+        return pluginbase.get_by_name(self.name)
+
 
 @strict_dataclass
 @dataclass(kw_only=True)
@@ -481,3 +491,78 @@ def test_case_type_to_client_pod_type(
         return PodType.SRIOV
 
     return PodType.NORMAL
+
+
+def output_list_serialize(
+    tft_output: Iterable[TftAggregateOutput],
+) -> dict[str, Any]:
+    return {
+        TFT_TESTS: [common.dataclass_to_dict(o) for o in tft_output],
+    }
+
+
+def output_list_parse_file(filename: str | Path) -> list[TftAggregateOutput]:
+    try:
+        f = open(filename, "r")
+    except Exception as e:
+        raise RuntimeError(f"cannot load file {filename}: {e}")
+    try:
+        data = json.load(f)
+    except Exception:
+        raise RuntimeError(f"File {filename} does not contain valid JSON")
+    finally:
+        f.close()
+
+    return output_list_parse(data, filename=filename)
+
+
+def output_list_parse(
+    data: Any,
+    *,
+    filename: Optional[str | Path] = None,
+) -> list[TftAggregateOutput]:
+
+    err = "data"
+    if filename is not None:
+        err = f'file "{filename}'
+
+    if not isinstance(data, dict):
+        raise RuntimeError(f"{err} needs to contain a dictionary")
+
+    if TFT_TESTS not in data:
+        raise RuntimeError(f'{err} needs a top level key "{TFT_TESTS}"')
+
+    k = list(data)
+    k.remove(TFT_TESTS)
+    if k:
+        raise RuntimeError(f'{err} has unknown top level key "{k}"')
+
+    data_tft_tests = data[TFT_TESTS]
+
+    if not isinstance(data_tft_tests, list):
+        raise RuntimeError(
+            f'{err} needs a list at top level key "{k}" but has {type(data)}'
+        )
+
+    output_list: list[TftAggregateOutput] = []
+    for data_tft_test in data_tft_tests:
+        try:
+            result = common.dataclass_from_dict(TftAggregateOutput, data_tft_test)
+        except Exception as e:
+            raise RuntimeError(f"{err} has invalid data: {e}")
+        output_list.append(result)
+
+    for r_idx, result in enumerate(output_list):
+        for plugin_output in result.plugins:
+            try:
+                plugin_output.plugin
+            except ValueError:
+                raise RuntimeError(
+                    f'{err} has invalid plugin name "{plugin_output.name}" in result #{r_idx}'
+                )
+
+    return output_list
+
+
+if typing.TYPE_CHECKING:
+    from pluginbase import Plugin
