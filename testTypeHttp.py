@@ -8,8 +8,8 @@ import host
 import perf
 import tftbase
 
-from perf import PerfClient
-from perf import PerfServer
+from perf import ClientTask
+from perf import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -23,7 +23,7 @@ class TestTypeHandlerHttp(TestTypeHandler):
     def __init__(self) -> None:
         super().__init__(TestType.HTTP)
 
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = HttpServer(ts=ts)
         c = HttpClient(ts=ts, server=s)
         return (s, c)
@@ -32,7 +32,7 @@ class TestTypeHandlerHttp(TestTypeHandler):
 test_type_handler_http = TestTypeHandlerHttp()
 
 
-class HttpServer(perf.PerfServer):
+class HttpServer(perf.ServerTask):
     def cmd_line_args(self) -> list[str]:
         return [
             "python3",
@@ -61,7 +61,7 @@ class HttpServer(perf.PerfServer):
         return "killall python3"
 
 
-class HttpClient(perf.PerfClient):
+class HttpClient(perf.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = f"curl --fail -s http://{server_ip}:{self.port}/data"

@@ -18,7 +18,7 @@ from tftbase import PodType
 EXTERNAL_PERF_SERVER = "external-perf-server"
 
 
-class PerfServer(Task, abc.ABC):
+class ServerTask(Task, abc.ABC):
     def __init__(self, ts: TestSettings):
         super().__init__(ts, ts.server_index, ts.node_server_name, ts.server_is_tenant)
 
@@ -157,8 +157,8 @@ class PerfServer(Task, abc.ABC):
         )
 
 
-class PerfClient(Task, abc.ABC):
-    def __init__(self, ts: TestSettings, server: PerfServer):
+class ClientTask(Task, abc.ABC):
+    def __init__(self, ts: TestSettings, server: ServerTask):
         super().__init__(ts, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
 
         pod_type = ts.client_pod_type

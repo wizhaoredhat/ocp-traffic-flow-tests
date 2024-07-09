@@ -98,8 +98,8 @@ class TrafficFlowTests:
     ) -> TftAggregateOutput:
         connection = cfg_descr.get_connection()
 
-        servers: list[perf.PerfServer] = []
-        clients: list[perf.PerfClient] = []
+        servers: list[perf.ServerTask] = []
+        clients: list[perf.ClientTask] = []
         monitors: list[Task] = []
 
         c_server = connection.server[0]

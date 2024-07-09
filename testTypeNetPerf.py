@@ -5,8 +5,8 @@ from typing import Optional
 import perf
 import tftbase
 
-from perf import PerfClient
-from perf import PerfServer
+from perf import ClientTask
+from perf import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -65,7 +65,7 @@ def netperf_parse(testname: Any, data: str) -> dict[str, float]:
 
 @dataclass(frozen=True)
 class TestTypeHandlerNetPerf(TestTypeHandler):
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = NetPerfServer(ts)
         c = NetPerfClient(ts, server=s)
         return (s, c)
@@ -77,7 +77,7 @@ test_type_handler_netperf_tcp_stream = TestTypeHandlerNetPerf(
 test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_RR)
 
 
-class NetPerfServer(perf.PerfServer):
+class NetPerfServer(perf.ServerTask):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str | list[str]] = {}
@@ -96,7 +96,7 @@ class NetPerfServer(perf.PerfServer):
         return f"killall {NETPERF_SERVER_EXE}"
 
 
-class NetPerfClient(perf.PerfClient):
+class NetPerfClient(perf.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         assert not self.reverse
 

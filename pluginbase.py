@@ -25,8 +25,8 @@ class Plugin(ABC):
         ts: "TestSettings",
         node_server_name: str,
         node_client_name: str,
-        perf_server: "PerfServer",
-        perf_client: "PerfClient",
+        perf_server: "ServerTask",
+        perf_client: "ClientTask",
         tenant: bool,
     ) -> list["PluginTask"]:
         tasks = self._enable(
@@ -47,8 +47,8 @@ class Plugin(ABC):
         ts: "TestSettings",
         node_server_name: str,
         node_client_name: str,
-        perf_server: "PerfServer",
-        perf_client: "PerfClient",
+        perf_server: "ServerTask",
+        perf_client: "ClientTask",
         tenant: bool,
     ) -> list["PluginTask"]:
         pass
@@ -124,7 +124,7 @@ if typing.TYPE_CHECKING:
     # type annotations, we do need those module here. Import them with
     # TYPE_CHECKING, but otherwise avoid the cyclic dependency between
     # modules.
-    from perf import PerfClient
-    from perf import PerfServer
+    from perf import ClientTask
+    from perf import ServerTask
     from task import PluginTask
     from testSettings import TestSettings

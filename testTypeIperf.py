@@ -8,8 +8,8 @@ from typing import Any
 import tftbase
 
 from logger import logger
-from perf import PerfClient
-from perf import PerfServer
+from perf import ClientTask
+from perf import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -50,7 +50,7 @@ def _calculate_gbps(test_type: TestType, result: Mapping[str, Any]) -> Bitrate:
 
 @dataclass(frozen=True)
 class TestTypeHandlerIperf(TestTypeHandler):
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = IperfServer(ts=ts)
         c = IperfClient(ts=ts, server=s)
         return (s, c)
@@ -65,7 +65,7 @@ test_type_handler_iperf_tcp = TestTypeHandlerIperf(TestType.IPERF_TCP)
 test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
 
 
-class IperfServer(perf.PerfServer):
+class IperfServer(perf.ServerTask):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str | list[str]] = {}
@@ -84,7 +84,7 @@ class IperfServer(perf.PerfServer):
         return f"killall {IPERF_EXE}"
 
 
-class IperfClient(perf.PerfClient):
+class IperfClient(perf.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = (

@@ -123,8 +123,8 @@ class PluginValidateOffload(pluginbase.Plugin):
         ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.PerfServer,
-        perf_client: perf.PerfClient,
+        perf_server: perf.ServerTask,
+        perf_client: perf.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
@@ -145,7 +145,7 @@ class TaskValidateOffload(PluginTask):
     def __init__(
         self,
         ts: TestSettings,
-        perf_instance: perf.PerfServer | perf.PerfClient,
+        perf_instance: perf.ServerTask | perf.ClientTask,
         tenant: bool,
     ):
         super().__init__(ts, 0, perf_instance.node_name, tenant)
@@ -284,7 +284,7 @@ class TaskValidateOffload(PluginTask):
         out.plugins.append(result)
 
         if self.perf_pod_type == PodType.HOSTBACKED:
-            if isinstance(self._perf_instance, perf.PerfClient):
+            if isinstance(self._perf_instance, perf.ClientTask):
                 logger.info("The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
                 logger.info("The server VF representor ovn-k8s-mp0_0 does not exist")

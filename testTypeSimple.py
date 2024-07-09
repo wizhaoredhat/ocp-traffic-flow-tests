@@ -6,8 +6,8 @@ import common
 import perf
 import tftbase
 
-from perf import PerfClient
-from perf import PerfServer
+from perf import ClientTask
+from perf import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -21,7 +21,7 @@ class TestTypeHandlerSimple(TestTypeHandler):
     def __init__(self) -> None:
         super().__init__(TestType.SIMPLE)
 
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = SimpleServer(ts=ts)
         c = SimpleClient(ts=ts, server=s)
         return (s, c)
@@ -32,7 +32,7 @@ test_type_handler_simple = TestTypeHandlerSimple()
 CMD_SIMPLE_TCP_SERVER_CLIENT = "simple-tcp-server-client"
 
 
-class SimpleServer(perf.PerfServer):
+class SimpleServer(perf.ServerTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,
@@ -62,7 +62,7 @@ class SimpleServer(perf.PerfServer):
         return "killall python3"
 
 
-class SimpleClient(perf.PerfClient):
+class SimpleClient(perf.ClientTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,

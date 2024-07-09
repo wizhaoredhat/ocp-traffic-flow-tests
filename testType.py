@@ -15,7 +15,7 @@ class TestTypeHandler(ABC):
 
     def create_server_client(
         self, ts: "TestSettings"
-    ) -> tuple["PerfServer", "PerfClient"]:
+    ) -> tuple["ServerTask", "ClientTask"]:
         logger.info(f"Starting test {ts.get_test_info()}")
         assert ts.connection.test_type == self.test_type
         return self._create_server_client(ts)
@@ -23,7 +23,7 @@ class TestTypeHandler(ABC):
     @abstractmethod
     def _create_server_client(
         self, ts: "TestSettings"
-    ) -> tuple["PerfServer", "PerfClient"]:
+    ) -> tuple["ServerTask", "ClientTask"]:
         pass
 
     def can_run_reverse(self) -> bool:
@@ -57,6 +57,6 @@ class TestTypeHandler(ABC):
 
 
 if typing.TYPE_CHECKING:
-    from perf import PerfClient
-    from perf import PerfServer
+    from perf import ClientTask
+    from perf import ServerTask
     from testSettings import TestSettings

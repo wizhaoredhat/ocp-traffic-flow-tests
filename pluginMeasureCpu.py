@@ -24,8 +24,8 @@ class PluginMeasureCpu(pluginbase.Plugin):
         ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.PerfServer,
-        perf_client: perf.PerfClient,
+        perf_server: perf.ServerTask,
+        perf_client: perf.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         return [
