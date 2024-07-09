@@ -469,9 +469,9 @@ class Task(ABC):
 
         result = self._result
 
-        if isinstance(result, tftbase.IperfOutput):
+        if isinstance(result, tftbase.FlowTestOutput):
             if out.flow_test is not None:
-                raise RuntimeError("There can only be one IperfOutput")
+                raise RuntimeError("There can only be one FlowTestOutput")
             out.flow_test = result
             if result.success:
                 log_level = logging.INFO
@@ -484,7 +484,7 @@ class Task(ABC):
 
             if type(self)._aggregate_output is Task._aggregate_output:
                 # This instance did not overwrite _aggregate_output(). This is
-                # fine for a task that returned the IperfOutput. Don't call
+                # fine for a task that returned the FlowTestOutput. Don't call
                 # _aggregate_output.
                 return
 

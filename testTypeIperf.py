@@ -15,7 +15,7 @@ from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
 from tftbase import Bitrate
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -120,7 +120,7 @@ class IperfClient(perf.ClientTask):
                 success_result = False
                 bitrate_gbps = Bitrate.NA
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=success_result,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,
@@ -138,7 +138,7 @@ class IperfClient(perf.ClientTask):
         result: tftbase.AggregatableOutput,
         out: tftbase.TftAggregateOutput,
     ) -> None:
-        assert isinstance(result, IperfOutput)
+        assert isinstance(result, FlowTestOutput)
         if self.test_type == TestType.IPERF_TCP:
             self.print_tcp_results(result.result)
         if self.test_type == TestType.IPERF_UDP:

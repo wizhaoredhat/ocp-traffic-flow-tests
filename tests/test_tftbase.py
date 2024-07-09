@@ -8,7 +8,7 @@ import common  # noqa: E402
 import tftbase  # noqa: E402
 
 from tftbase import ConnectionMode  # noqa: E402
-from tftbase import IperfOutput  # noqa: E402
+from tftbase import FlowTestOutput  # noqa: E402
 from tftbase import PodInfo  # noqa: E402
 from tftbase import PodType  # noqa: E402
 from tftbase import TestCaseType  # noqa: E402
@@ -65,7 +65,7 @@ def test_iperf_output() -> None:
         server=server,
         client=client,
     )
-    IperfOutput(
+    FlowTestOutput(
         command="command",
         result={},
         tft_metadata=metadata,
@@ -73,7 +73,7 @@ def test_iperf_output() -> None:
     )
 
     common.dataclass_from_dict(
-        IperfOutput,
+        FlowTestOutput,
         {
             "command": "command",
             "result": {},
@@ -83,7 +83,7 @@ def test_iperf_output() -> None:
     )
 
     o = common.dataclass_from_dict(
-        IperfOutput,
+        FlowTestOutput,
         {
             "command": "command",
             "result": {},
@@ -96,7 +96,7 @@ def test_iperf_output() -> None:
 
     with pytest.raises(ValueError):
         common.dataclass_from_dict(
-            IperfOutput,
+            FlowTestOutput,
             {
                 "command": "command",
                 "result": {},
@@ -105,7 +105,7 @@ def test_iperf_output() -> None:
         )
     with pytest.raises(TypeError):
         common.dataclass_from_dict(
-            IperfOutput,
+            FlowTestOutput,
             {
                 "command": "command",
                 "result": {},

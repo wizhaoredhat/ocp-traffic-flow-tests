@@ -12,7 +12,7 @@ from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -83,7 +83,7 @@ class SimpleClient(perf.ClientTask):
             r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=r.success,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,

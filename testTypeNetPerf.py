@@ -11,7 +11,7 @@ from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -140,7 +140,7 @@ class NetPerfClient(perf.ClientTask):
                     else:
                         bitrate_gbps = tftbase.Bitrate(tx=x / 1000.0)
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=success_result,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,

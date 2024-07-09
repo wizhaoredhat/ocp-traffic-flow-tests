@@ -14,7 +14,7 @@ from common import dataclass_to_dict
 from common import strict_dataclass
 from logger import logger
 from tftbase import Bitrate
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestMetadata
 
 
@@ -58,7 +58,7 @@ class Evaluator:
 
         self.eval_config = evalConfig.Config.parse(c)
 
-    def _eval_flow_test(self, run: IperfOutput) -> TestResult:
+    def _eval_flow_test(self, run: FlowTestOutput) -> TestResult:
         md = run.tft_metadata
 
         bitrate_threshold: Optional[float] = None
