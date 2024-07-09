@@ -47,13 +47,14 @@ def get_tft_image_pull_policy() -> str:
         s0 = s_env.strip().lower()
         if s0 == "always":
             s = "Always"
-        if s0 == "ifnotpresent":
+        elif s0 == "ifnotpresent":
             s = "IfNotPresent"
-        if s0 == "never":
+        elif s0 == "never":
             s = "Never"
-        logger.error(
-            f'env: invalid environment variable in {ENV_TFT_IMAGE_PULL_POLICY}="{shlex.quote(s_env)}". Set to one of "IfNotPresent", "Always", "Never"'
-        )
+        else:
+            logger.error(
+                f'env: invalid environment variable in {ENV_TFT_IMAGE_PULL_POLICY}="{shlex.quote(s_env)}". Set to one of "IfNotPresent", "Always", "Never"'
+            )
     if s is None:
         if get_environ(ENV_TFT_TEST_IMAGE):
             s = "Always"
