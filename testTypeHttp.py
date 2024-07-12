@@ -80,6 +80,7 @@ class HttpClient(perf.PerfClient):
                 result={
                     "result": common.dataclass_to_dict(r),
                 },
+                bitrate_gbps=tftbase.Bitrate.NA,
             )
 
         return TaskOperation(

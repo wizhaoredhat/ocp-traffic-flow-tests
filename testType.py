@@ -2,12 +2,9 @@ import typing
 
 from abc import ABC
 from abc import abstractmethod
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 from logger import logger
-from tftbase import Bitrate
 from tftbase import TestType
 
 
@@ -28,10 +25,6 @@ class TestTypeHandler(ABC):
         self, ts: "TestSettings"
     ) -> tuple["PerfServer", "PerfClient"]:
         pass
-
-    def calculate_gbps(self, result: Mapping[str, Any]) -> Bitrate:
-        # This type does not implement calculating gbps.
-        return Bitrate.NA
 
     def can_run_reverse(self) -> bool:
         return False

@@ -88,16 +88,11 @@ class TaskMeasurePower(PluginTask):
                 time.sleep(0.2)
 
             return PluginOutput(
-                plugin_metadata={
-                    "name": "MeasurePower",
-                    "node_name": self.node_name,
-                    "pod_name": self.pod_name,
-                },
+                plugin_metadata=self.get_plugin_metadata(),
                 command=cmd,
                 result={
                     "measure_power": f"{total_pwr/iteration}",
                 },
-                name=plugin.PLUGIN_NAME,
             )
 
         return TaskOperation(

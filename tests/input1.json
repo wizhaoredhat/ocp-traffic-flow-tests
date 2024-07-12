@@ -406,6 +406,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 38.848,
+          "rx": 38.691
         }
       },
       "plugins": []
@@ -756,6 +760,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 42.193,
+          "rx": 42.364
         }
       },
       "plugins": []
@@ -1166,6 +1174,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.925,
+          "rx": 13.868
         }
       },
       "plugins": []
@@ -1516,6 +1528,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.495,
+          "rx": 13.547
         }
       },
       "plugins": []
@@ -1926,6 +1942,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 38.713,
+          "rx": 38.558
         }
       },
       "plugins": []
@@ -2276,6 +2296,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 42.326,
+          "rx": 42.496
         }
       },
       "plugins": []
@@ -2686,6 +2710,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.852,
+          "rx": 13.795
         }
       },
       "plugins": []
@@ -3036,6 +3064,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.297,
+          "rx": 13.347
         }
       },
       "plugins": []
@@ -3446,6 +3478,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 38.24,
+          "rx": 38.087
         }
       },
       "plugins": []
@@ -3796,6 +3832,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 37.242,
+          "rx": 37.392
         }
       },
       "plugins": []
@@ -4206,6 +4246,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 23.416,
+          "rx": 23.322
         }
       },
       "plugins": []
@@ -4556,6 +4600,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 19.342,
+          "rx": 19.416
         }
       },
       "plugins": []
@@ -4966,6 +5014,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 38.524,
+          "rx": 38.37
         }
       },
       "plugins": []
@@ -5316,6 +5368,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 42.108,
+          "rx": 42.277
         }
       },
       "plugins": []
@@ -5726,6 +5782,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.972,
+          "rx": 13.915
         }
       },
       "plugins": []
@@ -6076,6 +6136,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.186,
+          "rx": 13.236
         }
       },
       "plugins": []
@@ -6486,6 +6550,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 38.301,
+          "rx": 38.148
         }
       },
       "plugins": []
@@ -6836,6 +6904,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 42.024,
+          "rx": 42.192
         }
       },
       "plugins": []
@@ -7246,6 +7318,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.675,
+          "rx": 13.618
         }
       },
       "plugins": []
@@ -7596,6 +7672,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.075,
+          "rx": 13.124
         }
       },
       "plugins": []
@@ -8006,6 +8086,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 27.355,
+          "rx": 27.247
         }
       },
       "plugins": []
@@ -8356,6 +8440,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 34.828,
+          "rx": 34.967
         }
       },
       "plugins": []
@@ -8766,6 +8854,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 12.276,
+          "rx": 12.228
         }
       },
       "plugins": []
@@ -9116,6 +9208,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.792,
+          "rx": 13.845
         }
       },
       "plugins": []
@@ -9526,6 +9622,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 27.11,
+          "rx": 27.004
         }
       },
       "plugins": []
@@ -9876,6 +9976,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 28.941,
+          "rx": 29.055
         }
       },
       "plugins": []
@@ -10286,6 +10390,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 23.409,
+          "rx": 23.314
         }
       },
       "plugins": []
@@ -10636,6 +10744,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 23.318,
+          "rx": 23.407
         }
       },
       "plugins": []
@@ -11046,6 +11158,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 27.442,
+          "rx": 27.333
         }
       },
       "plugins": []
@@ -11396,6 +11512,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 34.916,
+          "rx": 35.056
         }
       },
       "plugins": []
@@ -11806,6 +11926,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 12.237,
+          "rx": 12.189
         }
       },
       "plugins": []
@@ -12156,6 +12280,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 13.842,
+          "rx": 13.895
         }
       },
       "plugins": []
@@ -12566,6 +12694,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 28.272,
+          "rx": 28.159
         }
       },
       "plugins": []
@@ -12916,6 +13048,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 30.23,
+          "rx": 30.351
         }
       },
       "plugins": []
@@ -13326,6 +13462,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 23.415,
+          "rx": 23.32
         }
       },
       "plugins": []
@@ -13676,6 +13816,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 22.807,
+          "rx": 22.894
         }
       },
       "plugins": []
@@ -14086,6 +14230,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 9.3752,
+          "rx": 9.3357
         }
       },
       "plugins": []
@@ -14436,6 +14584,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 9.3376,
+          "rx": 9.3729
         }
       },
       "plugins": []
@@ -14846,6 +14998,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 9.4165,
+          "rx": 9.3762
         }
       },
       "plugins": []
@@ -15196,6 +15352,10 @@
             "sender_tcp_congestion": "cubic",
             "receiver_tcp_congestion": "cubic"
           }
+        },
+        "bitrate_gbps": {
+          "tx": 9.3784,
+          "rx": 9.4138
         }
       },
       "plugins": []

@@ -219,6 +219,19 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
     return output
 
 
+T = TypeVar("T")
+
+
+def dict_get_typed(d: typing.Mapping[Any, Any], key: Any, vtype: type[T]) -> T:
+    try:
+        v = d[key]
+    except KeyError:
+        raise KeyError(f'missing key "{key}"')
+    if not isinstance(v, vtype):
+        raise TypeError(f'key "{key}" expected type {vtype} but has value "{v}"')
+    return v
+
+
 def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> str:
     with open(in_file_name) as inFile:
         contents = inFile.read()
@@ -240,9 +253,6 @@ def serialize_enum(
         return [serialize_enum(item) for item in data]
     else:
         return data
-
-
-T = TypeVar("T")
 
 
 def dataclass_to_dict(obj: "DataclassInstance") -> dict[str, Any]:

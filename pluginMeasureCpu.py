@@ -76,14 +76,9 @@ class TaskMeasureCPU(PluginTask):
             # satisfy the linter. jc.parse returns a list of dicts in this case
             parsed_data = cast(list[dict[str, Any]], jc.parse("mpstat", data))
             return PluginOutput(
-                plugin_metadata={
-                    "name": "MeasureCPU",
-                    "node_name": self.node_name,
-                    "pod_name": self.pod_name,
-                },
+                plugin_metadata=self.get_plugin_metadata(),
                 command=cmd,
                 result=parsed_data[0],
-                name=plugin.PLUGIN_NAME,
             )
 
         return TaskOperation(

@@ -8,13 +8,11 @@ from pathlib import Path
 from typing import Optional
 
 import evalConfig
-import pluginbase
 import tftbase
 
 from common import dataclass_to_dict
 from common import strict_dataclass
 from logger import logger
-from testType import TestTypeHandler
 from tftbase import Bitrate
 from tftbase import IperfOutput
 from tftbase import TestCaseType
@@ -68,7 +66,6 @@ class Evaluator:
     def _eval_flow_test(self, run: IperfOutput) -> TestResult:
         md = run.tft_metadata
 
-        bitrate_gbps = Bitrate.NA
         bitrate_threshold: Optional[float] = None
 
         # We accept a missing eval_config entry. That is also because we can
@@ -79,14 +76,13 @@ class Evaluator:
             cfg_test_case = cfg.test_cases.get(md.test_case_id)
             if cfg_test_case is not None:
                 bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
-            bitrate_gbps = TestTypeHandler.get(cfg.test_type).calculate_gbps(run.result)
 
         return TestResult(
             test_id=md.test_case_id,
             test_type=md.test_type,
             reverse=md.reverse,
-            success=bitrate_gbps.is_passing(bitrate_threshold),
-            bitrate_gbps=bitrate_gbps,
+            success=run.success and run.bitrate_gbps.is_passing(bitrate_threshold),
+            bitrate_gbps=run.bitrate_gbps,
         )
 
     def eval_log(
@@ -108,8 +104,7 @@ class Evaluator:
             result = self._eval_flow_test(run.flow_test)
             test_results.append(result)
             for plugin_output in run.plugins:
-                plugin = pluginbase.get_by_name(plugin_output.name)
-                plugin_result = plugin.eval_log(
+                plugin_result = plugin_output.plugin.eval_log(
                     plugin_output, run.flow_test.tft_metadata
                 )
                 if plugin_result is not None:

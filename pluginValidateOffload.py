@@ -2,7 +2,6 @@ import json
 import typing
 from typing import Optional
 
-import host
 import perf
 import pluginbase
 import tftbase
@@ -19,6 +18,78 @@ from tftbase import TestMetadata
 
 
 VF_REP_TRAFFIC_THRESHOLD = 1000
+
+
+def ethtool_stat_parse(output: str) -> dict[str, str]:
+    result = {}
+    for line in output.splitlines():
+        try:
+            key, val = line.split(":", 2)
+        except Exception:
+            continue
+        if val == "" and " " in key:
+            # This is a section heading.
+            continue
+        result[key.strip()] = val.strip()
+    return result
+
+
+def ethtool_stat_get_packets(data: dict[str, str], packet_type: str) -> Optional[int]:
+
+    # Case1: Try to parse rx_packets and tx_packets from ethtool output
+    val = data.get(f"{packet_type}_packets")
+    if val is not None:
+        try:
+            return int(val)
+        except KeyError:
+            return None
+
+    # Case2: Ethtool output does not provide these fields, so we need to sum
+    # the queues manually.
+    total_packets = 0
+    prefix = f"{packet_type}_queue_"
+    packet_suffix = "_xdp_packets"
+    any_match = False
+
+    for k, v in data.items():
+        if k.startswith(prefix) and k.endswith(packet_suffix):
+            try:
+                total_packets += int(v)
+            except KeyError:
+                return None
+            any_match = True
+    if not any_match:
+        return None
+    return total_packets
+
+
+def ethtool_stat_get_startend(
+    parsed_data: dict[str, int],
+    ethtool_data: str,
+    suffix: typing.Literal["start", "end"],
+) -> bool:
+    ethtool_dict = ethtool_stat_parse(ethtool_data)
+    success = True
+    KEY_NAMES = {
+        "start": {
+            "rx": "rx_start",
+            "tx": "tx_start",
+        },
+        "end": {
+            "rx": "rx_end",
+            "tx": "tx_end",
+        },
+    }
+    for ethtool_name in ("rx", "tx"):
+        # Don't construct key_name as f"{ethtool_name}_{suffix}", because the
+        # keys should appear verbatim in source code, so we can grep for them.
+        key_name = KEY_NAMES[suffix][ethtool_name]
+        v = ethtool_stat_get_packets(ethtool_dict, ethtool_name)
+        if v is None:
+            success = False
+            continue
+        parsed_data[key_name] = v
+    return success
 
 
 def no_traffic_on_vf_rep(
@@ -52,26 +123,17 @@ class PluginValidateOffload(pluginbase.Plugin):
     def eval_log(
         self, plugin_output: PluginOutput, md: TestMetadata
     ) -> Optional[PluginResult]:
-        rx_start = plugin_output.result.get("rx_start")
-        tx_start = plugin_output.result.get("tx_start")
-        rx_end = plugin_output.result.get("rx_end")
-        tx_end = plugin_output.result.get("tx_end")
-
-        if any(x is None for x in [rx_start, tx_start, rx_end, tx_end]):
+        if not plugin_output.success:
             logger.error(
                 f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
             )
             success = False
         else:
-            assert isinstance(rx_start, int)
-            assert isinstance(tx_start, int)
-            assert isinstance(rx_end, int)
-            assert isinstance(tx_end, int)
             success = no_traffic_on_vf_rep(
-                rx_start=rx_start,
-                tx_start=tx_start,
-                rx_end=rx_end,
-                tx_end=tx_end,
+                rx_start=plugin_output.result_get("rx_start", int),
+                tx_start=plugin_output.result_get("tx_start", int),
+                rx_end=plugin_output.result_get("rx_end", int),
+                tx_end=plugin_output.result_get("tx_end", int),
             )
 
         return PluginResult(
@@ -118,94 +180,70 @@ class TaskValidateOffload(PluginTask):
         super().initialize()
         self.render_file("Server Pod Yaml")
 
-    def extract_vf_rep(self) -> str:
-        if self.perf_pod_type == PodType.HOSTBACKED:
-            logger.info("The VF representor is: ovn-k8s-mp0")
-            return "ovn-k8s-mp0"
-
-        if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
-            logger.info("There is no VF on an external server")
-            return "external"
-
+    def extract_vf_rep(self) -> Optional[str]:
         r = self.run_oc_exec(
             f"crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
         )
 
-        if r.returncode != 0:
-            if "already exists" not in r.err:
-                logger.error(f"Extract_vf_rep: {r.err}, {r.returncode}")
+        iface: Optional[str] = None
+        if r.success:
+            try:
+                data = json.loads(r.out)
+                v = data["containers"][0]["podSandboxId"][:15]
+                if isinstance(v, str) and v:
+                    iface = v
+            except Exception:
+                pass
+            if iface is None:
+                logger.info("Error parsing VF representor")
+            else:
+                logger.info(f"The VF representor is: {iface}")
 
-        vf_rep_json = r.out
-        data = json.loads(vf_rep_json)
-        logger.info(
-            f"The VF representor is: {data['containers'][0]['podSandboxId'][:15]}"
-        )
-        return typing.cast(str, data["containers"][0]["podSandboxId"][:15])
-
-    def run_ethtool_cmd(self, ethtool_cmd: str) -> tuple[bool, host.Result]:
-        logger.info(f"Running {ethtool_cmd}")
-        success = True
-        r = self.run_oc_exec(ethtool_cmd)
-        if self.perf_pod_type != PodType.HOSTBACKED:
-            success = r.success or ("already exists" not in r.err)
-        return success, r
-
-    def parse_packets(self, output: str, packet_type: str) -> int:
-        # Case1: Try to parse rx_packets and tx_packets from ethtool output
-        prefix = f"{packet_type}_packets"
-        if prefix in output:
-            for line in output.splitlines():
-                stripped_line = line.strip()
-                if stripped_line.startswith(prefix):
-                    return int(stripped_line.split(":")[1])
-        # Case2: Ethtool output does not provide these fields, so we need to sum the queues manually
-        total_packets = 0
-        prefix = f"{packet_type}_queue_"
-        packet_suffix = "_xdp_packets:"
-
-        for line in output.splitlines():
-            stripped_line = line.strip()
-            if prefix in stripped_line and packet_suffix in stripped_line:
-                packet_count = int(stripped_line.split(":")[1].strip())
-                total_packets += packet_count
-
-        return total_packets
+        return iface
 
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            vf_rep = self.extract_vf_rep()
-            ethtool_cmd = f"ethtool -S {vf_rep}"
-            if vf_rep == "ovn-k8s-mp0":
+
+            if self.perf_pod_type == PodType.HOSTBACKED:
+                logger.info("The VF representor is: ovn-k8s-mp0")
                 return BaseOutput(msg="Hostbacked pod")
-            if vf_rep == "external":
+
+            if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
+                logger.info("There is no VF on an external server")
                 return BaseOutput(msg="External Iperf Server")
 
-            success1, r1 = self.run_ethtool_cmd(ethtool_cmd)
-            if not success1 or not r1.success:
-                return BaseOutput(success=False, msg="ethtool command failed")
-
-            self.ts.event_client_finished.wait()
-
-            success2, r2 = self.run_ethtool_cmd(ethtool_cmd)
-
-            # Different behavior has been seen from the ethtool output depending on the driver in question
-            # Log the output of ethtool temporarily until this is more stable.
-
-            data1 = r1.out
+            data1 = ""
             data2 = ""
-            if success2 and r2.success:
-                data2 = r2.out
+            success_result = True
+            ethtool_cmd = "ethtool -S VF_REP"
+            parsed_data: dict[str, int] = {}
 
-            parsed_data: dict[str, str | int] = {}
+            vf_rep = self.extract_vf_rep()
 
-            if data1:
-                parsed_data["rx_start"] = self.parse_packets(data1, "rx")
-                parsed_data["tx_start"] = self.parse_packets(data1, "tx")
+            if vf_rep is not None:
+                ethtool_cmd = f"ethtool -S {vf_rep}"
 
-            if data2:
-                parsed_data["rx_end"] = self.parse_packets(data2, "rx")
-                parsed_data["tx_end"] = self.parse_packets(data2, "tx")
+                r1 = self.run_oc_exec(ethtool_cmd)
+
+                self.ts.event_client_finished.wait()
+
+                r2 = self.run_oc_exec(ethtool_cmd)
+
+                if r1.success:
+                    data1 = r1.out
+                if r2.success:
+                    data2 = r2.out
+
+                if not r1.success:
+                    success_result = False
+                if not r2.success:
+                    success_result = False
+
+                if not ethtool_stat_get_startend(parsed_data, data1, "start"):
+                    success_result = False
+                if not ethtool_stat_get_startend(parsed_data, data2, "end"):
+                    success_result = False
 
             logger.info(
                 f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
@@ -214,15 +252,10 @@ class TaskValidateOffload(PluginTask):
                 f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
             )
             return PluginOutput(
-                success=success2 and r2.success,
+                plugin_metadata=self.get_plugin_metadata(),
+                success=success_result,
                 command=ethtool_cmd,
-                plugin_metadata={
-                    "name": "GetEthtoolStats",
-                    "node_name": self.node_name,
-                    "pod_name": self.pod_name,
-                },
                 result=parsed_data,
-                name=plugin.PLUGIN_NAME,
             )
 
         return TaskOperation(
