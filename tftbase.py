@@ -67,6 +67,9 @@ def get_tft_image_pull_policy() -> str:
 TFT_TESTS = "tft-tests"
 
 
+T = typing.TypeVar("T")
+
+
 class ClusterMode(Enum):
     SINGLE = 1
     DPU = 3
@@ -268,6 +271,9 @@ class PluginOutput(AggregatableOutput):
         import pluginbase
 
         return pluginbase.get_by_name(self.name)
+
+    def result_get(self, key: str, vtype: type[T]) -> T:
+        return common.dict_get_typed(self.result, key, vtype)
 
 
 @strict_dataclass
