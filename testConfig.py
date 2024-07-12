@@ -382,10 +382,14 @@ class ConfTest(StructParseBaseNamed):
 @dataclass(frozen=True, kw_only=True)
 class ConfConfig(StructParseBase):
     tft: tuple[ConfTest, ...]
+    kubeconfig: Optional[str]
+    kubeconfig_infra: Optional[str]
 
     def serialize(self) -> dict[str, Any]:
         return {
             "tft": [c.serialize() for c in self.tft],
+            "kubeconfig": self.kubeconfig,
+            "kubeconfig_infra": self.kubeconfig_infra,
         }
 
     @staticmethod
@@ -405,10 +409,30 @@ class ConfConfig(StructParseBase):
             for yamlidx2, arg in enumerate(v)
         )
 
+        kubeconfig: Optional[str] = None
+        v = vdict.pop("kubeconfig", None)
+        if v is not None:
+            if not v:
+                raise ValueError(f'"{yamlpath}.kubeconfig" cannot be empty')
+            kubeconfig = v
+
+        kubeconfig_infra: Optional[str] = None
+        v = vdict.pop("kubeconfig_infra", None)
+        if v is not None:
+            if not v:
+                raise ValueError(f'"{yamlpath}.kubeconfig_infra" cannot be empty')
+            kubeconfig_infra = v
+
         if not tft:
             raise ValueError(
                 f'"{yamlpath}.tft" must contain a list of tests but list is empty'
             )
+
+        if kubeconfig_infra is not None:
+            if kubeconfig is None:
+                raise ValueError(
+                    f"{yamlpath}.kubeconfig: missing parameter when kubeconfig_infra is given"
+                )
 
         structparse_check_empty_dict(vdict, yamlpath)
 
@@ -416,26 +440,28 @@ class ConfConfig(StructParseBase):
             yamlidx=yamlidx,
             yamlpath=yamlpath,
             tft=tft,
+            kubeconfig=kubeconfig,
+            kubeconfig_infra=kubeconfig_infra,
         )
 
 
 class TestConfig:
-    kubeconfig_tenant: str = "/root/kubeconfig.tenantcluster"
-    kubeconfig_infra: str = "/root/kubeconfig.infracluster"
-    kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
-    kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
+    KUBECONFIG_TENANT: str = "/root/kubeconfig.tenantcluster"
+    KUBECONFIG_INFRA: str = "/root/kubeconfig.infracluster"
+    KUBECONFIG_SINGLE: str = "/root/kubeconfig.nicmodecluster"
+    KUBECONFIG_CX: str = "/root/kubeconfig.smartniccluster"
 
     full_config: dict[str, Any]
     config: ConfConfig
-    kc_tenant: str
-    kc_infra: Optional[str]
+    kubeconfig: str
+    kubeconfig_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
     _client_infra: Optional[K8sClient]
     evaluator_config: Optional[str]
 
     @property
     def mode(self) -> ClusterMode:
-        if self.kc_infra is None:
+        if self.kubeconfig_infra is None:
             return ClusterMode.SINGLE
         return ClusterMode.DPU
 
@@ -444,17 +470,17 @@ class TestConfig:
 
         # Find out what type of cluster are we in.
 
-        kc_tenant: str
-        kc_infra: Optional[str] = None
+        kubeconfig: str
+        kubeconfig_infra: Optional[str] = None
 
-        if host.local.file_exists(TestConfig.kubeconfig_single):
-            kc_tenant = TestConfig.kubeconfig_single
-        elif host.local.file_exists(TestConfig.kubeconfig_cx):
-            kc_tenant = TestConfig.kubeconfig_cx
-        elif host.local.file_exists(TestConfig.kubeconfig_tenant):
-            if host.local.file_exists(TestConfig.kubeconfig_infra):
-                kc_tenant = TestConfig.kubeconfig_tenant
-                kc_infra = TestConfig.kubeconfig_infra
+        if host.local.file_exists(TestConfig.KUBECONFIG_SINGLE):
+            kubeconfig = TestConfig.KUBECONFIG_SINGLE
+        elif host.local.file_exists(TestConfig.KUBECONFIG_CX):
+            kubeconfig = TestConfig.KUBECONFIG_CX
+        elif host.local.file_exists(TestConfig.KUBECONFIG_TENANT):
+            if host.local.file_exists(TestConfig.KUBECONFIG_INFRA):
+                kubeconfig = TestConfig.KUBECONFIG_TENANT
+                kubeconfig_infra = TestConfig.KUBECONFIG_INFRA
             else:
                 raise RuntimeError(
                     "Assuming DPU...Cannot Find Infrastructure Cluster Config"
@@ -462,7 +488,7 @@ class TestConfig:
         else:
             raise RuntimeError("Cannot Find Kubeconfig")
 
-        return (kc_tenant, kc_infra)
+        return (kubeconfig, kubeconfig_infra)
 
     def __init__(
         self,
@@ -492,23 +518,33 @@ class TestConfig:
             p = (f' "{config_path}"') if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
 
-        if kubeconfigs is None:
-            kubeconfigs = TestConfig._detect_kubeconfigs()
-
         self.full_config = full_config
         self.config = config
 
         self._client_tenant = None
         self._client_infra = None
 
-        self.kc_tenant, self.kc_infra = kubeconfigs
+        if self.config.kubeconfig is not None:
+            self.kubeconfig, self.kubeconfig_infra = (
+                self.config.kubeconfig,
+                self.config.kubeconfig_infra,
+            )
+        else:
+            if kubeconfigs is None:
+                kubeconfigs = TestConfig._detect_kubeconfigs()
+            else:
+                if kubeconfigs[0] is None:
+                    raise ValueError("Missing kubeconfig")
+            self.kubeconfig, self.kubeconfig_infra = kubeconfigs
 
         self.evaluator_config = evaluator_config
 
         s = json.dumps(full_config["tft"])
-        logger.info(f"config: KUBECONFIG={shlex.quote(self.kc_tenant)}")
-        if self.kc_infra is not None:
-            logger.info(f"config: KUBECONFIG_INFRA={shlex.quote(self.kc_infra)}")
+        logger.info(f"config: KUBECONFIG={shlex.quote(self.kubeconfig)}")
+        if self.kubeconfig_infra is not None:
+            logger.info(
+                f"config: KUBECONFIG_INFRA={shlex.quote(self.kubeconfig_infra)}"
+            )
         if self.evaluator_config is not None:
             logger.info(f"config: EVAL_CONFIG={shlex.quote(self.evaluator_config)}")
         logger.info(f"config: {s}")
@@ -518,7 +554,7 @@ class TestConfig:
         if tenant:
             client = self._client_tenant
         else:
-            if self.kc_infra is None:
+            if self.kubeconfig_infra is None:
                 raise RuntimeError("TestConfig has no infra client")
             client = self._client_infra
 
@@ -528,10 +564,10 @@ class TestConfig:
         # Construct the K8sClient on first.
 
         if tenant:
-            self._client_tenant = K8sClient(self.kc_tenant)
+            self._client_tenant = K8sClient(self.kubeconfig)
         else:
-            assert self.kc_infra is not None
-            self._client_infra = K8sClient(self.kc_infra)
+            assert self.kubeconfig_infra is not None
+            self._client_infra = K8sClient(self.kubeconfig_infra)
 
         return self.client(tenant=tenant)
 

@@ -110,7 +110,7 @@ def test_config1() -> None:
     tc = testConfig.TestConfig(config_path=file, kubeconfigs=testConfigKubeconfigsArgs1)
     assert isinstance(tc, testConfig.TestConfig)
     assert isinstance(tc.full_config, dict)
-    assert list(tc.full_config.keys()) == ["tft"]
+    assert list(tc.full_config.keys()) == ["tft", "kubeconfig", "kubeconfig_infra"]
 
     assert tc.config.tft[0].name == "Test 1"
     assert tc.config.tft[0].connections[0].name == "Connection_1"
@@ -146,12 +146,19 @@ tft:
        plugins:
          - name: measure_cpu
          - measure_power
+kubeconfig: /path/to/kubeconfig
+kubeconfig_infra: /path/to/kubeconfig_infra
 """
     )
     tc = testConfig.TestConfig(
         full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
     )
     assert isinstance(tc, testConfig.TestConfig)
+
+    assert tc.config.kubeconfig == "/path/to/kubeconfig"
+    assert tc.config.kubeconfig_infra == "/path/to/kubeconfig_infra"
+    assert tc.kubeconfig == tc.config.kubeconfig
+    assert tc.kubeconfig_infra == tc.config.kubeconfig_infra
 
     assert tc.config.tft[0].test_cases == (
         TestCaseType(1),
@@ -188,6 +195,12 @@ tft:
         full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
     )
     assert isinstance(tc, testConfig.TestConfig)
+
+    assert tc.config.kubeconfig is None
+    assert tc.config.kubeconfig_infra is None
+    assert tc.kubeconfig == testConfigKubeconfigsArgs1[0]
+    assert tc.kubeconfig_infra == testConfigKubeconfigsArgs1[1]
+
     assert tc.config.tft[0].name == "Test 1"
     assert tc.config.tft[0].namespace == "default"
     assert tc.config.tft[0].test_cases == tuple(

@@ -42,6 +42,8 @@ tft:
         plugins:
           - name: (15)
           - name: (15)
+kubeconfig: (16)
+kubeconfig_infra: (16)
 ```
 
 1. "name" - This is the name of the test. Any string value to identify the test.
@@ -94,6 +96,9 @@ tft:
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
+16. "kubeconfig", "kubeconfig_infra": if set to non-empty strings, then these are the KUBECONFIG
+  files. "kubeconfig_infra" must be set for DPU cluster mode. If both are empty, the configs
+  are detected based on the files we find at /root/kubeconfig.*.
 
 ## Running the tests
 
