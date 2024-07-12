@@ -451,11 +451,6 @@ def structparse_check_strdict(arg: Any, yamlpath: str) -> dict[str, Any]:
             raise ValueError(
                 f'"{yamlpath}": expects all dictionary keys to be strings but got {type(k)}'
             )
-        if v is None:
-            # None is not allowed, because we use that to indicate a missing key.
-            # I also think that yaml.safe_load() cannot ever create None entries,
-            # so this limitation is fine (and the code actually shouldn't be reachable)
-            raise ValueError(f'"{yamlpath}.{k}": cannot have None values')
 
     # We shallow-copy the dictionary, because the caller will remove entries
     # to find unknown entries (see _check_empty_dict()).
