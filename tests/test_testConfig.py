@@ -7,13 +7,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import common  # noqa: E402
 import testConfig  # noqa: E402
-import tftbase  # noqa: E402
 
 from tftbase import TestCaseType  # noqa: E402
 from tftbase import TestType  # noqa: E402
 
 
-testConfigModeArgs1 = (tftbase.ClusterMode.SINGLE, "/root/kubeconfig.x1", None)
+testConfigKubeconfigsArgs1 = ("/root/kubeconfig.x1", None)
 
 
 def test_parse_test_cases() -> None:
@@ -93,7 +92,9 @@ def _check_testConfig(tc: testConfig.TestConfig) -> None:
 
     jdata = tc.config.serialize()
 
-    tc2 = testConfig.TestConfig(full_config=jdata, mode_args=testConfigModeArgs1)
+    tc2 = testConfig.TestConfig(
+        full_config=jdata, kubeconfigs=testConfigKubeconfigsArgs1
+    )
 
     assert isinstance(tc, testConfig.TestConfig)
 
@@ -106,7 +107,7 @@ def test_config1() -> None:
     file = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
     assert os.path.exists(file)
 
-    tc = testConfig.TestConfig(config_path=file, mode_args=testConfigModeArgs1)
+    tc = testConfig.TestConfig(config_path=file, kubeconfigs=testConfigKubeconfigsArgs1)
     assert isinstance(tc, testConfig.TestConfig)
     assert isinstance(tc.full_config, dict)
     assert list(tc.full_config.keys()) == ["tft"]
@@ -147,7 +148,9 @@ tft:
          - measure_power
 """
     )
-    tc = testConfig.TestConfig(full_config=full_config, mode_args=testConfigModeArgs1)
+    tc = testConfig.TestConfig(
+        full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
+    )
     assert isinstance(tc, testConfig.TestConfig)
 
     assert tc.config.tft[0].test_cases == (
@@ -181,7 +184,9 @@ tft:
     - {}
 """
     )
-    tc = testConfig.TestConfig(full_config=full_config, mode_args=testConfigModeArgs1)
+    tc = testConfig.TestConfig(
+        full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
+    )
     assert isinstance(tc, testConfig.TestConfig)
     assert tc.config.tft[0].name == "Test 1"
     assert tc.config.tft[0].namespace == "default"
