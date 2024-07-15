@@ -141,6 +141,9 @@ class TestSettings:
 
     def get_test_metadata(self) -> TestMetadata:
         return TestMetadata(
+            tft_idx=self.cfg_descr.tft_idx,
+            test_cases_idx=self.cfg_descr.test_cases_idx,
+            connections_idx=self.cfg_descr.connections_idx,
             test_case_id=self.test_case_id,
             test_type=self.connection.test_type,
             reverse=self.reverse,

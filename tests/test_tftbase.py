@@ -32,6 +32,9 @@ def test_test_metadata() -> None:
         name="client_pod", pod_type=PodType.NORMAL, is_tenant=False, index=1
     )
     metadata = TestMetadata(
+        tft_idx=0,
+        test_cases_idx=0,
+        connections_idx=0,
         reverse=False,
         test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
         test_type=TestType.IPERF_TCP,
@@ -53,6 +56,9 @@ def test_iperf_output() -> None:
         name="client_pod", pod_type=PodType.NORMAL, is_tenant=False, index=1
     )
     metadata = TestMetadata(
+        tft_idx=0,
+        test_cases_idx=0,
+        connections_idx=0,
         reverse=False,
         test_case_id=TestCaseType.POD_TO_POD_SAME_NODE,
         test_type=TestType.IPERF_TCP,
