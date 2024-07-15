@@ -222,10 +222,40 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
 T = TypeVar("T")
 
 
-def dict_get_typed(d: typing.Mapping[Any, Any], key: Any, vtype: type[T]) -> T:
+@typing.overload
+def dict_get_typed(
+    d: typing.Mapping[Any, Any],
+    key: Any,
+    vtype: type[T],
+    *,
+    allow_missing: typing.Literal[False] = False,
+) -> T:
+    pass
+
+
+@typing.overload
+def dict_get_typed(
+    d: typing.Mapping[Any, Any],
+    key: Any,
+    vtype: type[T],
+    *,
+    allow_missing: bool = False,
+) -> Optional[T]:
+    pass
+
+
+def dict_get_typed(
+    d: typing.Mapping[Any, Any],
+    key: Any,
+    vtype: type[T],
+    *,
+    allow_missing: bool = False,
+) -> Optional[T]:
     try:
         v = d[key]
     except KeyError:
+        if allow_missing:
+            return None
         raise KeyError(f'missing key "{key}"')
     if not isinstance(v, vtype):
         raise TypeError(f'key "{key}" expected type {vtype} but has value "{v}"')
