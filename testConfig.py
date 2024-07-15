@@ -1,9 +1,10 @@
 import abc
+import dataclasses
 import json
 import pathlib
+import shlex
 import typing
 import yaml
-import dataclasses
 
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -424,7 +425,6 @@ class TestConfig:
     kubeconfig_single: str = "/root/kubeconfig.nicmodecluster"
     kubeconfig_cx: str = "/root/kubeconfig.smartniccluster"
 
-    mode: ClusterMode
     full_config: dict[str, Any]
     config: ConfConfig
     kc_tenant: str
@@ -433,12 +433,17 @@ class TestConfig:
     _client_infra: Optional[K8sClient]
     evaluator_config: Optional[str]
 
+    @property
+    def mode(self) -> ClusterMode:
+        if self.kc_infra is None:
+            return ClusterMode.SINGLE
+        return ClusterMode.DPU
+
     @staticmethod
-    def _detect_mode_args() -> tuple[ClusterMode, str, Optional[str]]:
+    def _detect_kubeconfigs() -> tuple[str, Optional[str]]:
 
         # Find out what type of cluster are we in.
 
-        mode = ClusterMode.SINGLE
         kc_tenant: str
         kc_infra: Optional[str] = None
 
@@ -448,7 +453,6 @@ class TestConfig:
             kc_tenant = TestConfig.kubeconfig_cx
         elif host.local.file_exists(TestConfig.kubeconfig_tenant):
             if host.local.file_exists(TestConfig.kubeconfig_infra):
-                mode = ClusterMode.DPU
                 kc_tenant = TestConfig.kubeconfig_tenant
                 kc_infra = TestConfig.kubeconfig_infra
             else:
@@ -458,14 +462,14 @@ class TestConfig:
         else:
             raise RuntimeError("Cannot Find Kubeconfig")
 
-        return (mode, kc_tenant, kc_infra)
+        return (kc_tenant, kc_infra)
 
     def __init__(
         self,
         *,
         full_config: Optional[dict[str, Any]] = None,
         config_path: Optional[str] = None,
-        mode_args: Optional[tuple[ClusterMode, str, Optional[str]]] = None,
+        kubeconfigs: Optional[tuple[str, Optional[str]]] = None,
         evaluator_config: Optional[str] = None,
     ) -> None:
 
@@ -488,8 +492,8 @@ class TestConfig:
             p = (f' "{config_path}"') if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
 
-        if mode_args is None:
-            mode_args = TestConfig._detect_mode_args()
+        if kubeconfigs is None:
+            kubeconfigs = TestConfig._detect_kubeconfigs()
 
         self.full_config = full_config
         self.config = config
@@ -497,11 +501,16 @@ class TestConfig:
         self._client_tenant = None
         self._client_infra = None
 
-        self.mode, self.kc_tenant, self.kc_infra = mode_args
+        self.kc_tenant, self.kc_infra = kubeconfigs
 
         self.evaluator_config = evaluator_config
 
         s = json.dumps(full_config["tft"])
+        logger.info(f"config: KUBECONFIG={shlex.quote(self.kc_tenant)}")
+        if self.kc_infra is not None:
+            logger.info(f"config: KUBECONFIG_INFRA={shlex.quote(self.kc_infra)}")
+        if self.evaluator_config is not None:
+            logger.info(f"config: EVAL_CONFIG={shlex.quote(self.evaluator_config)}")
         logger.info(f"config: {s}")
         logger.debug(f"config-full: {self.config.serialize_json()}")
 
