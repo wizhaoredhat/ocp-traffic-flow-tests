@@ -1,5 +1,6 @@
 import enum
 import json
+import logging
 import os
 import shlex
 import sys
@@ -435,7 +436,28 @@ class Task(ABC):
             # This output has nothing to collect. We are done.
             return
 
-        self._aggregate_output(self._result, out)
+        result = self._result
+
+        if isinstance(result, tftbase.IperfOutput):
+            if out.flow_test is not None:
+                raise RuntimeError("There can only be one IperfOutput")
+            out.flow_test = result
+            if result.success:
+                log_level = logging.INFO
+                log_msg = "success"
+            else:
+                log_level = logging.ERROR
+                log_msg = "failure"
+            logger.log(log_level, f"Results of {self.ts.get_test_str()}: {log_msg}")
+            logger.debug(f"result: {common.dataclass_to_json(result)}")
+
+            if type(self)._aggregate_output is Task._aggregate_output:
+                # This instance did not overwrite _aggregate_output(). This is
+                # fine for a task that returned the IperfOutput. Don't call
+                # _aggregate_output.
+                return
+
+        self._aggregate_output(result, out)
 
     def _aggregate_output(
         self,
@@ -445,6 +467,10 @@ class Task(ABC):
         # This should never happen.
         #
         # A task that returns an AggregatableOutput *must* implement _aggregate_output().
+        #
+        # Exception: if the task is a test and returns a flow_test, then it may
+        # not override this method. aggregate_output() will take care to not
+        # call in that case.
         raise RuntimeError(
             f"Task {self.log_name} should not be called to aggregate output {result} "
         )

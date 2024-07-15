@@ -7,7 +7,6 @@ import common
 import perf
 import tftbase
 
-from logger import logger
 from perf import PerfClient
 from perf import PerfServer
 from task import TaskOperation
@@ -87,13 +86,3 @@ class HttpClient(perf.PerfClient):
             log_name=self.log_name,
             thread_action=_thread_action,
         )
-
-    def _aggregate_output(
-        self,
-        result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
-    ) -> None:
-        assert isinstance(result, IperfOutput)
-
-        logger.info(f"Results of {self.ts.get_test_str()}")
-        out.flow_test = result
