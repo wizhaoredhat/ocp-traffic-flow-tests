@@ -2,6 +2,7 @@ import json
 import typing
 from typing import Optional
 
+import common
 import perf
 import pluginbase
 import tftbase
@@ -12,9 +13,7 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
-from tftbase import PluginResult
 from tftbase import PodType
-from tftbase import TestMetadata
 
 
 VF_REP_TRAFFIC_THRESHOLD = 1000
@@ -120,29 +119,6 @@ class PluginValidateOffload(pluginbase.Plugin):
             TaskValidateOffload(ts, perf_client, tenant),
         ]
 
-    def eval_log(
-        self, plugin_output: PluginOutput, md: TestMetadata
-    ) -> Optional[PluginResult]:
-        if not plugin_output.success:
-            logger.error(
-                f"Validate offload plugin is missing expected ethtool data in {md.test_case_id}"
-            )
-            success = False
-        else:
-            success = no_traffic_on_vf_rep(
-                rx_start=plugin_output.result_get("rx_start", int),
-                tx_start=plugin_output.result_get("tx_start", int),
-                rx_end=plugin_output.result_get("rx_end", int),
-                tx_end=plugin_output.result_get("tx_end", int),
-            )
-
-        return PluginResult(
-            test_id=md.test_case_id,
-            test_type=md.test_type,
-            reverse=md.reverse,
-            success=success,
-        )
-
 
 plugin = PluginValidateOffload()
 
@@ -218,6 +194,7 @@ class TaskValidateOffload(PluginTask):
             success_result = True
             ethtool_cmd = "ethtool -S VF_REP"
             parsed_data: dict[str, int] = {}
+            msg: Optional[str] = None
 
             vf_rep = self.extract_vf_rep()
 
@@ -251,9 +228,21 @@ class TaskValidateOffload(PluginTask):
                 f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
                 f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
             )
+
+            if success_result:
+                if not no_traffic_on_vf_rep(
+                    rx_start=common.dict_get_typed(parsed_data, "rx_start", int),
+                    tx_start=common.dict_get_typed(parsed_data, "tx_start", int),
+                    rx_end=common.dict_get_typed(parsed_data, "rx_end", int),
+                    tx_end=common.dict_get_typed(parsed_data, "tx_end", int),
+                ):
+                    success_result = False
+                    msg = "no traffic on VF rep detected"
+
             return PluginOutput(
-                plugin_metadata=self.get_plugin_metadata(),
                 success=success_result,
+                msg=msg,
+                plugin_metadata=self.get_plugin_metadata(),
                 command=ethtool_cmd,
                 result=parsed_data,
             )
