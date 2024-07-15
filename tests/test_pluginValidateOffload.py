@@ -1897,26 +1897,22 @@ def test_ethtool_parse_stat_2() -> None:
     assert v is None
 
     res1: dict[str, int] = {}
-    assert not pluginValidateOffload.ethtool_stat_get_startend(
-        res1, data1_start, "start"
-    )
+    assert pluginValidateOffload.ethtool_stat_get_startend(res1, data1_start, "start")
     assert res1 == {
         "rx_start": 7,
     }
-    assert not pluginValidateOffload.ethtool_stat_get_startend(res1, data1_end, "end")
+    assert pluginValidateOffload.ethtool_stat_get_startend(res1, data1_end, "end")
     assert res1 == {
         "rx_start": 7,
         "rx_end": 7,
     }
 
     res2: dict[str, int] = {}
-    assert not pluginValidateOffload.ethtool_stat_get_startend(
-        res2, data2_start, "start"
-    )
+    assert pluginValidateOffload.ethtool_stat_get_startend(res2, data2_start, "start")
     assert res2 == {
         "rx_start": 7,
     }
-    assert not pluginValidateOffload.ethtool_stat_get_startend(res2, data2_end, "end")
+    assert pluginValidateOffload.ethtool_stat_get_startend(res2, data2_end, "end")
     assert res2 == {
         "rx_start": 7,
         "rx_end": 7,

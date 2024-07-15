@@ -62,42 +62,54 @@ def ethtool_stat_get_packets(data: dict[str, str], packet_type: str) -> Optional
     return total_packets
 
 
+KEY_NAMES = {
+    "start": {
+        "rx": "rx_start",
+        "tx": "tx_start",
+    },
+    "end": {
+        "rx": "rx_end",
+        "tx": "tx_end",
+    },
+}
+
+
 def ethtool_stat_get_startend(
     parsed_data: dict[str, int],
     ethtool_data: str,
     suffix: typing.Literal["start", "end"],
 ) -> bool:
     ethtool_dict = ethtool_stat_parse(ethtool_data)
-    success = True
-    KEY_NAMES = {
-        "start": {
-            "rx": "rx_start",
-            "tx": "tx_start",
-        },
-        "end": {
-            "rx": "rx_end",
-            "tx": "tx_end",
-        },
-    }
+    has_any = False
     for ethtool_name in ("rx", "tx"):
         # Don't construct key_name as f"{ethtool_name}_{suffix}", because the
         # keys should appear verbatim in source code, so we can grep for them.
         key_name = KEY_NAMES[suffix][ethtool_name]
         v = ethtool_stat_get_packets(ethtool_dict, ethtool_name)
         if v is None:
-            success = False
             continue
         parsed_data[key_name] = v
-    return success
+        has_any = True
+    return has_any
 
 
-def no_traffic_on_vf_rep(
-    rx_start: int, tx_start: int, rx_end: int, tx_end: int
-) -> bool:
-    return (
-        rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
-        and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
+def check_no_traffic_on_vf_rep(
+    parsed_data: dict[str, typing.Any],
+    direction: typing.Literal["rx", "tx"],
+) -> Optional[str]:
+    start = common.dict_get_typed(
+        parsed_data, KEY_NAMES["start"][direction], int, allow_missing=True
     )
+    end = common.dict_get_typed(
+        parsed_data, KEY_NAMES["end"][direction], int, allow_missing=True
+    )
+    if start is None or end is None:
+        if start is not None or end is not None:
+            return f"missing ethtool output for {direction}"
+        return None
+    if end - start >= VF_REP_TRAFFIC_THRESHOLD:
+        return "traffic on VF rep detected"
+    return None
 
 
 class PluginValidateOffload(pluginbase.Plugin):
@@ -218,13 +230,19 @@ class TaskValidateOffload(PluginTask):
 
                     if not r1.success:
                         success_result = False
-                    if not r2.success:
+                        msg = "ethtool command failed"
+                    elif not r2.success:
                         success_result = False
+                        msg = "ethtool command at end failed"
 
                     if not ethtool_stat_get_startend(parsed_data, data1, "start"):
-                        success_result = False
+                        if success_result:
+                            success_result = False
+                            msg = "ethtool output cannot be parsed"
                     if not ethtool_stat_get_startend(parsed_data, data2, "end"):
-                        success_result = False
+                        if success_result:
+                            success_result = False
+                            msg = "ethtool output at end cannot be parsed"
 
                 logger.info(
                     f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
@@ -234,14 +252,11 @@ class TaskValidateOffload(PluginTask):
                 )
 
                 if success_result:
-                    if not no_traffic_on_vf_rep(
-                        rx_start=common.dict_get_typed(parsed_data, "rx_start", int),
-                        tx_start=common.dict_get_typed(parsed_data, "tx_start", int),
-                        rx_end=common.dict_get_typed(parsed_data, "rx_end", int),
-                        tx_end=common.dict_get_typed(parsed_data, "tx_end", int),
-                    ):
+                    m1 = check_no_traffic_on_vf_rep(parsed_data, "rx")
+                    m2 = check_no_traffic_on_vf_rep(parsed_data, "tx")
+                    if m1 is not None or m2 is not None:
                         success_result = False
-                        msg = "no traffic on VF rep detected"
+                        msg = m1 if m1 is not None else m2
 
             return PluginOutput(
                 success=success_result,
