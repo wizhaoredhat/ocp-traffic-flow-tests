@@ -1,5 +1,6 @@
 import enum
 import json
+import os
 import shlex
 import sys
 import threading
@@ -121,7 +122,16 @@ class TaskOperation:
         assert not hasattr(self, "_intermediate_result")
         assert self._thread_action is not None
         logger.debug(f"thread[{self.log_name}]: call action")
-        result = self._thread_action()
+
+        try:
+            result = self._thread_action()
+        except Exception as e:
+            import traceback
+
+            logger.error(f"thread[{self.log_name}]: action raised exception {e}")
+            logger.error(f"backtrace:\n{traceback.format_exc()}")
+            os._exit(-1)
+
         with self._lock:
             assert not hasattr(self, "_intermediate_result")
             self._intermediate_result = result
@@ -173,6 +183,9 @@ class TaskOperation:
                 if th.is_alive():
                     logger.error(
                         f"thread[{self.log_name}] did not terminate within the timeout {timeout}"
+                    )
+                    raise RuntimeError(
+                        f"Thread {self.log_name} did not terminate within timeout {timeout}"
                     )
 
         result: Optional[BaseOutput] = None
