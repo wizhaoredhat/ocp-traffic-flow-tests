@@ -62,42 +62,54 @@ def ethtool_stat_get_packets(data: dict[str, str], packet_type: str) -> Optional
     return total_packets
 
 
+KEY_NAMES = {
+    "start": {
+        "rx": "rx_start",
+        "tx": "tx_start",
+    },
+    "end": {
+        "rx": "rx_end",
+        "tx": "tx_end",
+    },
+}
+
+
 def ethtool_stat_get_startend(
     parsed_data: dict[str, int],
     ethtool_data: str,
     suffix: typing.Literal["start", "end"],
 ) -> bool:
     ethtool_dict = ethtool_stat_parse(ethtool_data)
-    success = True
-    KEY_NAMES = {
-        "start": {
-            "rx": "rx_start",
-            "tx": "tx_start",
-        },
-        "end": {
-            "rx": "rx_end",
-            "tx": "tx_end",
-        },
-    }
+    has_any = False
     for ethtool_name in ("rx", "tx"):
         # Don't construct key_name as f"{ethtool_name}_{suffix}", because the
         # keys should appear verbatim in source code, so we can grep for them.
         key_name = KEY_NAMES[suffix][ethtool_name]
         v = ethtool_stat_get_packets(ethtool_dict, ethtool_name)
         if v is None:
-            success = False
             continue
         parsed_data[key_name] = v
-    return success
+        has_any = True
+    return has_any
 
 
-def no_traffic_on_vf_rep(
-    rx_start: int, tx_start: int, rx_end: int, tx_end: int
-) -> bool:
-    return (
-        rx_end - rx_start < VF_REP_TRAFFIC_THRESHOLD
-        and tx_end - tx_start < VF_REP_TRAFFIC_THRESHOLD
+def check_no_traffic_on_vf_rep(
+    parsed_data: dict[str, typing.Any],
+    direction: typing.Literal["rx", "tx"],
+) -> Optional[str]:
+    start = common.dict_get_typed(
+        parsed_data, KEY_NAMES["start"][direction], int, allow_missing=True
     )
+    end = common.dict_get_typed(
+        parsed_data, KEY_NAMES["end"][direction], int, allow_missing=True
+    )
+    if start is None or end is None:
+        if start is not None or end is not None:
+            return f"missing ethtool output for {direction}"
+        return None
+    if end - start >= VF_REP_TRAFFIC_THRESHOLD:
+        return "traffic on VF rep detected"
+    return None
 
 
 class PluginValidateOffload(pluginbase.Plugin):
@@ -181,63 +193,70 @@ class TaskValidateOffload(PluginTask):
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
 
+            success_result = True
+            msg: Optional[str] = None
+            ethtool_cmd = ""
+            parsed_data: dict[str, typing.Any] = {}
+
             if self.perf_pod_type == PodType.HOSTBACKED:
                 logger.info("The VF representor is: ovn-k8s-mp0")
-                return BaseOutput(msg="Hostbacked pod")
-
-            if self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
+                msg = "Hostbacked pod"
+            elif self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
                 logger.info("There is no VF on an external server")
-                return BaseOutput(msg="External Iperf Server")
+                msg = "External Iperf Server"
+            else:
+                data1 = ""
+                data2 = ""
+                ethtool_cmd = "ethtool -S VF_REP"
 
-            data1 = ""
-            data2 = ""
-            success_result = True
-            ethtool_cmd = "ethtool -S VF_REP"
-            parsed_data: dict[str, int] = {}
-            msg: Optional[str] = None
+                vf_rep = self.extract_vf_rep()
 
-            vf_rep = self.extract_vf_rep()
+                if vf_rep is not None:
+                    ethtool_cmd = f"ethtool -S {vf_rep}"
 
-            if vf_rep is not None:
-                ethtool_cmd = f"ethtool -S {vf_rep}"
+                    r1 = self.run_oc_exec(ethtool_cmd)
 
-                r1 = self.run_oc_exec(ethtool_cmd)
+                    self.ts.event_client_finished.wait()
 
-                self.ts.event_client_finished.wait()
+                    r2 = self.run_oc_exec(ethtool_cmd)
 
-                r2 = self.run_oc_exec(ethtool_cmd)
+                    parsed_data["ethtool_cmd_1"] = common.dataclass_to_dict(r1)
+                    parsed_data["ethtool_cmd_2"] = common.dataclass_to_dict(r2)
 
-                if r1.success:
-                    data1 = r1.out
-                if r2.success:
-                    data2 = r2.out
+                    if r1.success:
+                        data1 = r1.out
+                    if r2.success:
+                        data2 = r2.out
 
-                if not r1.success:
-                    success_result = False
-                if not r2.success:
-                    success_result = False
+                    if not r1.success:
+                        success_result = False
+                        msg = "ethtool command failed"
+                    elif not r2.success:
+                        success_result = False
+                        msg = "ethtool command at end failed"
 
-                if not ethtool_stat_get_startend(parsed_data, data1, "start"):
-                    success_result = False
-                if not ethtool_stat_get_startend(parsed_data, data2, "end"):
-                    success_result = False
+                    if not ethtool_stat_get_startend(parsed_data, data1, "start"):
+                        if success_result:
+                            success_result = False
+                            msg = "ethtool output cannot be parsed"
+                    if not ethtool_stat_get_startend(parsed_data, data2, "end"):
+                        if success_result:
+                            success_result = False
+                            msg = "ethtool output at end cannot be parsed"
 
-            logger.info(
-                f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
-                f"tx_packet_start: {parsed_data.get('tx_start', 'N/A')}\n"
-                f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
-                f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
-            )
+                logger.info(
+                    f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
+                    f"tx_packet_start: {parsed_data.get('tx_start', 'N/A')}\n"
+                    f"rx_packet_end: {parsed_data.get('rx_end', 'N/A')}\n"
+                    f"tx_packet_end: {parsed_data.get('tx_end', 'N/A')}\n"
+                )
 
-            if success_result:
-                if not no_traffic_on_vf_rep(
-                    rx_start=common.dict_get_typed(parsed_data, "rx_start", int),
-                    tx_start=common.dict_get_typed(parsed_data, "tx_start", int),
-                    rx_end=common.dict_get_typed(parsed_data, "rx_end", int),
-                    tx_end=common.dict_get_typed(parsed_data, "tx_end", int),
-                ):
-                    success_result = False
-                    msg = "no traffic on VF rep detected"
+                if success_result:
+                    m1 = check_no_traffic_on_vf_rep(parsed_data, "rx")
+                    m2 = check_no_traffic_on_vf_rep(parsed_data, "tx")
+                    if m1 is not None or m2 is not None:
+                        success_result = False
+                        msg = m1 if m1 is not None else m2
 
             return PluginOutput(
                 success=success_result,
