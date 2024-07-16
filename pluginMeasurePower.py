@@ -1,7 +1,10 @@
 import re
 import time
 
-import host
+from typing import Any
+from typing import Optional
+
+import common
 import perf
 import pluginbase
 import tftbase
@@ -36,14 +39,12 @@ class PluginMeasurePower(pluginbase.Plugin):
 plugin = PluginMeasurePower()
 
 
-def _extract(r: host.Result) -> int:
-    for e in r.out.split("\n"):
-        if "Instantaneous power reading" in e:
-            match = re.search(r"\d+", e)
-            if match:
-                return int(match.group())
-    logger.error(f"Could not find Instantaneous power reading: {e}.")
-    return 0
+def _extract(ipmitool_output: str) -> Optional[int]:
+    for e in ipmitool_output.split("\n"):
+        match = re.search(r"^ *Instantaneous power reading: +(\d+) +Watts *$", e)
+        if match:
+            return int(match.group(1))
+    return None
 
 
 class TaskMeasurePower(PluginTask):
@@ -76,23 +77,39 @@ class TaskMeasurePower(PluginTask):
         def _thread_action() -> BaseOutput:
             cmd = "ipmitool dcmi power reading"
             self.ts.clmo_barrier.wait()
+
+            success_result = True
+            msg: Optional[str] = None
             total_pwr = 0
             iteration = 0
+            result: dict[str, Any] = {}
             while not self.ts.event_client_finished.is_set():
                 r = self.run_oc_exec(cmd)
-                if r.returncode != 0:
-                    logger.error(f"Failed to get power {cmd}: {r}")
-                pwr = _extract(r)
-                total_pwr += pwr
+                if not r.success:
+                    if success_result:
+                        success_result = False
+                        result["failed_cmd"] = common.dataclass_to_dict(r)
+                        msg = "Failed running ipmitool command"
+                else:
+                    pwr = _extract(r.out)
+                    if pwr is None:
+                        if success_result:
+                            success_result = False
+                            result["failed_cmd"] = common.dataclass_to_dict(r)
+                            msg = "Failed to parse ipmitool output"
+                    else:
+                        total_pwr += pwr
                 iteration += 1
                 time.sleep(0.2)
 
+            result["measure_power"] = f"{total_pwr/iteration}"
+
             return PluginOutput(
+                success=success_result,
+                msg=msg,
                 plugin_metadata=self.get_plugin_metadata(),
                 command=cmd,
-                result={
-                    "measure_power": f"{total_pwr/iteration}",
-                },
+                result=result,
             )
 
         return TaskOperation(
