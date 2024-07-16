@@ -11,6 +11,8 @@ RUN curl -L -o /etc/yum.repos.d/benchmark:openSUSE_Factory.repo https://download
 RUN dnf install -y epel-next-release epel-release
 
 RUN dnf install \
+        --allowerasing \
+        coreutils \
         cri-tools \
         ethtool \
         git \
