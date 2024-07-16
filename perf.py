@@ -54,7 +54,7 @@ class PerfServer(Task, abc.ABC):
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
 
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str] = {}
         if self.connection_mode != ConnectionMode.EXTERNAL_IP:
@@ -191,7 +191,7 @@ class PerfClient(Task, abc.ABC):
         self.out_file_yaml = out_file_yaml
         self.pod_name = pod_name
 
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
         return {
             **super().get_template_args(),
             "default_network": self.ts.conf_client.default_network,

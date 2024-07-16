@@ -62,7 +62,7 @@ class TaskMeasurePower(PluginTask):
         self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
         self.node_name = node_name
 
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
         return {
             **super().get_template_args(),
             "pod_name": self.pod_name,

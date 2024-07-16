@@ -265,7 +265,7 @@ class Task(ABC):
     def get_duration(self) -> int:
         return self.ts.cfg_descr.get_tft().duration
 
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
         return {
             "name_space": self.get_namespace(),
             "test_image": tftbase.get_tft_test_image(),
@@ -281,7 +281,7 @@ class Task(ABC):
         log_info: str,
         in_file_template: Optional[str] = None,
         out_file_yaml: Optional[str] = None,
-        template_args: Optional[dict[str, str]] = None,
+        template_args: Optional[dict[str, str | list[str]]] = None,
     ) -> None:
         if in_file_template is None:
             in_file_template = self.in_file_template

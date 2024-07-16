@@ -41,7 +41,7 @@ class HttpServer(perf.PerfServer):
             f"{self.port}",
         ]
 
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str] = {}
         if self.exec_persistent:

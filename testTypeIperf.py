@@ -66,7 +66,7 @@ test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
 
 
 class IperfServer(perf.PerfServer):
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str] = {}
         if self.exec_persistent:

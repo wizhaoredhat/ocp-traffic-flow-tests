@@ -78,7 +78,7 @@ test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_R
 
 
 class NetPerfServer(perf.PerfServer):
-    def get_template_args(self) -> dict[str, str]:
+    def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str] = {}
         if self.exec_persistent:
