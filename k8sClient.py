@@ -1,5 +1,6 @@
 import kubernetes  # type: ignore
 import logging
+import os
 import shlex
 import typing
 import yaml
@@ -9,6 +10,10 @@ import host
 
 class K8sClient:
     def __init__(self, kubeconfig: str):
+        if not os.path.exists(kubeconfig):
+            raise RuntimeError(
+                f"KUBECONFIG={shlex.quote(kubeconfig)} file does not exist"
+            )
         self._kc = kubeconfig
         with open(kubeconfig) as f:
             c = yaml.safe_load(f)

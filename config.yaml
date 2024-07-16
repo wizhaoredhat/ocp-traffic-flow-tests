@@ -22,3 +22,5 @@ tft:
           - name: measure_cpu
           - name: measure_power
           - name: validate_offload
+kubeconfig:
+kubeconfig_infra:
