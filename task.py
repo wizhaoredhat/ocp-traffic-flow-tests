@@ -271,7 +271,7 @@ class Task(ABC):
             "test_image": tftbase.get_tft_test_image(),
             "image_pull_policy": tftbase.get_tft_image_pull_policy(),
             "command": "/sbin/init",
-            "args": "",
+            "args": [],
             "index": f"{self.index}",
             "node_name": self.node_name,
         }
