@@ -25,6 +25,7 @@ RUN dnf install \
         net-tools \
         netperf \
         pciutils \
+        procps-ng \
         python3 \
         sysstat \
         tcpdump \
