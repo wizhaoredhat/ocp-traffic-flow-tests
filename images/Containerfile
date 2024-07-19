@@ -1,11 +1,45 @@
 FROM quay.io/centos/centos:stream9
 
+RUN dnf install -y 'dnf-command(config-manager)'
+
+RUN dnf config-manager --set-enabled crb
+
 RUN curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_9_Stream/devel:kubic:libcontainers:stable.repo
 
 RUN curl -L -o /etc/yum.repos.d/benchmark:openSUSE_Factory.repo https://download.opensuse.org/repositories/benchmark/openSUSE_Factory/benchmark.repo
 
-RUN INSTALL_PKGS="vim wget jq python3 git cri-tools net-tools iptables iproute pciutils ethtool httpd iperf3 tcpdump sysstat ipmitool util-linux netperf nc iputils" && yum install -y ${INSTALL_PKGS}
+RUN dnf install -y epel-next-release epel-release
+
+RUN dnf install \
+        --allowerasing \
+        coreutils \
+        cri-tools \
+        ethtool \
+        git \
+        httpd \
+        iperf3 \
+        ipmitool \
+        iproute \
+        iptables \
+        iputils \
+        jq \
+        nc \
+        net-tools \
+        netperf \
+        pciutils \
+        procps-ng \
+        python3 \
+        sysstat \
+        tcpdump \
+        tini \
+        util-linux \
+        vim \
+        wget \
+        -y
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 
-CMD ["/bin/bash"]
+COPY ./images/container-entry-point.sh /usr/bin/container-entry-point.sh
+
+ENTRYPOINT ["/usr/bin/container-entry-point.sh"]
+CMD ["/usr/bin/sleep", "infinity"]

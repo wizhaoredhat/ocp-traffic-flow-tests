@@ -14,7 +14,7 @@ spec:
     image: {{ test_image }}
     command:
       - "{{ command }}"
-    args: ["{{ args }}"]
+    args: {{ args }}
     imagePullPolicy: {{ image_pull_policy }}
     securityContext:
       privileged: true
