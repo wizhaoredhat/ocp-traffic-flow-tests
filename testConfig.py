@@ -625,6 +625,16 @@ class ConfigDescriptor:
             raise RuntimeError("No connections_idx set")
         return self.get_tft().connections[self.connections_idx]
 
+    def get_server(self) -> ConfServer:
+        c = self.get_connection()
+        assert len(c.server) == 1
+        return c.server[0]
+
+    def get_client(self) -> ConfClient:
+        c = self.get_connection()
+        assert len(c.client) == 1
+        return c.client[0]
+
     def describe_all_tft(self) -> Generator["ConfigDescriptor", None, None]:
         for tft_idx in range(len(self.tc.config.tft)):
             yield ConfigDescriptor(tc=self.tc, tft_idx=tft_idx)
