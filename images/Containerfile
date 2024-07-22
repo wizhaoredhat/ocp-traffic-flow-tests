@@ -49,6 +49,12 @@ RUN /opt/pyvenv3.11/bin/python -m pip install \
         kubernetes \
         pytest
 
+COPY \
+    common.py \
+    host.py \
+    logger.py \
+    /opt/ocp-tft/
+
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 
 COPY ./images/container-entry-point.sh /usr/bin/container-entry-point.sh
