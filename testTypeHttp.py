@@ -1,4 +1,3 @@
-import json
 import shlex
 
 from dataclasses import dataclass
@@ -43,10 +42,10 @@ class HttpServer(perf.PerfServer):
 
     def get_template_args(self) -> dict[str, str | list[str]]:
 
-        extra_args: dict[str, str] = {}
+        extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
             extra_args["command"] = "python3"
-            extra_args["args"] = json.dumps(self.cmd_line_args())
+            extra_args["args"] = self.cmd_line_args()
 
         return {
             **super().get_template_args(),

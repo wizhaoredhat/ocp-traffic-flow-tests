@@ -80,10 +80,10 @@ test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_R
 class NetPerfServer(perf.PerfServer):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
-        extra_args: dict[str, str] = {}
+        extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
             extra_args["command"] = NETPERF_SERVER_EXE
-            extra_args["args"] = f'["-p", "{self.port}", "-N"]'
+            extra_args["args"] = ["-p", f"{self.port}", "-N"]
 
         return {
             **super().get_template_args(),
