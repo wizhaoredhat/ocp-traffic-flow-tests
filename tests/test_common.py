@@ -7,6 +7,7 @@ import sys
 import typing
 
 from enum import Enum
+from typing import Any
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -470,3 +471,18 @@ def test_dataclass_tofrom_dict() -> None:
     assert type(common.dataclass_from_dict(C10, {"x": 1.0}).x) is float
     assert type(c10.x) is int
     assert type(C10(1.0).x) is float
+
+
+def test_j2_render() -> None:
+    def _r(contents: str, **kwargs: Any) -> str:
+        return common.j2_render_data(contents, kwargs)
+
+    assert _r("", a="1") == ""
+    assert _r("val: {{a}}", a=1) == "val: 1"
+    assert _r("val: {{a}}", a="1") == "val: 1"
+    assert _r("val: {{a}}", a="a") == "val: a"
+    assert _r("val: {{a}}", a="a b") == "val: a b"
+    assert _r("val: {{a|tojson}}", a=1) == "val: 1"
+    assert _r("val: {{a|tojson}}", a="1") == 'val: "1"'
+    assert _r("val: {{a|tojson}}", a="a") == 'val: "a"'
+    assert _r("val: {{a|tojson}}", a="a b") == 'val: "a b"'
