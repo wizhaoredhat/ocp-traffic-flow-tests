@@ -82,7 +82,7 @@ class NetPerfServer(perf.PerfServer):
 
         extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
-            extra_args["command"] = NETPERF_SERVER_EXE
+            extra_args["command"] = [NETPERF_SERVER_EXE]
             extra_args["args"] = ["-p", f"{self.port}", "-N"]
 
         return {

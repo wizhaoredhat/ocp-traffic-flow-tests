@@ -12,7 +12,6 @@ spec:
   containers:
   - name: {{ pod_name }}
     image: {{ test_image }}
-    command:
-      - "{{ command }}"
+    command: {{ command }}
     args: {{ args }}
     imagePullPolicy: {{ image_pull_policy }}

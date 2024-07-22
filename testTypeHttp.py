@@ -44,7 +44,7 @@ class HttpServer(perf.PerfServer):
 
         extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
-            extra_args["command"] = "python3"
+            extra_args["command"] = ["python3"]
             extra_args["args"] = self.cmd_line_args()
 
         return {
