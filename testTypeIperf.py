@@ -70,8 +70,7 @@ class IperfServer(perf.PerfServer):
 
         extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
-            extra_args["command"] = [IPERF_EXE]
-            extra_args["args"] = ["-s", "-p", f"{self.port}"]
+            extra_args["args"] = [IPERF_EXE, "-s", "-p", f"{self.port}"]
 
         return {
             **super().get_template_args(),
