@@ -296,3 +296,9 @@ class LocalHost(Host):
 
 
 local = LocalHost()
+
+
+def host_or_local(host: Optional[Host]) -> Host:
+    if host is None:
+        return local
+    return host
