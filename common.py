@@ -20,6 +20,13 @@ if typing.TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
 
+E = TypeVar("E", bound=Enum)
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+TCallable = typing.TypeVar("TCallable", bound=typing.Callable[..., typing.Any])
+
+
 # This is used as default value for some arguments, to recognize that the
 # caller didn't specify the argument. This is useful, when we want to
 # explicitly distinguish between having an argument unset or set to any value.
@@ -40,10 +47,6 @@ def bool_to_str(val: bool, *, format: str = "true") -> str:
     if format == "yes":
         return "yes" if val else "no"
     raise ValueError(f'Invalid format "{format}"')
-
-
-T1 = TypeVar("T1")
-T2 = TypeVar("T2")
 
 
 def str_to_bool(
@@ -83,9 +86,6 @@ def str_to_bool(
         return on_error
 
     raise ValueError(f"Value {val} is not a boolean")
-
-
-E = TypeVar("E", bound=Enum)
 
 
 def enum_convert(
@@ -216,9 +216,6 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
         raise ValueError(f"Invalid {enum_type} value of type {type(value)}")
 
     return output
-
-
-T = TypeVar("T")
 
 
 @typing.overload
@@ -465,9 +462,6 @@ def dataclass_check(
         _post_check = getattr(type(instance), "_post_check", None)
         if _post_check is not None:
             _post_check(instance)
-
-
-TCallable = typing.TypeVar("TCallable", bound=typing.Callable[..., typing.Any])
 
 
 def strict_dataclass(cls: TCallable) -> TCallable:
