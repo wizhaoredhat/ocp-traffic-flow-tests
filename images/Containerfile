@@ -4,17 +4,12 @@ RUN dnf install -y 'dnf-command(config-manager)'
 
 RUN dnf config-manager --set-enabled crb
 
-RUN curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_9_Stream/devel:kubic:libcontainers:stable.repo
-
-RUN curl -L -o /etc/yum.repos.d/benchmark:openSUSE_Factory.repo https://download.opensuse.org/repositories/benchmark/openSUSE_Factory/benchmark.repo
-
 RUN dnf install -y epel-next-release epel-release
 
 RUN dnf install \
         --allowerasing \
         /usr/bin/python \
         coreutils \
-        cri-tools \
         ethtool \
         git \
         httpd \
