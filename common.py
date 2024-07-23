@@ -88,6 +88,27 @@ def str_to_bool(
     raise ValueError(f"Value {val} is not a boolean")
 
 
+def iter_get_first(
+    lst: typing.Iterable[T],
+    *,
+    unique: bool = False,
+    force_unique: bool = False,
+) -> Optional[T]:
+    v0: Optional[T] = None
+    for idx, v in enumerate(lst):
+        if idx == 0:
+            v0 = v
+            continue
+        if force_unique:
+            raise RuntimeError("Iterable was expected to only contain one entry")
+        if unique:
+            # We have more than one entries. The caller requested to reject
+            # that.
+            return None
+        return v0
+    return v0
+
+
 def enum_convert(
     enum_type: Type[E],
     value: Any,
