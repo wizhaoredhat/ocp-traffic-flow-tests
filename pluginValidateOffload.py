@@ -1,5 +1,3 @@
-import json
-import shlex
 import typing
 
 from typing import Optional
@@ -170,28 +168,6 @@ class TaskValidateOffload(PluginTask):
         super().initialize()
         self.render_file("Server Pod Yaml")
 
-    def extract_vf_rep(self) -> Optional[str]:
-
-        r = self.run_oc_exec(
-            f"chroot /host crictl ps -a --name={shlex.quote(self.perf_pod_name)} -o json",
-        )
-
-        iface: Optional[str] = None
-        if r.success:
-            try:
-                data = json.loads(r.out)
-                v = data["containers"][0]["podSandboxId"][:15]
-                if isinstance(v, str) and v:
-                    iface = v
-            except Exception:
-                pass
-            if iface is None:
-                logger.info("Error parsing VF representor")
-            else:
-                logger.info(f"The VF representor is: {iface}")
-
-        return iface
-
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
@@ -212,9 +188,20 @@ class TaskValidateOffload(PluginTask):
                 data2 = ""
                 ethtool_cmd = "ethtool -S VF_REP"
 
-                vf_rep = self.extract_vf_rep()
+                vf_rep = self.pod_get_vf_rep(
+                    pod_name=self.perf_pod_name,
+                    ifname="eth0",
+                    host_pod_name=self.pod_name,
+                )
 
-                if vf_rep is not None:
+                if vf_rep is None:
+                    success_result = False
+                    msg = "cannot determine VF_REP for pod"
+                else:
+                    logger.info(
+                        f"VF representor for eth0 in pod {self.perf_pod_name} is {repr(vf_rep)}"
+                    )
+
                     ethtool_cmd = f"ethtool -S {vf_rep}"
 
                     r1 = self.run_oc_exec(ethtool_cmd)
