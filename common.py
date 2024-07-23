@@ -245,6 +245,22 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
     return output
 
 
+def json_parse_list(jstr: str, *, strict_parsing: bool = False) -> list[Any]:
+    try:
+        lst = json.loads(jstr)
+    except ValueError:
+        if strict_parsing:
+            raise
+        return []
+
+    if not isinstance(lst, list):
+        if strict_parsing:
+            raise ValueError("JSON data does not contain a list")
+        return []
+
+    return lst
+
+
 def dict_add_optional(vdict: dict[T1, T2], key: T1, val: Optional[T2]) -> None:
     if val is not None:
         vdict[key] = val
