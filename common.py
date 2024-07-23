@@ -381,7 +381,10 @@ def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
     return cast(T, cls(**create_kwargs))
 
 
-def check_type(value: typing.Any, type_hint: type[typing.Any]) -> bool:
+def check_type(
+    value: typing.Any,
+    type_hint: type[typing.Any] | typing._SpecialForm,
+) -> bool:
 
     # Some naive type checking. This is used for ensuring that data classes
     # contain the expected types (see @strict_dataclass).
@@ -398,7 +401,7 @@ def check_type(value: typing.Any, type_hint: type[typing.Any]) -> bool:
 
         if type_hint is typing.Any:
             return True
-        return isinstance(value, type_hint)
+        return isinstance(value, typing.cast(Any, type_hint))
 
     if actual_type is typing.Union:
         args = typing.get_args(type_hint)
