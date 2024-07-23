@@ -245,6 +245,11 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
     return output
 
 
+def dict_add_optional(vdict: dict[T1, T2], key: T1, val: Optional[T2]) -> None:
+    if val is not None:
+        vdict[key] = val
+
+
 @typing.overload
 def dict_get_typed(
     d: typing.Mapping[Any, Any],
