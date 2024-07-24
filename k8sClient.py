@@ -5,6 +5,8 @@ import shlex
 import typing
 import yaml
 
+from collections.abc import Iterable
+
 import host
 
 
@@ -37,19 +39,49 @@ class K8sClient:
             for e in self._client.list_node(label_selector=label_selector).items
         ]
 
+    @staticmethod
+    def _get_oc_cmd(cmd: str | Iterable[str]) -> list[str]:
+        if isinstance(cmd, str):
+            return shlex.split(cmd)
+        return list(cmd)
+
     def oc(
         self,
-        cmd: str,
+        cmd: str | Iterable[str],
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
         namespace: typing.Optional[str] = None,
     ) -> host.Result:
-        namespace_args: tuple[str, ...] = ()
+        namespace_args: tuple[str, ...]
         if namespace:
             namespace_args = ("-n", namespace)
+        else:
+            namespace_args = ()
         return host.local.run(
-            ["kubectl", "--kubeconfig", self._kc, *namespace_args, *shlex.split(cmd)],
+            [
+                "kubectl",
+                "--kubeconfig",
+                self._kc,
+                *namespace_args,
+                *self._get_oc_cmd(cmd),
+            ],
             die_on_error=die_on_error,
             log_level_fail=logging.DEBUG if may_fail else logging.ERROR,
+        )
+
+    def oc_exec(
+        self,
+        cmd: str | Iterable[str],
+        *,
+        pod_name: str,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+        namespace: typing.Optional[str] = None,
+    ) -> host.Result:
+        return self.oc(
+            ["exec", pod_name, "--", *self._get_oc_cmd(cmd)],
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+            namespace=namespace,
         )

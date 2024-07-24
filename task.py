@@ -2,7 +2,6 @@ import enum
 import json
 import logging
 import os
-import shlex
 import sys
 import threading
 import typing
@@ -21,11 +20,12 @@ import common
 import host
 import tftbase
 
+from k8sClient import K8sClient
 from logger import logger
-from testSettings import TestSettings
-from tftbase import ClusterMode
-from tftbase import BaseOutput
 from pluginbase import Plugin
+from testSettings import TestSettings
+from tftbase import BaseOutput
+from tftbase import ClusterMode
 
 
 T = TypeVar("T")
@@ -300,23 +300,33 @@ class Task(ABC):
     def initialize(self) -> None:
         pass
 
+    @property
+    def client(self) -> K8sClient:
+        return self.tc.client(tenant=self.tenant)
+
+    def _get_run_oc_namespace(
+        self,
+        namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
+    ) -> Optional[str]:
+        if isinstance(namespace, common._MISSING_TYPE):
+            # By default, set use self.get_namespace(). You can select another
+            # namespace or no namespace (by setting to None).
+            namespace = self.get_namespace()
+        return namespace
+
     def run_oc(
         self,
-        cmd: str,
+        cmd: str | Iterable[str],
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
         namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
     ) -> host.Result:
-        if isinstance(namespace, common._MISSING_TYPE):
-            # By default, set use self.get_namespace(). You can select another
-            # namespace or no namespace (by setting to None).
-            namespace = self.get_namespace()
-        return self.tc.client(tenant=self.tenant).oc(
+        return self.client.oc(
             cmd,
             may_fail=may_fail,
             die_on_error=die_on_error,
-            namespace=namespace,
+            namespace=self._get_run_oc_namespace(namespace),
         )
 
     def run_oc_exec(
@@ -327,15 +337,12 @@ class Task(ABC):
         die_on_error: bool = False,
         namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
     ) -> host.Result:
-        if isinstance(cmd, str):
-            argv = shlex.split(cmd)
-        else:
-            argv = list(cmd)
-        return self.run_oc(
-            f"exec {shlex.quote(self.pod_name)} -- {shlex.join(argv)}",
+        return self.client.oc_exec(
+            cmd,
+            pod_name=self.pod_name,
             may_fail=may_fail,
             die_on_error=die_on_error,
-            namespace=namespace,
+            namespace=self._get_run_oc_namespace(namespace),
         )
 
     def get_pod_ip(self) -> str:
