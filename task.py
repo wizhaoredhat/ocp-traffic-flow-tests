@@ -335,11 +335,14 @@ class Task(ABC):
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
+        pod_name: Optional[str] = None,
         namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
     ) -> host.Result:
+        if pod_name is None:
+            pod_name = self.pod_name
         return self.client.oc_exec(
             cmd,
-            pod_name=self.pod_name,
+            pod_name=pod_name,
             may_fail=may_fail,
             die_on_error=die_on_error,
             namespace=self._get_run_oc_namespace(namespace),
