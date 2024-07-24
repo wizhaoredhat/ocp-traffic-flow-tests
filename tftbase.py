@@ -305,6 +305,39 @@ class TftAggregateOutput:
     plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
 
 
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class PassFailStatus:
+    """Pass/Fail ratio and result from evaluating a full tft Flow Test result
+
+    Attributes:
+        result: boolean representing whether the test was successful (100% passing)
+        num_passed: int number of test cases passed
+        num_failed: int number of test cases failed"""
+
+    result: bool
+    num_tft_passed: int
+    num_tft_failed: int
+    num_plugin_passed: int
+    num_plugin_failed: int
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class TestResult:
+    """Result of a single test case run
+
+    Attributes:
+        tft_metadata: information about which test ran
+        success: boolean representing whether the test passed or failed
+        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
+    """
+
+    tft_metadata: TestMetadata
+    success: bool
+    bitrate_gbps: Bitrate
+
+
 class TestCaseTypInfo(typing.NamedTuple):
     connection_mode: ConnectionMode
     is_same_node: bool
