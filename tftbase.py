@@ -338,6 +338,15 @@ class TestResult:
     bitrate_gbps: Bitrate
 
 
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class TestResultCollection:
+    passing: list[TestResult]
+    failing: list[TestResult]
+    plugin_passing: list[PluginResult]
+    plugin_failing: list[PluginResult]
+
+
 class TestCaseTypInfo(typing.NamedTuple):
     connection_mode: ConnectionMode
     is_same_node: bool

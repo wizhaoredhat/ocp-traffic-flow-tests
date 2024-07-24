@@ -1,5 +1,4 @@
 import argparse
-import json
 import sys
 import yaml
 
@@ -9,11 +8,12 @@ from typing import Optional
 import evalConfig
 import tftbase
 
-from common import dataclass_to_dict
+from common import dataclass_to_json
 from logger import logger
 from tftbase import FlowTestOutput
 from tftbase import PassFailStatus
 from tftbase import TestResult
+from tftbase import TestResultCollection
 
 
 class Evaluator:
@@ -76,19 +76,13 @@ class Evaluator:
         test_results: list[TestResult],
         plugin_results: list[tftbase.PluginResult],
     ) -> str:
-        passing = [dataclass_to_dict(r) for r in test_results if r.success]
-        failing = [dataclass_to_dict(r) for r in test_results if not r.success]
-        plugin_passing = [dataclass_to_dict(r) for r in plugin_results if r.success]
-        plugin_failing = [dataclass_to_dict(r) for r in plugin_results if not r.success]
-
-        return json.dumps(
-            {
-                "passing": passing,
-                "failing": failing,
-                "plugin_passing": plugin_passing,
-                "plugin_failing": plugin_failing,
-            }
+        res = TestResultCollection(
+            passing=[r for r in test_results if r.success],
+            failing=[r for r in test_results if not r.success],
+            plugin_passing=[r for r in plugin_results if r.success],
+            plugin_failing=[r for r in plugin_results if not r.success],
         )
+        return dataclass_to_json(res)
 
     def dump_to_json_file(
         self,
