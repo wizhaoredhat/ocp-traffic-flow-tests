@@ -1,7 +1,6 @@
 import abc
 import collections
 import dataclasses
-import jinja2
 import json
 import typing
 
@@ -262,11 +261,18 @@ def dict_get_typed(
     return v
 
 
+def j2_render_data(contents: str, kwargs: dict[str, Any]) -> str:
+    import jinja2
+
+    template = jinja2.Template(contents)
+    rendered = template.render(**kwargs)
+    return rendered
+
+
 def j2_render(in_file_name: str, out_file_name: str, kwargs: dict[str, Any]) -> str:
     with open(in_file_name) as inFile:
         contents = inFile.read()
-    template = jinja2.Template(contents)
-    rendered = template.render(**kwargs)
+    rendered = j2_render_data(contents, kwargs)
     with open(out_file_name, "w") as outFile:
         outFile.write(rendered)
     return rendered
