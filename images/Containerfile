@@ -12,6 +12,7 @@ RUN dnf install -y epel-next-release epel-release
 
 RUN dnf install \
         --allowerasing \
+        /usr/bin/python \
         coreutils \
         cri-tools \
         ethtool \
@@ -29,6 +30,7 @@ RUN dnf install \
         pciutils \
         procps-ng \
         python3 \
+        python3.11 \
         sysstat \
         tcpdump \
         tini \
@@ -36,6 +38,22 @@ RUN dnf install \
         vim \
         wget \
         -y
+
+RUN python3.11 -m venv /opt/pyvenv3.11
+RUN /opt/pyvenv3.11/bin/python -m pip install --upgrade pip
+RUN /opt/pyvenv3.11/bin/python -m pip install \
+        PyYAML==6.0.1 \
+        dataclasses \
+        jc \
+        jinja2 \
+        kubernetes \
+        pytest
+
+COPY \
+    common.py \
+    host.py \
+    logger.py \
+    /opt/ocp-tft/
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 
