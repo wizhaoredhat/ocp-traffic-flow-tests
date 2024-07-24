@@ -3,7 +3,7 @@
 # Helper script to print results in consice human-friendly way. Return an error code in the event any failure is detected.
 
 print_details() {
-    jq '. | "Test ID: \(.test_id), Test Type: \(.test_type), Reverse: \(.reverse), TX Bitrate: \(.bitrate_gbps.tx) Gbps, RX Bitrate: \(.bitrate_gbps.rx) Gbps"'
+    jq '. | "Test ID: \(.tft_metadata.test_case_id), Test Type: \(.tft_metadata.test_type), Reverse: \(.tft_metadata.reverse), TX Bitrate: \(.bitrate_gbps.tx) Gbps, RX Bitrate: \(.bitrate_gbps.rx) Gbps"'
 }
 
 if [ "$#" -eq 0 ]; then
