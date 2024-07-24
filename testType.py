@@ -57,6 +57,6 @@ class TestTypeHandler(ABC):
 
 
 if typing.TYPE_CHECKING:
-    from perf import ClientTask
-    from perf import ServerTask
+    from task import ClientTask
+    from task import ServerTask
     from testSettings import TestSettings

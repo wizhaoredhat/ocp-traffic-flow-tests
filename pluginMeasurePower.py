@@ -5,8 +5,8 @@ from typing import Any
 from typing import Optional
 
 import common
-import perf
 import pluginbase
+import task
 import tftbase
 
 from logger import logger
@@ -26,8 +26,8 @@ class PluginMeasurePower(pluginbase.Plugin):
         ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.ServerTask,
-        perf_client: perf.ClientTask,
+        perf_server: task.ServerTask,
+        perf_client: task.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         return [

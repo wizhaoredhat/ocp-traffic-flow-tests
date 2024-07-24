@@ -5,11 +5,11 @@ from dataclasses import dataclass
 
 import common
 import host
-import perf
+import task
 import tftbase
 
-from perf import ClientTask
-from perf import ServerTask
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -32,7 +32,7 @@ class TestTypeHandlerHttp(TestTypeHandler):
 test_type_handler_http = TestTypeHandlerHttp()
 
 
-class HttpServer(perf.ServerTask):
+class HttpServer(task.ServerTask):
     def cmd_line_args(self) -> list[str]:
         return [
             "python3",
@@ -61,7 +61,7 @@ class HttpServer(perf.ServerTask):
         return "killall python3"
 
 
-class HttpClient(perf.ClientTask):
+class HttpClient(task.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = f"curl --fail -s http://{server_ip}:{self.port}/data"

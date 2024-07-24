@@ -124,7 +124,7 @@ if typing.TYPE_CHECKING:
     # type annotations, we do need those module here. Import them with
     # TYPE_CHECKING, but otherwise avoid the cyclic dependency between
     # modules.
-    from perf import ClientTask
-    from perf import ServerTask
+    from task import ClientTask
+    from task import ServerTask
     from task import PluginTask
     from testSettings import TestSettings

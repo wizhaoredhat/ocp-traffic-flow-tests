@@ -3,7 +3,7 @@ import jc
 from typing import Any
 from typing import cast
 
-import perf
+import task
 import pluginbase
 import tftbase
 
@@ -24,8 +24,8 @@ class PluginMeasureCpu(pluginbase.Plugin):
         ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.ServerTask,
-        perf_client: perf.ClientTask,
+        perf_server: task.ServerTask,
+        perf_client: task.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         return [

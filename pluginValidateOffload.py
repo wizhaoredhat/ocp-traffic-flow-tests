@@ -5,8 +5,8 @@ import typing
 from typing import Optional
 
 import common
-import perf
 import pluginbase
+import task
 import tftbase
 
 from logger import logger
@@ -123,8 +123,8 @@ class PluginValidateOffload(pluginbase.Plugin):
         ts: TestSettings,
         node_server_name: str,
         node_client_name: str,
-        perf_server: perf.ServerTask,
-        perf_client: perf.ClientTask,
+        perf_server: task.ServerTask,
+        perf_client: task.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
@@ -145,7 +145,7 @@ class TaskValidateOffload(PluginTask):
     def __init__(
         self,
         ts: TestSettings,
-        perf_instance: perf.ServerTask | perf.ClientTask,
+        perf_instance: task.ServerTask | task.ClientTask,
         tenant: bool,
     ):
         super().__init__(ts, 0, perf_instance.node_name, tenant)
@@ -204,7 +204,7 @@ class TaskValidateOffload(PluginTask):
             if self.perf_pod_type == PodType.HOSTBACKED:
                 logger.info("The VF representor is: ovn-k8s-mp0")
                 msg = "Hostbacked pod"
-            elif self.perf_pod_name == perf.EXTERNAL_PERF_SERVER:
+            elif self.perf_pod_name == task.EXTERNAL_PERF_SERVER:
                 logger.info("There is no VF on an external server")
                 msg = "External Iperf Server"
             else:
@@ -284,7 +284,7 @@ class TaskValidateOffload(PluginTask):
         out.plugins.append(result)
 
         if self.perf_pod_type == PodType.HOSTBACKED:
-            if isinstance(self._perf_instance, perf.ClientTask):
+            if isinstance(self._perf_instance, task.ClientTask):
                 logger.info("The client VF representor ovn-k8s-mp0_0 does not exist")
             else:
                 logger.info("The server VF representor ovn-k8s-mp0_0 does not exist")

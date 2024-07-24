@@ -1,5 +1,5 @@
 import json
-import perf
+import task
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,8 +8,8 @@ from typing import Any
 import tftbase
 
 from logger import logger
-from perf import ClientTask
-from perf import ServerTask
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -65,7 +65,7 @@ test_type_handler_iperf_tcp = TestTypeHandlerIperf(TestType.IPERF_TCP)
 test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
 
 
-class IperfServer(perf.ServerTask):
+class IperfServer(task.ServerTask):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str | list[str]] = {}
@@ -84,7 +84,7 @@ class IperfServer(perf.ServerTask):
         return f"killall {IPERF_EXE}"
 
 
-class IperfClient(perf.ClientTask):
+class IperfClient(task.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = (

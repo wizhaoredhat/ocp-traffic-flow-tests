@@ -3,11 +3,11 @@ import shlex
 from dataclasses import dataclass
 
 import common
-import perf
+import task
 import tftbase
 
-from perf import ClientTask
-from perf import ServerTask
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
@@ -32,7 +32,7 @@ test_type_handler_simple = TestTypeHandlerSimple()
 CMD_SIMPLE_TCP_SERVER_CLIENT = "simple-tcp-server-client"
 
 
-class SimpleServer(perf.ServerTask):
+class SimpleServer(task.ServerTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,
@@ -62,7 +62,7 @@ class SimpleServer(perf.ServerTask):
         return "killall python3"
 
 
-class SimpleClient(perf.ClientTask):
+class SimpleClient(task.ClientTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,
