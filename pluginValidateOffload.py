@@ -1,4 +1,5 @@
 import json
+import shlex
 import typing
 
 from typing import Optional
@@ -170,8 +171,9 @@ class TaskValidateOffload(PluginTask):
         self.render_file("Server Pod Yaml")
 
     def extract_vf_rep(self) -> Optional[str]:
-        r = self.run_oc_exec(
-            f"crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ps -a --name={self.perf_pod_name} -o json"
+
+        r = self.run_oc_debug(
+            f"/host/usr/bin/crictl '--runtime-endpoint=unix:///host/run/crio/crio.sock' ps -a --name={shlex.quote(self.perf_pod_name)} -o json",
         )
 
         iface: Optional[str] = None
