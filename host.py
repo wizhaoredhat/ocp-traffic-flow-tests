@@ -176,7 +176,7 @@ class Host(ABC):
                 pass
             elif not is_binary and (
                 decode_errors is None
-                or decode_errors in ("strict", "ignore", "replace")
+                or decode_errors in ("strict", "ignore", "replace", "surrogateescape")
             ):
                 # We are good. The output is not binary, and the caller did not
                 # request some unusual decoding. We already did the decoding.
