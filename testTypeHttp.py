@@ -1,8 +1,10 @@
 import shlex
+import time
 
 from dataclasses import dataclass
 
 import common
+import host
 import perf
 import tftbase
 
@@ -66,13 +68,25 @@ class HttpClient(perf.PerfClient):
 
         def _thread_action() -> BaseOutput:
             self.ts.clmo_barrier.wait()
-            r = self.run_oc_exec(cmd)
+
+            def _check_success(r: host.Result) -> bool:
+                return r.success and r.out == "ocp-traffic-flow-tests\n" and r.err == ""
+
+            sleep_time = 0.2
+            end_timestamp = time.monotonic() + self.get_duration() - sleep_time
+
+            while True:
+                r = self.run_oc_exec(cmd)
+                if not _check_success(r):
+                    break
+                if time.monotonic() >= end_timestamp:
+                    break
+                time.sleep(sleep_time)
+
             self.ts.event_client_finished.set()
 
             return IperfOutput(
-                success=(
-                    r.success and r.out == "ocp-traffic-flow-tests\n" and r.err == ""
-                ),
+                success=_check_success(r),
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,
                 result={
