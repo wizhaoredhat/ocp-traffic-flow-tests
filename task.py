@@ -348,6 +348,21 @@ class Task(ABC):
             namespace=self._get_run_oc_namespace(namespace),
         )
 
+    def run_oc_get(
+        self,
+        what: str,
+        *,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+        namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
+    ) -> typing.Optional[dict[str, typing.Any]]:
+        return self.client.oc_get(
+            what,
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+            namespace=self._get_run_oc_namespace(namespace),
+        )
+
     def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml", die_on_error=True)
         y = yaml.safe_load(r.out)
