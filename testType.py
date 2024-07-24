@@ -49,6 +49,10 @@ class TestTypeHandler(ABC):
             import testTypeHttp
 
             return testTypeHttp.test_type_handler_http
+        if test_type == TestType.SIMPLE:
+            import testTypeSimple
+
+            return testTypeSimple.test_type_handler_simple
         raise ValueError(f"Unsupported test type {test_type}")
 
 

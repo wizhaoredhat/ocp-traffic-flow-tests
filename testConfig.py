@@ -57,11 +57,19 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
     pod_type: PodType
     default_network: str
 
+    # Extra arguments for the client/server. Their actual meaning depend on the
+    # "type". These might be command line arguments passed to the tool.
+    args: Optional[tuple[str, ...]]
+
     def serialize(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.args is not None:
+            d["args"] = list(self.args)
         return {
             **super().serialize(),
             "sriov": self.sriov,
             "default-network": self.default_network,
+            **d,
         }
 
     @staticmethod
@@ -87,8 +95,27 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
         v = vdict.pop("default-network", None)
         if v is not None:
             if not isinstance(v, str):
-                raise ValueError(f'"{yamlpath}.name": expects a string but got {name}')
+                raise ValueError(
+                    f'"{yamlpath}.default-network": expects a string but got {v}'
+                )
             default_network = v
+
+        args: Optional[list[str]] = None
+        v = vdict.pop("args", None)
+        if v is None:
+            pass
+        elif isinstance(v, str):
+            args = shlex.split(v)
+        elif isinstance(v, list):
+            if not all(isinstance(x, str) for x in v):
+                raise ValueError(
+                    f'"{yamlpath}.args": expects a list of strings but got {repr(v)}'
+                )
+            args = v
+        else:
+            raise ValueError(
+                f'"{yamlpath}.args": expects a string or a list of strings but got {repr(v)}'
+            )
 
         type_specific_kwargs = {}
 
@@ -110,6 +137,7 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
             pod_type=pod_type,
             sriov=(pod_type == PodType.SRIOV),
             default_network=default_network,
+            args=tuple(args) if args is not None else None,
             **type_specific_kwargs,
         )
 
@@ -266,6 +294,20 @@ class ConfConnection(StructParseBaseNamed):
             raise ValueError(
                 f'"{yamlpath}.client": currently only one client entry is supported'
             )
+
+        for idx, s in enumerate(server):
+            if s.args is not None:
+                if test_type not in (TestType.SIMPLE,):
+                    raise ValueError(
+                        f'"{yamlpath}.server[{idx}].args": args are not supported for test type {test_type}'
+                    )
+
+        for idx, c in enumerate(client):
+            if c.args is not None:
+                if test_type not in (TestType.SIMPLE,):
+                    raise ValueError(
+                        f'"{yamlpath}.client[{idx}].args": args are not supported for test type {test_type}'
+                    )
 
         return ConfConnection(
             yamlidx=yamlidx,
@@ -624,6 +666,16 @@ class ConfigDescriptor:
         if self.connections_idx < 0:
             raise RuntimeError("No connections_idx set")
         return self.get_tft().connections[self.connections_idx]
+
+    def get_server(self) -> ConfServer:
+        c = self.get_connection()
+        assert len(c.server) == 1
+        return c.server[0]
+
+    def get_client(self) -> ConfClient:
+        c = self.get_connection()
+        assert len(c.client) == 1
+        return c.client[0]
 
     def describe_all_tft(self) -> Generator["ConfigDescriptor", None, None]:
         for tft_idx in range(len(self.tc.config.tft)):
