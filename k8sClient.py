@@ -9,7 +9,13 @@ import host
 
 
 class K8sClient:
-    def __init__(self, kubeconfig: str):
+    def __init__(self, kubeconfig: typing.Optional[str] = None):
+        if kubeconfig is None:
+            kubeconfig = os.getenv("KUBECONFIG")
+            if not kubeconfig:
+                raise RuntimeError(
+                    "KUBECONFIG environment variable not set and no kubeconfig argument specified"
+                )
         if not os.path.exists(kubeconfig):
             raise RuntimeError(
                 f"KUBECONFIG={shlex.quote(kubeconfig)} file does not exist"
