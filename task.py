@@ -389,9 +389,14 @@ class Task(ABC):
         )
 
     def get_pod_ip(self) -> str:
-        r = self.run_oc(f"get pod {self.pod_name} -o yaml", die_on_error=True)
-        y = yaml.safe_load(r.out)
-        return typing.cast(str, y["status"]["podIP"])
+        y = self.run_oc_get(f"pod/{self.pod_name}", die_on_error=True)
+        try:
+            pod_ip = y["status"]["podIP"]  # type: ignore
+        except Exception:
+            pod_ip = None
+        if not isinstance(pod_ip, str):
+            raise RuntimeError("Failure to get static.podIP for {self.pod_name}")
+        return pod_ip
 
     def create_cluster_ip_service(self) -> str:
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
@@ -449,16 +454,15 @@ class Task(ABC):
 
     def setup_pod(self) -> None:
         # Check if pod already exists
-        r = self.run_oc(f"get pod {self.pod_name} --output=json", may_fail=True)
-        if r.returncode != 0:
-            # otherwise create the pod
+        v = self.run_oc_get(f"pod/{self.pod_name}", may_fail=True)
+        if v is None:
             logger.info(f"Creating Pod {self.pod_name}.")
-            r = self.run_oc(f"apply -f {self.out_file_yaml}", die_on_error=True)
+            self.run_oc(f"apply -f {self.out_file_yaml}", die_on_error=True)
         else:
             logger.info(f"Pod {self.pod_name} already exists.")
 
         logger.info(f"Waiting for Pod {self.pod_name} to become ready.")
-        r = self.run_oc(
+        self.run_oc(
             f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m",
             die_on_error=True,
         )
