@@ -2,6 +2,7 @@ import json
 import kubernetes  # type: ignore
 import logging
 import os
+import random
 import shlex
 import sys
 import typing
@@ -137,3 +138,73 @@ class K8sClient:
             return None
 
         return data
+
+    def oc_debug(
+        self,
+        cmd: str | Iterable[str],
+        *,
+        node_name: str,
+        test_image: str,
+        namespace: str,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+    ) -> host.Result:
+        container_name = f"ocp-tft-debug-{node_name}-{random.randint(0, 2**64-1):016x}"
+        # We use `kubectl debug` and not `oc debug`. There are thus some differences.
+        #
+        # Optimally, we would use "--profile=sysadmin". But that is too new, so
+        # we cannot use it and have no CAP_SYS_CHROOT.  That means, `cmd`
+        # cannot be `chroot /host crictl ...` but needs to be
+        # `/host/usr/bin/crictl --runtime-endpoint=unix:///host/run/crio/crio.sock ...`.
+        #
+        # Also, unlike `oc debug`, we need an "--image", which the caller must specify.
+        #
+        # Also, we must specify a namespace. And the container will linger around afterwards,
+        # so we need to delete it (below).
+        result = self.oc(
+            [
+                "debug",
+                "-q",
+                "-ti",
+                "--profile=general",
+                f"--container={container_name}",
+                f"--image={test_image}",
+                f"node/{node_name}",
+                "--",
+                *self._oc_get_cmd(cmd),
+            ],
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+            namespace=namespace,
+        )
+
+        # We have to find and delete the pods we just created. As we used
+        # a unique {container_name}, we can search for that.
+        pod_names = []
+        pdict = self.oc_get(
+            "pods",
+            may_fail=True,
+            namespace=namespace,
+        )
+        pdict_items = []
+        if pdict is not None:
+            try:
+                pdict_items = list(pdict["items"])
+            except Exception:
+                pass
+        for pdict_item in pdict_items:
+            try:
+                for c in pdict_item["spec"]["containers"]:
+                    if c["name"] == container_name:
+                        pod_names.append(pdict_item["metadata"]["name"])
+                        break
+            except Exception:
+                pass
+        for pod_name in pod_names:
+            self.oc(
+                ["delete", f"pod/{pod_name}"],
+                may_fail=True,
+                namespace=namespace,
+            )
+
+        return result

@@ -363,6 +363,31 @@ class Task(ABC):
             namespace=self._run_oc_namespace(namespace),
         )
 
+    def run_oc_debug(
+        self,
+        cmd: str | Iterable[str],
+        *,
+        may_fail: bool = False,
+        die_on_error: bool = False,
+        node_name: Optional[str] = None,
+        test_image: Optional[str] = None,
+        namespace: Optional[str] = None,
+    ) -> host.Result:
+        if node_name is None:
+            node_name = self.node_name
+        if test_image is None:
+            test_image = tftbase.get_tft_test_image()
+        if namespace is None:
+            namespace = self.get_namespace()
+        return self.client.oc_debug(
+            cmd,
+            node_name=node_name,
+            test_image=test_image,
+            may_fail=may_fail,
+            die_on_error=die_on_error,
+            namespace=namespace,
+        )
+
     def get_pod_ip(self) -> str:
         r = self.run_oc(f"get pod {self.pod_name} -o yaml", die_on_error=True)
         y = yaml.safe_load(r.out)
