@@ -1,4 +1,3 @@
-import json
 import shlex
 
 from dataclasses import dataclass
@@ -34,6 +33,7 @@ test_type_handler_http = TestTypeHandlerHttp()
 class HttpServer(perf.PerfServer):
     def cmd_line_args(self) -> list[str]:
         return [
+            "python3",
             "-m",
             "http.server",
             "-d",
@@ -43,10 +43,9 @@ class HttpServer(perf.PerfServer):
 
     def get_template_args(self) -> dict[str, str | list[str]]:
 
-        extra_args: dict[str, str] = {}
+        extra_args: dict[str, str | list[str]] = {}
         if self.exec_persistent:
-            extra_args["command"] = "python3"
-            extra_args["args"] = json.dumps(self.cmd_line_args())
+            extra_args["args"] = self.cmd_line_args()
 
         return {
             **super().get_template_args(),
@@ -54,7 +53,7 @@ class HttpServer(perf.PerfServer):
         }
 
     def _create_setup_operation_get_thread_action_cmd(self) -> str:
-        return f"python3 {shlex.join(self.cmd_line_args())}"
+        return shlex.join(self.cmd_line_args())
 
     def _create_setup_operation_get_cancel_action_cmd(self) -> str:
         return "killall python3"

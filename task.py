@@ -270,7 +270,7 @@ class Task(ABC):
             "name_space": self.get_namespace(),
             "test_image": tftbase.get_tft_test_image(),
             "image_pull_policy": tftbase.get_tft_image_pull_policy(),
-            "command": "/usr/bin/container-entry-point.sh",
+            "command": ["/usr/bin/container-entry-point.sh"],
             "args": [],
             "index": f"{self.index}",
             "node_name": self.node_name,
