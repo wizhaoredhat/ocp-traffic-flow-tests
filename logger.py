@@ -8,7 +8,7 @@ def configure_logger(lvl: int) -> None:
     global logger
     logger.setLevel(lvl)
 
-    fmt = "%(asctime)s %(levelname)-7s [th:%(thread)s]: %(message)s"
+    fmt = "%(asctime)s.%(msecs)03d %(levelname)-7s [th:%(thread)s]: %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
     formatter = logging.Formatter(fmt, datefmt)
 
