@@ -170,12 +170,14 @@ class TaskValidateOffload(PluginTask):
 
     def _create_task_operation(self) -> TaskOperation:
         def _thread_action() -> BaseOutput:
-            self.ts.clmo_barrier.wait()
 
             success_result = True
             msg: Optional[str] = None
             ethtool_cmd = ""
             parsed_data: dict[str, typing.Any] = {}
+            data1 = ""
+            data2 = ""
+            vf_rep: Optional[str] = None
 
             if self.perf_pod_type == PodType.HOSTBACKED:
                 logger.info("The VF representor is: ovn-k8s-mp0")
@@ -184,55 +186,55 @@ class TaskValidateOffload(PluginTask):
                 logger.info("There is no VF on an external server")
                 msg = "External Iperf Server"
             else:
-                data1 = ""
-                data2 = ""
-                ethtool_cmd = "ethtool -S VF_REP"
-
                 vf_rep = self.pod_get_vf_rep(
                     pod_name=self.perf_pod_name,
                     ifname="eth0",
                     host_pod_name=self.pod_name,
                 )
-
                 if vf_rep is None:
                     success_result = False
                     msg = "cannot determine VF_REP for pod"
+                    logger.error(
+                        f"VF representor for {self.perf_pod_name} not detected"
+                    )
                 else:
                     logger.info(
                         f"VF representor for eth0 in pod {self.perf_pod_name} is {repr(vf_rep)}"
                     )
-
                     ethtool_cmd = f"ethtool -S {vf_rep}"
 
-                    r1 = self.run_oc_exec(ethtool_cmd)
+            self.ts.clmo_barrier.wait()
 
-                    self.ts.event_client_finished.wait()
+            if vf_rep is not None:
+                r1 = self.run_oc_exec(ethtool_cmd)
 
-                    r2 = self.run_oc_exec(ethtool_cmd)
+                self.ts.event_client_finished.wait()
 
-                    parsed_data["ethtool_cmd_1"] = common.dataclass_to_dict(r1)
-                    parsed_data["ethtool_cmd_2"] = common.dataclass_to_dict(r2)
+                r2 = self.run_oc_exec(ethtool_cmd)
 
-                    if r1.success:
-                        data1 = r1.out
-                    if r2.success:
-                        data2 = r2.out
+                parsed_data["ethtool_cmd_1"] = common.dataclass_to_dict(r1)
+                parsed_data["ethtool_cmd_2"] = common.dataclass_to_dict(r2)
 
-                    if not r1.success:
+                if r1.success:
+                    data1 = r1.out
+                if r2.success:
+                    data2 = r2.out
+
+                if not r1.success:
+                    success_result = False
+                    msg = "ethtool command failed"
+                elif not r2.success:
+                    success_result = False
+                    msg = "ethtool command at end failed"
+
+                if not ethtool_stat_get_startend(parsed_data, data1, "start"):
+                    if success_result:
                         success_result = False
-                        msg = "ethtool command failed"
-                    elif not r2.success:
+                        msg = "ethtool output cannot be parsed"
+                if not ethtool_stat_get_startend(parsed_data, data2, "end"):
+                    if success_result:
                         success_result = False
-                        msg = "ethtool command at end failed"
-
-                    if not ethtool_stat_get_startend(parsed_data, data1, "start"):
-                        if success_result:
-                            success_result = False
-                            msg = "ethtool output cannot be parsed"
-                    if not ethtool_stat_get_startend(parsed_data, data2, "end"):
-                        if success_result:
-                            success_result = False
-                            msg = "ethtool output at end cannot be parsed"
+                        msg = "ethtool output at end cannot be parsed"
 
                 logger.info(
                     f"rx_packet_start: {parsed_data.get('rx_start', 'N/A')}\n"
