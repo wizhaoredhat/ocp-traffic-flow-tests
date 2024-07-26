@@ -2,6 +2,7 @@ import enum
 import json
 import logging
 import os
+import shlex
 import sys
 import threading
 import time
@@ -19,6 +20,7 @@ from typing import TypeVar
 
 import common
 import host
+import netdev
 import tftbase
 
 from k8sClient import K8sClient
@@ -511,6 +513,67 @@ class Task(ABC):
         raise RuntimeError(
             f"Task {self.log_name} should not be called to aggregate output {result} "
         )
+
+    def pod_get_device_infos(
+        self,
+        pod_name: str,
+        *,
+        ifname: Optional[str] = None,
+        pciaddr: Optional[str] = None,
+        vf_rep_for_pciaddr: Optional[str] = None,
+    ) -> Optional[list[dict[str, Any]]]:
+        r = self.run_oc_exec(
+            "ocp-tft-netdev get_device_infos",
+            pod_name=pod_name,
+        )
+
+        if not r.success:
+            return None
+
+        return netdev.device_infos_parse_lst(
+            r.out,
+            ifname=ifname,
+            pciaddr=pciaddr,
+            vf_rep_for_pciaddr=vf_rep_for_pciaddr,
+        )
+
+    def pod_get_vf_rep(
+        self,
+        *,
+        pod_name: str,
+        ifname: str,
+        host_pod_name: str,
+    ) -> Optional[str]:
+
+        lst_1 = self.pod_get_device_infos(pod_name=pod_name, ifname=ifname)
+        pciaddr_1: Optional[str] = None
+        if lst_1:
+            dev_info_1 = common.iter_get_first(lst_1, unique=True)
+            if dev_info_1 is not None:
+                pciaddr_1 = dev_info_1.get("pciaddr")
+
+        if pciaddr_1 is None:
+            return None
+
+        if logger.isEnabledFor(logging.DEBUG):
+            # Only call the command, to have the podSandboxId in the debug logs. Then
+            # It's useful to compare with the VR_REP, which was related in 4.14 (but no
+            # longer in 4.15+).
+            self.run_oc_exec(
+                f"chroot /host crictl ps -a --name={shlex.quote(pod_name)} -o json",
+                pod_name=host_pod_name,
+            )
+
+        lst_2 = self.pod_get_device_infos(
+            pod_name=host_pod_name,
+            vf_rep_for_pciaddr=pciaddr_1,
+        )
+        if lst_2:
+            dev_info_2 = common.iter_get_first(lst_2, unique=True)
+            if dev_info_2:
+                return dev_info_2.get("ifname")
+
+        return None
 
 
 class ServerTask(Task, ABC):
