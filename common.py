@@ -109,6 +109,12 @@ def iter_get_first(
     return v0
 
 
+def iter_filter_none(lst: typing.Iterable[Optional[T]]) -> typing.Iterable[T]:
+    for v in lst:
+        if v is not None:
+            yield v
+
+
 def enum_convert(
     enum_type: Type[E],
     value: Any,
