@@ -1,6 +1,7 @@
 import abc
 import collections
 import dataclasses
+import functools
 import json
 import typing
 
@@ -18,6 +19,13 @@ if typing.TYPE_CHECKING:
     # https://github.com/python/typeshed/tree/main/stdlib/_typeshed#api-stability
     # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
     from _typeshed import DataclassInstance
+
+
+E = TypeVar("E", bound=Enum)
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+TCallable = typing.TypeVar("TCallable", bound=typing.Callable[..., typing.Any])
 
 
 # This is used as default value for some arguments, to recognize that the
@@ -40,10 +48,6 @@ def bool_to_str(val: bool, *, format: str = "true") -> str:
     if format == "yes":
         return "yes" if val else "no"
     raise ValueError(f'Invalid format "{format}"')
-
-
-T1 = TypeVar("T1")
-T2 = TypeVar("T2")
 
 
 def str_to_bool(
@@ -85,7 +89,31 @@ def str_to_bool(
     raise ValueError(f"Value {val} is not a boolean")
 
 
-E = TypeVar("E", bound=Enum)
+def iter_get_first(
+    lst: typing.Iterable[T],
+    *,
+    unique: bool = False,
+    force_unique: bool = False,
+) -> Optional[T]:
+    v0: Optional[T] = None
+    for idx, v in enumerate(lst):
+        if idx == 0:
+            v0 = v
+            continue
+        if force_unique:
+            raise RuntimeError("Iterable was expected to only contain one entry")
+        if unique:
+            # We have more than one entries. The caller requested to reject
+            # that.
+            return None
+        return v0
+    return v0
+
+
+def iter_filter_none(lst: typing.Iterable[Optional[T]]) -> typing.Iterable[T]:
+    for v in lst:
+        if v is not None:
+            yield v
 
 
 def enum_convert(
@@ -218,7 +246,25 @@ def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
     return output
 
 
-T = TypeVar("T")
+def json_parse_list(jstr: str, *, strict_parsing: bool = False) -> list[Any]:
+    try:
+        lst = json.loads(jstr)
+    except ValueError:
+        if strict_parsing:
+            raise
+        return []
+
+    if not isinstance(lst, list):
+        if strict_parsing:
+            raise ValueError("JSON data does not contain a list")
+        return []
+
+    return lst
+
+
+def dict_add_optional(vdict: dict[T1, T2], key: T1, val: Optional[T2]) -> None:
+    if val is not None:
+        vdict[key] = val
 
 
 @typing.overload
@@ -467,9 +513,6 @@ def dataclass_check(
             _post_check(instance)
 
 
-TCallable = typing.TypeVar("TCallable", bound=typing.Callable[..., typing.Any])
-
-
 def strict_dataclass(cls: TCallable) -> TCallable:
 
     init = getattr(cls, "__init__")
@@ -548,3 +591,21 @@ class StructParseBaseNamed(StructParseBase, abc.ABC):
         return {
             "name": self.name,
         }
+
+
+def repeat_for_same_result(fcn: TCallable) -> TCallable:
+    # This decorator wraps @fcn and will call it (up to 10 times) until the
+    # same result was returned twice in a row. The purpose is when we fetch
+    # several pieces of information form the system, that can change at any
+    # time. We would like to get a stable, self-consistent result.
+    @functools.wraps(fcn)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        result = None
+        for i in range(10):
+            new_result = fcn(*args, **kwargs)
+            if i != 0 and result == new_result:
+                return new_result
+            result = new_result
+        return result
+
+    return typing.cast(TCallable, wrapped)
