@@ -3,16 +3,16 @@ import shlex
 from dataclasses import dataclass
 
 import common
-import perf
+import task
 import tftbase
 
-from perf import PerfClient
-from perf import PerfServer
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -21,7 +21,7 @@ class TestTypeHandlerSimple(TestTypeHandler):
     def __init__(self) -> None:
         super().__init__(TestType.SIMPLE)
 
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = SimpleServer(ts=ts)
         c = SimpleClient(ts=ts, server=s)
         return (s, c)
@@ -32,7 +32,7 @@ test_type_handler_simple = TestTypeHandlerSimple()
 CMD_SIMPLE_TCP_SERVER_CLIENT = "simple-tcp-server-client"
 
 
-class SimpleServer(perf.PerfServer):
+class SimpleServer(task.ServerTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,
@@ -62,7 +62,7 @@ class SimpleServer(perf.PerfServer):
         return "killall python3"
 
 
-class SimpleClient(perf.PerfClient):
+class SimpleClient(task.ClientTask):
     def cmd_line_args(self) -> list[str]:
         return [
             CMD_SIMPLE_TCP_SERVER_CLIENT,
@@ -83,7 +83,7 @@ class SimpleClient(perf.PerfClient):
             r = self.run_oc_exec(cmd)
             self.ts.event_client_finished.set()
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=r.success,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,

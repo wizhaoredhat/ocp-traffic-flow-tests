@@ -1,5 +1,5 @@
 import json
-import perf
+import task
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,14 +8,14 @@ from typing import Any
 import tftbase
 
 from logger import logger
-from perf import PerfClient
-from perf import PerfServer
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
 from tftbase import Bitrate
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -50,7 +50,7 @@ def _calculate_gbps(test_type: TestType, result: Mapping[str, Any]) -> Bitrate:
 
 @dataclass(frozen=True)
 class TestTypeHandlerIperf(TestTypeHandler):
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = IperfServer(ts=ts)
         c = IperfClient(ts=ts, server=s)
         return (s, c)
@@ -65,7 +65,7 @@ test_type_handler_iperf_tcp = TestTypeHandlerIperf(TestType.IPERF_TCP)
 test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
 
 
-class IperfServer(perf.PerfServer):
+class IperfServer(task.ServerTask):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str | list[str]] = {}
@@ -84,7 +84,7 @@ class IperfServer(perf.PerfServer):
         return f"killall {IPERF_EXE}"
 
 
-class IperfClient(perf.PerfClient):
+class IperfClient(task.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         server_ip = self.get_target_ip()
         cmd = (
@@ -120,7 +120,7 @@ class IperfClient(perf.PerfClient):
                 success_result = False
                 bitrate_gbps = Bitrate.NA
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=success_result,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,
@@ -138,7 +138,7 @@ class IperfClient(perf.PerfClient):
         result: tftbase.AggregatableOutput,
         out: tftbase.TftAggregateOutput,
     ) -> None:
-        assert isinstance(result, IperfOutput)
+        assert isinstance(result, FlowTestOutput)
         if self.test_type == TestType.IPERF_TCP:
             self.print_tcp_results(result.result)
         if self.test_type == TestType.IPERF_UDP:

@@ -264,7 +264,7 @@ class AggregatableOutput(BaseOutput):
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class IperfOutput(AggregatableOutput):
+class FlowTestOutput(AggregatableOutput):
     tft_metadata: TestMetadata
     command: str
     result: dict[str, Any]
@@ -297,11 +297,11 @@ class TftAggregateOutput:
     evaluator.py.
 
     Attributes:
-        flow_test: an object of type IperfOutput containing the results of a flow test run
+        flow_test: an object of type FlowTestOutput containing the results of a flow test run
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[IperfOutput] = None
+    flow_test: Optional[FlowTestOutput] = None
     plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
 
 

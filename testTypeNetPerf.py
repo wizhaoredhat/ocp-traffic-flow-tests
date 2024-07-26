@@ -2,16 +2,16 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Optional
 
-import perf
+import task
 import tftbase
 
-from perf import PerfClient
-from perf import PerfServer
+from task import ClientTask
+from task import ServerTask
 from task import TaskOperation
 from testSettings import TestSettings
 from testType import TestTypeHandler
 from tftbase import BaseOutput
-from tftbase import IperfOutput
+from tftbase import FlowTestOutput
 from tftbase import TestType
 
 
@@ -65,7 +65,7 @@ def netperf_parse(testname: Any, data: str) -> dict[str, float]:
 
 @dataclass(frozen=True)
 class TestTypeHandlerNetPerf(TestTypeHandler):
-    def _create_server_client(self, ts: TestSettings) -> tuple[PerfServer, PerfClient]:
+    def _create_server_client(self, ts: TestSettings) -> tuple[ServerTask, ClientTask]:
         s = NetPerfServer(ts)
         c = NetPerfClient(ts, server=s)
         return (s, c)
@@ -77,7 +77,7 @@ test_type_handler_netperf_tcp_stream = TestTypeHandlerNetPerf(
 test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_RR)
 
 
-class NetPerfServer(perf.PerfServer):
+class NetPerfServer(task.ServerTask):
     def get_template_args(self) -> dict[str, str | list[str]]:
 
         extra_args: dict[str, str | list[str]] = {}
@@ -96,7 +96,7 @@ class NetPerfServer(perf.PerfServer):
         return f"killall {NETPERF_SERVER_EXE}"
 
 
-class NetPerfClient(perf.PerfClient):
+class NetPerfClient(task.ClientTask):
     def _create_task_operation(self) -> TaskOperation:
         assert not self.reverse
 
@@ -140,7 +140,7 @@ class NetPerfClient(perf.PerfClient):
                     else:
                         bitrate_gbps = tftbase.Bitrate(tx=x / 1000.0)
 
-            return IperfOutput(
+            return FlowTestOutput(
                 success=success_result,
                 tft_metadata=self.ts.get_test_metadata(),
                 command=cmd,

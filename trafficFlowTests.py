@@ -1,6 +1,6 @@
 import datetime
 import json
-import perf
+import task
 
 from pathlib import Path
 
@@ -49,9 +49,9 @@ class TrafficFlowTests:
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
-            f"Cleaning external containers {perf.EXTERNAL_PERF_SERVER} (if present)"
+            f"Cleaning external containers {task.EXTERNAL_PERF_SERVER} (if present)"
         )
-        cmd = f"podman rm --force --time 10 {perf.EXTERNAL_PERF_SERVER}"
+        cmd = f"podman rm --force --time 10 {task.EXTERNAL_PERF_SERVER}"
         host.local.run(cmd)
 
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
@@ -98,8 +98,8 @@ class TrafficFlowTests:
     ) -> TftAggregateOutput:
         connection = cfg_descr.get_connection()
 
-        servers: list[perf.PerfServer] = []
-        clients: list[perf.PerfClient] = []
+        servers: list[task.ServerTask] = []
+        clients: list[task.ClientTask] = []
         monitors: list[Task] = []
 
         c_server = connection.server[0]
