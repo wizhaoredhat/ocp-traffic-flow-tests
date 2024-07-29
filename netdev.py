@@ -816,7 +816,7 @@ def get_device_infos(with_ethtool: bool = True) -> list[dict[str, Any]]:
         result.append(res)
 
     uplink_reps: list[str] = sorted(
-        common.iter_filter_none(x1.get("uplink_rep_ifname") for x1 in result)
+        set(common.iter_filter_none(x1.get("uplink_rep_ifname") for x1 in result))
     )
 
     for uplink_rep_ifname in uplink_reps:
