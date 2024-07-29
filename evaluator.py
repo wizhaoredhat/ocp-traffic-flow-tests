@@ -1,54 +1,19 @@
 import argparse
-import json
 import sys
 import yaml
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import evalConfig
 import tftbase
 
-from common import dataclass_to_dict
-from common import strict_dataclass
+from common import dataclass_to_json
 from logger import logger
-from tftbase import Bitrate
 from tftbase import FlowTestOutput
-from tftbase import TestMetadata
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class PassFailStatus:
-    """Pass/Fail ratio and result from evaluating a full tft Flow Test result
-
-    Attributes:
-        result: boolean representing whether the test was successful (100% passing)
-        num_passed: int number of test cases passed
-        num_failed: int number of test cases failed"""
-
-    result: bool
-    num_tft_passed: int
-    num_tft_failed: int
-    num_plugin_passed: int
-    num_plugin_failed: int
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class TestResult:
-    """Result of a single test case run
-
-    Attributes:
-        tft_metadata: information about which test ran
-        success: boolean representing whether the test passed or failed
-        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
-    """
-
-    tft_metadata: TestMetadata
-    success: bool
-    bitrate_gbps: Bitrate
+from tftbase import PassFailStatus
+from tftbase import TestResult
+from tftbase import TestResultCollection
 
 
 class Evaluator:
@@ -111,19 +76,13 @@ class Evaluator:
         test_results: list[TestResult],
         plugin_results: list[tftbase.PluginResult],
     ) -> str:
-        passing = [dataclass_to_dict(r) for r in test_results if r.success]
-        failing = [dataclass_to_dict(r) for r in test_results if not r.success]
-        plugin_passing = [dataclass_to_dict(r) for r in plugin_results if r.success]
-        plugin_failing = [dataclass_to_dict(r) for r in plugin_results if not r.success]
-
-        return json.dumps(
-            {
-                "passing": passing,
-                "failing": failing,
-                "plugin_passing": plugin_passing,
-                "plugin_failing": plugin_failing,
-            }
+        res = TestResultCollection(
+            passing=[r for r in test_results if r.success],
+            failing=[r for r in test_results if not r.success],
+            plugin_passing=[r for r in plugin_results if r.success],
+            plugin_failing=[r for r in plugin_results if not r.success],
         )
+        return dataclass_to_json(res)
 
     def dump_to_json_file(
         self,
