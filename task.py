@@ -673,7 +673,7 @@ class ServerTask(Task, ABC):
         th_cmd = self._create_setup_operation_get_thread_action_cmd()
 
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-            cmd = f"podman run -it --init --replace --rm -p {self.port} --name={self.pod_name} {tftbase.get_tft_test_image()} {th_cmd}"
+            cmd = f"podman run -it --replace --rm -p {self.port} --name={self.pod_name} {tftbase.get_tft_test_image()} {th_cmd}"
             cancel_cmd = f"podman rm --force {self.pod_name}"
         else:
             self.setup_pod()
