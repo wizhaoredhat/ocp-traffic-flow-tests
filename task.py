@@ -20,6 +20,7 @@ from typing import TypeVar
 
 import common
 import host
+import jinja2util
 import netdev
 import tftbase
 
@@ -300,7 +301,7 @@ class Task(ABC):
         logger.info(
             f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}", for {self.log_name})'
         )
-        rendered = common.j2_render(in_file_template, out_file_yaml, template_args)
+        rendered = jinja2util.j2_render(in_file_template, out_file_yaml, template_args)
 
         rendered_dict = yaml.safe_load(rendered)
         logger.debug(f'"{in_file_template}" contains: {json.dumps(rendered_dict)}')
