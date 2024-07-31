@@ -22,5 +22,7 @@ tft:
           - name: measure_cpu
           - name: measure_power
           - name: validate_offload
+        # Secondary network is required for tests 27, 28 and 29
+        # secondary_network_nad: "default/ocp-secondary"
 kubeconfig:
 kubeconfig_infra:

@@ -283,6 +283,7 @@ class Task(ABC):
             "args": [],
             "index": f"{self.index}",
             "node_name": self.node_name,
+            "secondary_network_nad": self.ts.connection.secondary_network_nad,
         }
 
     def render_file(
@@ -384,6 +385,20 @@ class Task(ABC):
             raise RuntimeError("Failure to get static.podIP for {self.pod_name}")
         return pod_ip
 
+    def get_secondary_ip(self) -> str:
+        jsonpath = "{.metadata.annotations.k8s\\.ovn\\.org\\/pod-networks}"
+        r = self.run_oc(
+            f"get pod {self.pod_name} -o jsonpath='{jsonpath}'", die_on_error=True
+        )
+
+        y = yaml.safe_load(r.out)
+        ip_address_with_cidr = typing.cast(
+            str, y[self.ts.connection.secondary_network_nad]["ip_address"]
+        )
+        ip_address = ip_address_with_cidr.split("/")[0] if ip_address_with_cidr else ""
+        logger.info(f"Secondary IP: {ip_address}")
+        return ip_address
+
     def create_cluster_ip_service(self) -> str:
         in_file_template = "./manifests/svc-cluster-ip.yaml.j2"
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
@@ -419,6 +434,56 @@ class Task(ABC):
 
         return self.run_oc(
             "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'"
+        ).out
+
+    def create_ingress_multi_network_policy(self, ingressPort: int) -> str:
+        in_file_template = "./manifests/allow-ingress-mnp.yaml.j2"
+        out_file_yaml = "./manifests/yamls/allow-ingress-mnp.yaml"
+
+        template_args = {
+            **self.get_template_args(),
+            "ingress_port": f"{ingressPort}",
+        }
+
+        self.render_file(
+            "Ingress Multi Network Policy",
+            in_file_template,
+            out_file_yaml,
+            template_args,
+        )
+        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
+        if r.returncode != 0:
+            if "already exists" not in r.err:
+                logger.info(r)
+                sys.exit(-1)
+
+        return self.run_oc(
+            "get multi-networkpolicies allow-ingress-mnp", die_on_error=True
+        ).out
+
+    def create_egress_multi_network_policy(self, egressPort: int) -> str:
+        in_file_template = "./manifests/allow-egress-mnp.yaml.j2"
+        out_file_yaml = "./manifests/yamls/allow-egress-mnp.yaml"
+
+        template_args = {
+            **self.get_template_args(),
+            "egress_port": f"{egressPort}",
+        }
+
+        self.render_file(
+            "Egress Multi Network Policy",
+            in_file_template,
+            out_file_yaml,
+            template_args,
+        )
+        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
+        if r.returncode != 0:
+            if "already exists" not in r.err:
+                logger.info(r)
+                sys.exit(-1)
+
+        return self.run_oc(
+            "get multi-networkpolicies allow-egress-mnp", die_on_error=True
         ).out
 
     def start_setup(self) -> None:
@@ -590,6 +655,15 @@ class ServerTask(Task, ABC):
             in_file_template = ""
             out_file_yaml = ""
             pod_name = EXTERNAL_PERF_SERVER
+        elif connection_mode in (
+            ConnectionMode.MULTI_HOME,
+            ConnectionMode.MULTI_NETWORK,
+        ):
+            in_file_template = "./manifests/pod-secondary-network.yaml.j2"
+            out_file_yaml = (
+                f"./manifests/yamls/pod-secondary-network-{node_name}-server.yaml"
+            )
+            pod_name = f"normal-pod-secondary-network-{node_name}-server-{port}"
         elif pod_type == PodType.SRIOV:
             in_file_template = "./manifests/sriov-pod.yaml.j2"
             out_file_yaml = f"./manifests/yamls/sriov-pod-{node_name}-server.yaml"
@@ -636,6 +710,10 @@ class ServerTask(Task, ABC):
 
             self.cluster_ip_addr = self.create_cluster_ip_service()
             self.nodeport_ip_addr = self.create_node_port_service(self.port + 25000)
+
+        if self.connection_mode == ConnectionMode.MULTI_NETWORK:
+            self.create_ingress_multi_network_policy(self.port)
+            self.create_egress_multi_network_policy(self.port)
 
     def confirm_server_alive(self) -> None:
         if self.connection_mode == ConnectionMode.EXTERNAL_IP:
@@ -727,8 +805,15 @@ class ClientTask(Task, ABC):
         pod_type = ts.client_pod_type
         node_name = self.node_name
         port = server.port
+        connection_mode = ts.connection_mode
 
-        if pod_type == PodType.SRIOV:
+        if connection_mode in (ConnectionMode.MULTI_HOME, ConnectionMode.MULTI_NETWORK):
+            in_file_template = "./manifests/pod-secondary-network.yaml.j2"
+            out_file_yaml = (
+                f"./manifests/yamls/pod-secondary-network-{node_name}-client.yaml"
+            )
+            pod_name = f"normal-pod-secondary-network-{node_name}-client-{port}"
+        elif pod_type == PodType.SRIOV:
             in_file_template = "./manifests/sriov-pod.yaml.j2"
             out_file_yaml = f"./manifests/yamls/sriov-pod-{node_name}-client.yaml"
             pod_name = f"sriov-pod-{node_name}-client-{port}"
@@ -780,6 +865,12 @@ class ClientTask(Task, ABC):
             external_pod_ip = self.get_podman_ip(self.server.pod_name)
             logger.debug(f"get_target_ip() External connection to {external_pod_ip}")
             return external_pod_ip
+        elif self.connection_mode in (
+            ConnectionMode.MULTI_NETWORK,
+            ConnectionMode.MULTI_HOME,
+        ):
+            server_ip2 = self.server.get_secondary_ip()
+            return server_ip2
         server_ip = self.server.get_pod_ip()
         logger.debug(f"get_target_ip() Connection to server at {server_ip}")
         return server_ip

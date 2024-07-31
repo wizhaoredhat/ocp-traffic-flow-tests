@@ -42,8 +42,9 @@ tft:
         plugins:
           - name: (15)
           - name: (15)
-kubeconfig: (16)
-kubeconfig_infra: (16)
+        secondary_network_nad: "(16)"
+kubeconfig: (17)
+kubeconfig_infra: (17)
 ```
 
 1. "name" - This is the name of the test. Any string value to identify the test.
@@ -79,6 +80,9 @@ kubeconfig_infra: (16)
     | 24 | HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE |
     | 25 | POD_TO_EXTERNAL |
     | 26 | HOST_TO_EXTERNAL |
+    | 27 | POD_TO_POD_2ND_INTERFACE_SAME_NODE |
+    | 28 | POD_TO_POD_2ND_INTERFACE_DIFF_NODE |
+    | 29 | POD_TO_POD_MULTI_NETWORK_POLICY |
 4. "duration" - The duration that each individual test will run for.
 5. "name" - This is the connection name. Any string value to identify the connection.
 6. "type" - Supported types of connections are iperf-tcp, iperf-udp, netperf-tcp-stream, netperf-tcp-rr
@@ -96,7 +100,8 @@ kubeconfig_infra: (16)
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
-16. "kubeconfig", "kubeconfig_infra": if set to non-empty strings, then these are the KUBECONFIG
+16. "secondary_network_nad" - The name of the secondary network for multi-homing and multi-networkpolicies tests.
+17. "kubeconfig", "kubeconfig_infra": if set to non-empty strings, then these are the KUBECONFIG
   files. "kubeconfig_infra" must be set for DPU cluster mode. If both are empty, the configs
   are detected based on the files we find at /root/kubeconfig.*.
 

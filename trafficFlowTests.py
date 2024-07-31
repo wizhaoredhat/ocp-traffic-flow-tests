@@ -49,6 +49,15 @@ class TrafficFlowTests:
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
+            f"Cleaning multi-networkpolicies with label tft-tests in namespace {namespace}"
+        )
+        r = cfg_descr.tc.client_tenant.oc(
+            f"delete multi-networkpolicies -n {namespace} -l tft-tests"
+        )
+        logger.info(
+            f"Cleaned multi-networkpolicies with label tft-tests in namespace {namespace}"
+        )
+        logger.info(
             f"Cleaning external containers {task.EXTERNAL_PERF_SERVER} (if present)"
         )
         cmd = f"podman rm --force --time 10 {task.EXTERNAL_PERF_SERVER}"

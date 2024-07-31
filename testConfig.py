@@ -208,6 +208,7 @@ class ConfConnection(StructParseBaseNamed):
     server: tuple[ConfServer, ...]
     client: tuple[ConfClient, ...]
     plugins: tuple[ConfPlugin, ...]
+    secondary_network_nad: str
 
     def serialize(self) -> dict[str, Any]:
         return {
@@ -217,11 +218,17 @@ class ConfConnection(StructParseBaseNamed):
             "server": [s.serialize() for s in self.server],
             "client": [c.serialize() for c in self.client],
             "plugins": [p.serialize() for p in self.plugins],
+            "secondary_network_nad": self.secondary_network_nad,
         }
 
     @staticmethod
     def parse(
-        yamlidx: int, yamlpath: str, arg: Any, *, test_name: str
+        yamlidx: int,
+        yamlpath: str,
+        arg: Any,
+        *,
+        test_name: str,
+        namespace: str,
     ) -> "ConfConnection":
         v: Any
         vdict = structparse_check_strdict(arg, yamlpath)
@@ -283,6 +290,16 @@ class ConfConnection(StructParseBaseNamed):
                     ConfPlugin.parse(yamlidx2, f"{yamlpath}.plugins[{yamlidx}]", arg)
                 )
 
+        v = vdict.pop("secondary_network_nad", None)
+        if v is None:
+            secondary_network_nad = f"{namespace}/ocp-secondary"
+        elif not isinstance(v, str):
+            raise ValueError(
+                f'"{yamlpath}.secondary_network_nad": expects a string but got {v}'
+            )
+        else:
+            secondary_network_nad = v
+
         structparse_check_empty_dict(vdict, yamlpath)
 
         if len(server) > 1:
@@ -319,6 +336,7 @@ class ConfConnection(StructParseBaseNamed):
             server=tuple(server),
             client=tuple(client),
             plugins=tuple(plugins),
+            secondary_network_nad=secondary_network_nad,
         )
 
 
@@ -396,6 +414,7 @@ class ConfTest(StructParseBaseNamed):
                     f"{yamlpath}.connections[{yamlidx}]",
                     arg,
                     test_name=name,
+                    namespace=namespace,
                 )
             )
 
