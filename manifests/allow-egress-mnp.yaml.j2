@@ -1,0 +1,17 @@
+kind: MultiNetworkPolicy
+apiVersion: k8s.cni.cncf.io/v1beta1
+metadata:
+  namespace: {{ name_space }}
+  name: allow-egress-mnp
+  labels:
+    tft-tests: "{{ index }}"
+  annotations:
+    k8s.v1.cni.cncf.io/policy-for: {{ secondary_network_nad }}
+spec:
+  podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+      ports:
+        - port: {{ egress_port }}
+          protocol: TCP
