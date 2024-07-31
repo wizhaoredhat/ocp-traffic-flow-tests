@@ -1,5 +1,4 @@
 import json
-import kubernetes  # type: ignore
 import logging
 import os
 import random
@@ -28,21 +27,10 @@ class K8sClient:
                 f"KUBECONFIG={shlex.quote(kubeconfig)} file does not exist"
             )
         self._kc = kubeconfig
+
+        # Load the file to check that it is valid YAML.
         with open(kubeconfig) as f:
-            c = yaml.safe_load(f)
-        self._api_client = kubernetes.config.new_client_from_config_dict(c)
-        self._client = kubernetes.client.CoreV1Api(self._api_client)
-
-    def get_nodes(
-        self,
-    ) -> list[str]:
-        return [e.metadata.name for e in self._client.list_node().items]
-
-    def get_nodes_with_label(self, label_selector: str) -> list[str]:
-        return [
-            e.metadata.name
-            for e in self._client.list_node(label_selector=label_selector).items
-        ]
+            yaml.safe_load(f)
 
     @staticmethod
     def _get_oc_cmd(cmd: str | Iterable[str]) -> list[str]:
