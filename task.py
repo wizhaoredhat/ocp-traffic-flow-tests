@@ -135,7 +135,7 @@ class TaskOperation:
 
         try:
             result = self._thread_action()
-        except Exception as e:
+        except BaseException as e:
             import traceback
 
             logger.error(f"thread[{self.log_name}]: action raised exception {e}")
