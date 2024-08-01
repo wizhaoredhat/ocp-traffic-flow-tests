@@ -406,14 +406,14 @@ class Task(ABC):
         out_file_yaml = "./manifests/yamls/svc-cluster-ip.yaml"
 
         self.render_file("Cluster IP Service", in_file_template, out_file_yaml)
-        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
-        if not r.success:
-            if "already exists" not in r.err:
-                logger.error(r)
-                sys.exit(-1)
-
+        self.run_oc(
+            f"apply -f {out_file_yaml}",
+            check_success=lambda r: r.success or "already exists" in r.err,
+            die_on_error=True,
+        )
         return self.run_oc(
-            "get service tft-clusterip-service -o=jsonpath='{.spec.clusterIP}'"
+            "get service tft-clusterip-service -o=jsonpath='{.spec.clusterIP}'",
+            die_on_error=True,
         ).out
 
     def create_node_port_service(self, nodeport: int) -> str:
@@ -428,14 +428,14 @@ class Task(ABC):
         self.render_file(
             "Node Port Service", in_file_template, out_file_yaml, template_args
         )
-        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
-        if not r.success:
-            if "already exists" not in r.err:
-                logger.error(r)
-                sys.exit(-1)
-
+        self.run_oc(
+            f"apply -f {out_file_yaml}",
+            check_success=lambda r: r.success or "already exists" in r.err,
+            die_on_error=True,
+        )
         return self.run_oc(
-            "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'"
+            "get service tft-nodeport-service -o=jsonpath='{.spec.clusterIP}'",
+            die_on_error=True,
         ).out
 
     def create_ingress_multi_network_policy(self, ingressPort: int) -> str:
@@ -453,14 +453,14 @@ class Task(ABC):
             out_file_yaml,
             template_args,
         )
-        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
-        if not r.success:
-            if "already exists" not in r.err:
-                logger.info(r)
-                sys.exit(-1)
-
+        self.run_oc(
+            f"apply -f {out_file_yaml}",
+            check_success=lambda r: r.success or "already exists" in r.err,
+            die_on_error=True,
+        )
         return self.run_oc(
-            "get multi-networkpolicies allow-ingress-mnp", die_on_error=True
+            "get multi-networkpolicies allow-ingress-mnp",
+            die_on_error=True,
         ).out
 
     def create_egress_multi_network_policy(self, egressPort: int) -> str:
@@ -478,14 +478,14 @@ class Task(ABC):
             out_file_yaml,
             template_args,
         )
-        r = self.run_oc(f"apply -f {out_file_yaml}", may_fail=True)
-        if not r.success:
-            if "already exists" not in r.err:
-                logger.info(r)
-                sys.exit(-1)
-
+        self.run_oc(
+            f"apply -f {out_file_yaml}",
+            check_success=lambda r: r.success or "already exists" in r.err,
+            die_on_error=True,
+        )
         return self.run_oc(
-            "get multi-networkpolicies allow-egress-mnp", die_on_error=True
+            "get multi-networkpolicies allow-egress-mnp",
+            die_on_error=True,
         ).out
 
     def start_setup(self) -> None:
