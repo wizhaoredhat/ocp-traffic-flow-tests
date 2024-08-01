@@ -330,12 +330,14 @@ class Task(ABC):
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
+        check_success: Optional[Callable[[host.Result], bool]] = None,
         namespace: Optional[str] | common._MISSING_TYPE = common.MISSING,
     ) -> host.Result:
         return self.client.oc(
             cmd,
             may_fail=may_fail,
             die_on_error=die_on_error,
+            check_success=check_success,
             namespace=self._get_run_oc_namespace(namespace),
         )
 

@@ -75,11 +75,13 @@ class K8sClient:
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
+        check_success: typing.Optional[typing.Callable[[host.Result], bool]] = None,
         namespace: typing.Optional[str] = None,
     ) -> host.Result:
         return host.local.run(
             self._get_oc_cmd_full(cmd=cmd, namespace=namespace),
             die_on_error=die_on_error,
+            check_success=check_success,
             log_level_fail=logging.DEBUG if may_fail else logging.ERROR,
         )
 
