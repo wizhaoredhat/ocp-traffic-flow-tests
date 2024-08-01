@@ -301,6 +301,11 @@ class Host(ABC):
             raise decode_exception
 
         if die_on_error and not result_success:
+            import traceback
+
+            logger.error(
+                f"FATAL ERROR. BACKTRACE:\n{''.join(traceback.format_stack())}"
+            )
             sys.exit(-1)
 
         if str_result is not None:
