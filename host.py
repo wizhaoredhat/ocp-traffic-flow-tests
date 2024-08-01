@@ -46,7 +46,7 @@ class BaseResult(ABC, typing.Generic[T]):
         return self.returncode == 0
 
     def debug_str(self) -> str:
-        if self.returncode == 0:
+        if self.success:
             status = "succcess"
         else:
             status = f"failed ({self.returncode})"

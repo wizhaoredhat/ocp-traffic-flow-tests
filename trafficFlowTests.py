@@ -25,7 +25,7 @@ class TrafficFlowTests:
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
                                         security.openshift.io/scc.podSecurityLabelSync=false"
         )
-        if r.returncode != 0:
+        if not r.success:
             logger.error(r)
             raise Exception(
                 f"configure_namespace(): Failed to label namespace {namespace}"
@@ -36,7 +36,7 @@ class TrafficFlowTests:
         namespace = cfg_descr.get_tft().namespace
         logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
         r = cfg_descr.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
-        if r.returncode != 0:
+        if not r.success:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete pods")
         logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
@@ -44,7 +44,7 @@ class TrafficFlowTests:
         r = cfg_descr.tc.client_tenant.oc(
             f"delete services -n {namespace} -l tft-tests"
         )
-        if r.returncode != 0:
+        if not r.success:
             logger.error(r)
             raise Exception("cleanup_previous_testspace(): Failed to delete services")
         logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
