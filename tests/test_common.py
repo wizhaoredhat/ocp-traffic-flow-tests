@@ -110,19 +110,22 @@ def test_str_to_bool() -> None:
     with pytest.raises(ValueError):
         common.bool_to_str(False, format="bogus")
 
-    typing.assert_type(common.str_to_bool("true"), bool)
-    typing.assert_type(common.str_to_bool("true", on_error=None), bool | None)
-    typing.assert_type(common.str_to_bool("true", on_default=None), bool | None)
-    typing.assert_type(
-        common.str_to_bool("true", on_error=None, on_default=1), bool | None | int
-    )
-    typing.assert_type(common.str_to_bool("true", on_error=2, on_default=1), bool | int)
-    typing.assert_type(
-        common.str_to_bool("true", on_error=True, on_default="1"), bool | str
-    )
-    typing.assert_type(
-        common.str_to_bool("true", on_error=True, on_default="1"), bool | str
-    )
+    if sys.version_info >= (3, 10):
+        typing.assert_type(common.str_to_bool("true"), bool)
+        typing.assert_type(common.str_to_bool("true", on_error=None), bool | None)
+        typing.assert_type(common.str_to_bool("true", on_default=None), bool | None)
+        typing.assert_type(
+            common.str_to_bool("true", on_error=None, on_default=1), bool | None | int
+        )
+        typing.assert_type(
+            common.str_to_bool("true", on_error=2, on_default=1), bool | int
+        )
+        typing.assert_type(
+            common.str_to_bool("true", on_error=True, on_default="1"), bool | str
+        )
+        typing.assert_type(
+            common.str_to_bool("true", on_error=True, on_default="1"), bool | str
+        )
 
 
 def test_enum_convert() -> None:
@@ -399,3 +402,17 @@ def test_dataclass_tofrom_dict() -> None:
     assert type(common.dataclass_from_dict(C10, {"x": 1.0}).x) is float
     assert type(c10.x) is int
     assert type(C10(1.0).x) is float
+
+
+def test_kw_only() -> None:
+    common.StructParseBaseNamed(yamlpath="yamlpath", yamlidx=0, name="name")
+    if sys.version_info >= (3, 10):
+        assert common.KW_ONLY_DATACLASS == {"kw_only": True}
+        with pytest.raises(TypeError):
+            common.StructParseBaseNamed("yamlpath", yamlidx=0, name="name")
+        with pytest.raises(TypeError):
+            common.StructParseBaseNamed("yamlpath", 0, "name")
+    else:
+        assert common.KW_ONLY_DATACLASS == {}
+        common.StructParseBaseNamed("yamlpath", yamlidx=0, name="name")
+        common.StructParseBaseNamed("yamlpath", 0, "name")

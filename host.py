@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Union
 
 from logger import logger
 
@@ -22,6 +23,10 @@ from logger import logger
 _lock = threading.Lock()
 
 _unique_log_id_value = 0
+
+# Same as common.KW_ONLY_DATACLASS, but we should not use common module here.
+# See common.KW_ONLY_DATACLASS why this is used.
+KW_ONLY_DATACLASS = {"kw_only": True} if "kw_only" in dataclass.__kwdefaults__ else {}
 
 
 def _unique_log_id() -> int:
@@ -34,18 +39,28 @@ def _unique_log_id() -> int:
         return _unique_log_id_value
 
 
-T = typing.TypeVar("T", bound=str | bytes)
+T = typing.TypeVar("T", bound=Union[str, bytes])
 
 
 @dataclass(frozen=True)
-class BaseResult(ABC, typing.Generic[T]):
+class _BaseResult(ABC, typing.Generic[T]):
+    # _BaseResult only exists to have the first 3 parameters positional
+    # arguments and the subsequent parameters (in BaseResult) marked as
+    # KW_ONLY_DATACLASS. Once we no longer support Python 3.9, the classes
+    # can be merged.
     out: T
     err: T
     returncode: int
 
+
+@dataclass(frozen=True, **KW_ONLY_DATACLASS)
+class BaseResult(_BaseResult[T]):
     # In most cases, "success" is the same as checking for returncode zero.  In
     # some cases, it can be overwritten to be of a certain value.
-    forced_success: Optional[bool] = dataclasses.field(default=None, kw_only=True)
+    forced_success: Optional[bool] = dataclasses.field(
+        default=None,
+        # kw_only=True <- use once we upgrade to 3.10 and drop KW_ONLY_DATACLASS.
+    )
 
     @property
     def success(self) -> bool:
@@ -102,7 +117,7 @@ class Host(ABC):
     @typing.overload
     def run(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         text: typing.Literal[True] = True,
         env: Optional[Mapping[str, Optional[str]]] = None,
@@ -119,7 +134,7 @@ class Host(ABC):
     @typing.overload
     def run(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         text: typing.Literal[False],
         env: Optional[Mapping[str, Optional[str]]] = None,
@@ -135,7 +150,7 @@ class Host(ABC):
 
     def run(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         text: bool = True,
         env: Optional[Mapping[str, Optional[str]]] = None,
@@ -144,11 +159,11 @@ class Host(ABC):
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
         check_success: Optional[
-            Callable[[Result], bool] | Callable[[BinResult], bool]
+            Union[Callable[[Result], bool], Callable[[BinResult], bool]]
         ] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
-    ) -> Result | BinResult:
+    ) -> Union[Result, BinResult]:
         log_id = _unique_log_id()
         if not isinstance(cmd, str):
             cmd = shlex.join(list(cmd))
@@ -321,7 +336,7 @@ class Host(ABC):
     ) -> BinResult:
         pass
 
-    def file_exists(self, path: str | os.PathLike[Any]) -> bool:
+    def file_exists(self, path: Union[str, os.PathLike[Any]]) -> bool:
         return self.run(["test", "-e", str(path)], log_level=-1, text=False).success
 
 
@@ -353,7 +368,7 @@ class LocalHost(Host):
 
         return BinResult(res.stdout, res.stderr, res.returncode)
 
-    def file_exists(self, path: str | os.PathLike[Any]) -> bool:
+    def file_exists(self, path: Union[str, os.PathLike[Any]]) -> bool:
         return os.path.exists(path)
 
 

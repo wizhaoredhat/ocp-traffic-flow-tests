@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
+from typing import Union
 
 import host
 import common
@@ -23,7 +24,7 @@ def _parse_line(line: str, caption: str) -> Optional[str]:
 _isspace_kernel_set = {c[0] for c in (b" ", b"\n", b"\t", b"\r", b"\f", b"\v", b"\240")}
 
 
-def isspace_kernel(c: int | bytes) -> bool:
+def isspace_kernel(c: Union[int, bytes]) -> bool:
     # mirrors kernel's isspace() from "include/linux/ctype.h", which treats as
     # space the common ASCII spaces, including '\v' (vertical tab), but also
     # '\240' (non-breaking space, NBSP in Latin-1). */
@@ -40,7 +41,7 @@ def isspace_kernel(c: int | bytes) -> bool:
     return c in _isspace_kernel_set
 
 
-def normalize_ifname(ifname: str | bytes, *, validate: bool = False) -> bytes:
+def normalize_ifname(ifname: Union[str, bytes], *, validate: bool = False) -> bytes:
     if isinstance(ifname, str):
         ifname = ifname.encode("utf-8", errors="surrogateescape")
     elif not isinstance(ifname, bytes):
@@ -66,7 +67,7 @@ def normalize_ifname(ifname: str | bytes, *, validate: bool = False) -> bytes:
     return ifname
 
 
-def validate_ifname(ifname: str | bytes) -> str:
+def validate_ifname(ifname: Union[str, bytes]) -> str:
     # The main point of this validation is whether this can be used
     # safely in a path name.
     #
@@ -75,7 +76,7 @@ def validate_ifname(ifname: str | bytes) -> str:
     return ifname.decode(errors="surrogateescape")
 
 
-def validate_ifname_or_none(ifname: str | bytes) -> Optional[str]:
+def validate_ifname_or_none(ifname: Union[str, bytes]) -> Optional[str]:
     try:
         return validate_ifname(ifname)
     except ValueError:
@@ -85,7 +86,7 @@ def validate_ifname_or_none(ifname: str | bytes) -> Optional[str]:
 _pciaddr_re = re.compile("^[0-9a-f]{4}:[0-9a-f]{2}:[01][0-9a-f].[0-7]$")
 
 
-def validate_pciaddr(pciaddr: str | bytes) -> str:
+def validate_pciaddr(pciaddr: Union[str, bytes]) -> str:
     # The main point of this validation is whether this can be used
     # safely in a path name.
     if isinstance(pciaddr, bytes):
@@ -109,7 +110,7 @@ def validate_pciaddr(pciaddr: str | bytes) -> str:
 _ethaddr_re = re.compile("^[0-9a-fA-F:]+$")
 
 
-def validate_ethaddr(ethaddr: str | bytes) -> str:
+def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
     # The main point of this validation is whether this can be used
     # safely in a path name.
     if isinstance(ethaddr, bytes):
@@ -128,7 +129,7 @@ def validate_ethaddr(ethaddr: str | bytes) -> str:
     return ethaddr.lower()
 
 
-def pciaddr_get_func_address(pciaddr: Optional[str | bytes]) -> Optional[int]:
+def pciaddr_get_func_address(pciaddr: Optional[Union[str, bytes]]) -> Optional[int]:
     # https://github.com/k8snetworkplumbingwg/sriovnet/blob/master/sriovnet_switchdev.go#L172
     if pciaddr is None:
         return None
@@ -140,7 +141,7 @@ def pciaddr_get_func_address(pciaddr: Optional[str | bytes]) -> Optional[int]:
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **common.KW_ONLY_DATACLASS)
 class IPRouteAddressInfoEntry:
     family: str
     local: str
@@ -151,7 +152,7 @@ class IPRouteAddressInfoEntry:
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **common.KW_ONLY_DATACLASS)
 class IPRouteAddressEntry:
     ifindex: int
     ifname: str
@@ -222,7 +223,7 @@ def ip_addrs(
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **common.KW_ONLY_DATACLASS)
 class IPRouteLinkEntry:
     ifindex: int
     ifname: str
@@ -233,7 +234,7 @@ class IPRouteLinkEntry:
     operstate: str
     link_info_kind: Optional[str]
 
-    def match_ifname(self, ifname: Optional[str | bytes]) -> bool:
+    def match_ifname(self, ifname: Optional[Union[str, bytes]]) -> bool:
         if ifname is None:
             return False
         return normalize_ifname(self.ifname) == normalize_ifname(ifname)
@@ -309,7 +310,7 @@ def ip_links(
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **common.KW_ONLY_DATACLASS)
 class IPRouteRouteEntry:
     dst: str
     dev: str
@@ -359,7 +360,7 @@ def ip_routes(
 def ethtool_permaddr(
     rsh: Optional[host.Host] = None,
     *,
-    ifname: str | bytes,
+    ifname: Union[str, bytes],
     strict_parsing: bool = False,
     ip_log_level: int = -1,
 ) -> Optional[str]:
@@ -392,7 +393,7 @@ def ethtool_permaddr(
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **common.KW_ONLY_DATACLASS)
 class EthtoolDriverInfo:
     ifname: str
     driver: Optional[str]
@@ -403,7 +404,7 @@ class EthtoolDriverInfo:
 def ethtool_driver(
     rsh: Optional[host.Host] = None,
     *,
-    ifname: str | bytes,
+    ifname: Union[str, bytes],
     strict_parsing: bool = False,
     ip_log_level: int = -1,
 ) -> Optional[EthtoolDriverInfo]:
@@ -440,7 +441,7 @@ def ethtool_driver(
     )
 
 
-def _sysctl_parse_str(s: Optional[str | bytes]) -> Optional[str]:
+def _sysctl_parse_str(s: Optional[Union[str, bytes]]) -> Optional[str]:
     if s is None:
         return None
 
@@ -457,7 +458,7 @@ def _sysctl_parse_str(s: Optional[str | bytes]) -> Optional[str]:
 
 
 def sysctl_read(
-    path: str | bytes,
+    path: Union[str, bytes],
     *,
     strip: bool = True,
     fail_on_error: bool = False,
@@ -480,7 +481,9 @@ def sysctl_read(
     return s
 
 
-def sysctl_phys_port_name_parse(s: Optional[str | bytes]) -> Optional[tuple[int, int]]:
+def sysctl_phys_port_name_parse(
+    s: Optional[Union[str, bytes]]
+) -> Optional[tuple[int, int]]:
     # Parses the output of /sys/class/net/$IFNAME/phys_port_name
     #
     # https://github.com/k8snetworkplumbingwg/sriovnet/blob/3ca5e43034e6425fb5e4b0b4d3c8c3a2b3f5a5e8/sriovnet_switchdev.go#L84C6-L84C19
@@ -507,11 +510,11 @@ def sysctl_phys_port_name_parse(s: Optional[str | bytes]) -> Optional[tuple[int,
     return None
 
 
-def get_phys_port_name(ifname: str | bytes) -> Optional[str]:
+def get_phys_port_name(ifname: Union[str, bytes]) -> Optional[str]:
     return sysctl_read(f"/sys/class/net/{validate_ifname(ifname)}/phys_port_name")
 
 
-def get_phys_switch_id(ifname: str | bytes) -> Optional[str]:
+def get_phys_switch_id(ifname: Union[str, bytes]) -> Optional[str]:
     return sysctl_read(f"/sys/class/net/{validate_ifname(ifname)}/phys_switch_id")
 
 
@@ -554,7 +557,7 @@ def _get_usbaddr_from_path(path: str) -> Optional[str]:
     return usbaddr
 
 
-def get_busaddr_from_ifname(ifname: str | bytes) -> Optional[tuple[str, str]]:
+def get_busaddr_from_ifname(ifname: Union[str, bytes]) -> Optional[tuple[str, str]]:
     ifname = validate_ifname(ifname)
     try:
         path = os.readlink(f"/sys/class/net/{ifname}/device")
@@ -572,7 +575,7 @@ def get_busaddr_from_ifname(ifname: str | bytes) -> Optional[tuple[str, str]]:
     return None
 
 
-def get_pciaddr_from_ifname(ifname: str | bytes) -> Optional[str]:
+def get_pciaddr_from_ifname(ifname: Union[str, bytes]) -> Optional[str]:
     busaddr = get_busaddr_from_ifname(ifname)
     if busaddr is None:
         return None
@@ -596,7 +599,7 @@ def get_ifnames_from_pciaddr(pciaddr: str) -> Optional[list[str]]:
     )
 
 
-def get_ifindex_from_ifname(ifname: str | bytes) -> Optional[int]:
+def get_ifindex_from_ifname(ifname: Union[str, bytes]) -> Optional[int]:
     ifname = validate_ifname(ifname)
     try:
         v = sysctl_read(f"/sys/class/net/{ifname}/ifindex")
@@ -611,7 +614,7 @@ def get_ifindex_from_ifname(ifname: str | bytes) -> Optional[int]:
     return None
 
 
-def get_address_from_ifname(ifname: str | bytes) -> Optional[str]:
+def get_address_from_ifname(ifname: Union[str, bytes]) -> Optional[str]:
     ifname = validate_ifname(ifname)
     try:
         data = sysctl_read(f"/sys/class/net/{ifname}/address")
@@ -622,7 +625,7 @@ def get_address_from_ifname(ifname: str | bytes) -> Optional[str]:
     return None
 
 
-def is_switchdev(ifname: str | bytes) -> bool:
+def is_switchdev(ifname: Union[str, bytes]) -> bool:
     # https://github.com/k8snetworkplumbingwg/sriovnet/blob/3ca5e43034e6425fb5e4b0b4d3c8c3a2b3f5a5e8/sriovnet_switchdev.go#L102
     return bool(get_phys_switch_id(ifname))
 
@@ -652,7 +655,9 @@ def get_uplink_representor(pciaddr: str) -> Optional[str]:
     return None
 
 
-def get_vf_representor(uplink_ifname: str | bytes, vf_index: int) -> Optional[str]:
+def get_vf_representor(
+    uplink_ifname: Union[str, bytes], vf_index: int
+) -> Optional[str]:
     # https://github.com/k8snetworkplumbingwg/sriovnet/blob/3ca5e43034e6425fb5e4b0b4d3c8c3a2b3f5a5e8/sriovnet_switchdev.go#L143
     uplink_ifname = validate_ifname(uplink_ifname)
 

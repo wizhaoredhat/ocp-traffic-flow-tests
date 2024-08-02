@@ -106,3 +106,19 @@ def test_host_file_exists() -> None:
 
     assert host.local.file_exists(pathlib.Path(__file__))
     assert host.Host.file_exists(host.local, pathlib.Path(__file__))
+
+
+def test_result_typing() -> None:
+    host.Result("out", "err", 0)
+    host.Result("out", "err", 0, forced_success=True)
+    host.BinResult(b"out", b"err", 0)
+    host.BinResult(b"out", b"err", 0, forced_success=True)
+
+    if sys.version_info >= (3, 10):
+        with pytest.raises(TypeError):
+            host.Result("out", "err", 0, True)
+        with pytest.raises(TypeError):
+            host.BinResult(b"out", b"err", 0, True)
+    else:
+        host.Result("out", "err", 0, True)
+        host.BinResult(b"out", b"err", 0, True)
