@@ -1,5 +1,6 @@
-import pytest
+import functools
 import os
+import pytest
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -8,13 +9,31 @@ import host  # noqa: E402
 import netdev  # noqa: E402
 
 
+@functools.cache
+def has_ip_route() -> bool:
+    return host.local.run("ip addr").returncode != 127
+
+
+def skip_without_ip_route() -> None:
+    if not has_ip_route():
+        pytest.skip("has no iproute2")
+
+
 def test_ip_addrs() -> None:
     # We expect to have at least one address configured on the system and that
     # `ip -json addr` works. The unit test requires that.
+    if not has_ip_route():
+        assert netdev.ip_addrs(host.local) == []
+    skip_without_ip_route()
+
     assert netdev.ip_addrs(host.local)
 
 
 def test_ip_links() -> None:
+    if not has_ip_route():
+        assert netdev.ip_links(host.local) == []
+    skip_without_ip_route()
+
     links = netdev.ip_links(host.local)
     assert links
     assert [link.ifindex for link in links if link.ifname == "lo"] == [1]
@@ -32,6 +51,10 @@ def test_ip_links() -> None:
 def test_ip_routes() -> None:
     # We expect to have at least one route configured on the system and that
     # `ip -json route` works. The unit test requires that.
+    if not has_ip_route():
+        assert netdev.ip_routes(host.local) == []
+    skip_without_ip_route()
+
     assert netdev.ip_routes(host.local)
 
 
