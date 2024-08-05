@@ -4,7 +4,8 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from logger import logger
+from ktoolbox.logger import logger
+
 from tftbase import TestType
 
 

@@ -3,8 +3,9 @@ import time
 
 from dataclasses import dataclass
 
-import common
-import host
+from ktoolbox import common
+from ktoolbox import host
+
 import task
 import tftbase
 

@@ -2,12 +2,13 @@ import typing
 
 from typing import Optional
 
-import common
+from ktoolbox import common
+from ktoolbox.logger import logger
+
 import pluginbase
 import task
 import tftbase
 
-from logger import logger
 from task import PluginTask
 from task import TaskOperation
 from testSettings import TestSettings

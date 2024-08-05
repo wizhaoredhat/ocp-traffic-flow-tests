@@ -4,7 +4,8 @@ import argparse
 import json
 import sys
 
-import common
+from ktoolbox import common
+
 import tftbase
 
 

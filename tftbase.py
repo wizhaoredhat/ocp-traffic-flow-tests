@@ -13,11 +13,10 @@ from pathlib import Path
 from typing import Any
 from typing import Optional
 
-import host
-import common
-
-from common import strict_dataclass
-from logger import logger
+from ktoolbox import common
+from ktoolbox import host
+from ktoolbox.common import strict_dataclass
+from ktoolbox.logger import logger
 
 
 ENV_TFT_TEST_IMAGE = "TFT_TEST_IMAGE"

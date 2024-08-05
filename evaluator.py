@@ -5,11 +5,12 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
+from ktoolbox.common import dataclass_to_json
+from ktoolbox.logger import logger
+
 import evalConfig
 import tftbase
 
-from common import dataclass_to_json
-from logger import logger
 from tftbase import FlowTestOutput
 from tftbase import PassFailStatus
 from tftbase import TestResult

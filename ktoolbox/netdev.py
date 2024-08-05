@@ -8,11 +8,11 @@ from typing import Any
 from typing import Optional
 from typing import Union
 
-import host
-import common
+from . import host
+from . import common
 
-from common import strict_dataclass
-from common import dict_add_optional
+from .common import strict_dataclass
+from .common import dict_add_optional
 
 
 def _parse_line(line: str, caption: str) -> Optional[str]:

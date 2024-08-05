@@ -2,13 +2,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-import common
+from ktoolbox import common
+from ktoolbox.common import StructParseBase
+from ktoolbox.common import strict_dataclass
+from ktoolbox.common import structparse_check_empty_dict
+from ktoolbox.common import structparse_check_strdict
+
 import testType
 
-from common import StructParseBase
-from common import strict_dataclass
-from common import structparse_check_empty_dict
-from common import structparse_check_strdict
 from tftbase import TestCaseType
 from tftbase import TestType
 

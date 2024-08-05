@@ -1,19 +1,16 @@
 import dataclasses
 import json
-import os
 import pytest
 import sys
 import typing
 
 from enum import Enum
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from . import common
 
-import common  # noqa: E402
-
-from common import enum_convert  # noqa: E402
-from common import enum_convert_list  # noqa: E402
-from common import serialize_enum  # noqa: E402
+from .common import enum_convert
+from .common import enum_convert_list
+from .common import serialize_enum
 
 
 class TstTestType(Enum):

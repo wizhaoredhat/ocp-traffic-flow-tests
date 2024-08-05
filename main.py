@@ -3,7 +3,8 @@ import logging
 
 from pathlib import Path
 
-from logger import configure_logger
+from ktoolbox.logger import configure_logger
+
 from testConfig import TestConfig
 from testConfig import ConfigDescriptor
 from trafficFlowTests import TrafficFlowTests

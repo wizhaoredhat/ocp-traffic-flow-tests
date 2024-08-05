@@ -17,7 +17,7 @@ from typing import Callable
 from typing import Optional
 from typing import Union
 
-from logger import logger
+from .logger import logger
 
 
 _lock = threading.Lock()

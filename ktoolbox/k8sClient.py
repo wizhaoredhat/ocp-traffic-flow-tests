@@ -10,9 +10,8 @@ import yaml
 from collections.abc import Iterable
 from typing import Union
 
-import host
-
-from logger import logger
+from . import host
+from .logger import logger
 
 
 class K8sClient:

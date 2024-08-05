@@ -5,9 +5,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from ktoolbox.logger import logger
+
 import tftbase
 
-from logger import logger
 from task import ClientTask
 from task import ServerTask
 from task import TaskOperation

@@ -4,7 +4,8 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import common  # noqa: E402
+from ktoolbox import common  # noqa: E402
+
 import tftbase  # noqa: E402
 
 from tftbase import FlowTestOutput  # noqa: E402

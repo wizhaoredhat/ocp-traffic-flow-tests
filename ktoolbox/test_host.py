@@ -3,9 +3,7 @@ import pathlib
 import pytest
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-import host  # noqa: E402
+from . import host
 
 
 def test_host_result_bin() -> None:
