@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import task
 
 from pathlib import Path
@@ -20,48 +21,38 @@ class TrafficFlowTests:
     def _configure_namespace(self, cfg_descr: ConfigDescriptor) -> None:
         namespace = cfg_descr.get_tft().namespace
         logger.info(f"Configuring namespace {namespace}")
-        r = cfg_descr.tc.client_tenant.oc(
+        cfg_descr.tc.client_tenant.oc(
             f"label ns --overwrite {namespace} pod-security.kubernetes.io/enforce=privileged \
                                         pod-security.kubernetes.io/enforce-version=v1.24 \
-                                        security.openshift.io/scc.podSecurityLabelSync=false"
+                                        security.openshift.io/scc.podSecurityLabelSync=false",
+            die_on_error=True,
         )
-        if r.returncode != 0:
-            logger.error(r)
-            raise Exception(
-                f"configure_namespace(): Failed to label namespace {namespace}"
-            )
-        logger.info(f"Configured namespace {namespace}")
 
     def _cleanup_previous_testspace(self, cfg_descr: ConfigDescriptor) -> None:
         namespace = cfg_descr.get_tft().namespace
-        logger.info(f"Cleaning pods with label tft-tests in namespace {namespace}")
-        r = cfg_descr.tc.client_tenant.oc(f"delete pods -n {namespace} -l tft-tests")
-        if r.returncode != 0:
-            logger.error(r)
-            raise Exception("cleanup_previous_testspace(): Failed to delete pods")
-        logger.info(f"Cleaned pods with label tft-tests in namespace {namespace}")
-        logger.info(f"Cleaning services with label tft-tests in namespace {namespace}")
-        r = cfg_descr.tc.client_tenant.oc(
-            f"delete services -n {namespace} -l tft-tests"
-        )
-        if r.returncode != 0:
-            logger.error(r)
-            raise Exception("cleanup_previous_testspace(): Failed to delete services")
-        logger.info(f"Cleaned services with label tft-tests in namespace {namespace}")
         logger.info(
-            f"Cleaning multi-networkpolicies with label tft-tests in namespace {namespace}"
+            f"Cleaning pods, services and multi-networkpolicies with label tft-tests in namespace {namespace}"
         )
-        r = cfg_descr.tc.client_tenant.oc(
-            f"delete multi-networkpolicies -n {namespace} -l tft-tests"
+        cfg_descr.tc.client_tenant.oc(
+            "delete pods -l tft-tests",
+            namespace=namespace,
         )
-        logger.info(
-            f"Cleaned multi-networkpolicies with label tft-tests in namespace {namespace}"
+        cfg_descr.tc.client_tenant.oc(
+            "delete services -l tft-tests",
+            namespace=namespace,
         )
+        cfg_descr.tc.client_tenant.oc(
+            "delete multi-networkpolicies -l tft-tests",
+            namespace=namespace,
+        )
+
         logger.info(
             f"Cleaning external containers {task.EXTERNAL_PERF_SERVER} (if present)"
         )
-        cmd = f"podman rm --force --time 10 {task.EXTERNAL_PERF_SERVER}"
-        host.local.run(cmd)
+        host.local.run(
+            f"podman rm --force --time 10 {task.EXTERNAL_PERF_SERVER}",
+            log_level_fail=logging.WARN,
+        )
 
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
         log_path = test.logs

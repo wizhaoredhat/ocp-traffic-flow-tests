@@ -409,6 +409,37 @@ def test_host_various_results() -> None:
     assert binres == host.BinResult(b"foo:\xc5x", b"", 0)
 
 
+def test_host_check_success() -> None:
+
+    res = host.local.run("echo -n foo", check_success=lambda r: r.success)
+    assert res == host.Result("foo", "", 0)
+    assert res.success
+
+    res = host.local.run("echo -n foo", check_success=lambda r: r.out != "foo")
+    assert res == host.Result("foo", "", 0, forced_success=False)
+    assert not res.success
+
+    binres = host.local.run(
+        "echo -n foo", text=False, check_success=lambda r: r.out != b"foo"
+    )
+    assert binres == host.BinResult(b"foo", b"", 0, forced_success=False)
+    assert not binres.success
+
+    res = host.local.run("echo -n foo; exit 74", check_success=lambda r: r.success)
+    assert res == host.Result("foo", "", 74)
+    assert not res.success
+
+    res = host.local.run("echo -n foo; exit 74", check_success=lambda r: r.out == "foo")
+    assert res == host.Result("foo", "", 74, forced_success=True)
+    assert res.success
+
+    binres = host.local.run(
+        "echo -n foo; exit 74", text=False, check_success=lambda r: r.out == b"foo"
+    )
+    assert binres == host.BinResult(b"foo", b"", 74, forced_success=True)
+    assert binres.success
+
+
 def test_host_file_exists() -> None:
     assert host.local.file_exists(__file__)
     assert host.Host.file_exists(host.local, __file__)

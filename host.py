@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import os
 import shlex
@@ -12,6 +13,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import Callable
 from typing import Optional
 
 from logger import logger
@@ -41,15 +43,27 @@ class BaseResult(ABC, typing.Generic[T]):
     err: T
     returncode: int
 
+    # In most cases, "success" is the same as checking for returncode zero.  In
+    # some cases, it can be overwritten to be of a certain value.
+    forced_success: Optional[bool] = dataclasses.field(default=None, kw_only=True)
+
     @property
     def success(self) -> bool:
+        if self.forced_success is not None:
+            return self.forced_success
         return self.returncode == 0
 
     def debug_str(self) -> str:
-        if self.returncode == 0:
-            status = "succcess"
+        if self.forced_success is None or self.forced_success == (self.returncode == 0):
+            if self.success:
+                status = "success"
+            else:
+                status = f"failed (exit {self.returncode})"
         else:
-            status = f"failed ({self.returncode})"
+            if self.forced_success:
+                status = f"success [forced] (exit {self.returncode})"
+            else:
+                status = "failed [forced] (exit 0)"
 
         out = ""
         if self.out:
@@ -96,6 +110,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        check_success: Optional[Callable[[Result], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
     ) -> Result:
@@ -112,6 +127,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        check_success: Optional[Callable[[BinResult], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
     ) -> BinResult:
@@ -127,6 +143,9 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        check_success: Optional[
+            Callable[[Result], bool] | Callable[[BinResult], bool]
+        ] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
     ) -> Result | BinResult:
@@ -195,15 +214,37 @@ class Host(ABC):
                 str_result = bin_result.decode(errors="replace")
                 unexpected_binary = True
 
+        if check_success is None:
+            result_success = bin_result.success
+        else:
+            result_success = True
+            if text:
+                str_check = typing.cast(Callable[[Result], bool], check_success)
+                if str_result is None:
+                    # This can only happen in text mode when the caller specified
+                    # a "decode_errors" that resulted in a "decode_exception".
+                    # The function will raise an exception, and we won't call
+                    # the check_success() handler.
+                    #
+                    # Avoid this by using text=False or a "decode_errors" value
+                    # that does not fail.
+                    result_success = False
+                elif not str_check(str_result):
+                    result_success = False
+            else:
+                bin_check = typing.cast(Callable[[BinResult], bool], check_success)
+                if not bin_check(bin_result):
+                    result_success = False
+
         status_msg = ""
-        if log_level_fail is not None and not bin_result.success:
+        if log_level_fail is not None and not result_success:
             result_log_level = log_level_fail
         elif log_level_result is not None:
             result_log_level = log_level_result
         else:
             result_log_level = log_level
 
-        if die_on_error and not bin_result.success:
+        if die_on_error and not result_success:
             if result_log_level < logging.ERROR:
                 result_log_level = logging.ERROR
             status_msg += " [FATAL]"
@@ -225,6 +266,22 @@ class Host(ABC):
             if result_log_level < logging.ERROR:
                 result_log_level = logging.ERROR
 
+        if str_result is not None:
+            if result_success != str_result.success:
+                str_result = Result(
+                    out=str_result.out,
+                    err=str_result.err,
+                    returncode=str_result.returncode,
+                    forced_success=result_success,
+                )
+        if result_success != bin_result.success:
+            bin_result = BinResult(
+                out=bin_result.out,
+                err=bin_result.err,
+                returncode=bin_result.returncode,
+                forced_success=result_success,
+            )
+
         if is_binary:
             # Note that we log the output as binary if either "text=False" or if
             # the output was not valid utf-8. In the latter case, we will still
@@ -243,7 +300,12 @@ class Host(ABC):
         if decode_exception:
             raise decode_exception
 
-        if die_on_error and not bin_result.success:
+        if die_on_error and not result_success:
+            import traceback
+
+            logger.error(
+                f"FATAL ERROR. BACKTRACE:\n{''.join(traceback.format_stack())}"
+            )
             sys.exit(-1)
 
         if str_result is not None:
