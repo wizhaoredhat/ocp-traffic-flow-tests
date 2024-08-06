@@ -22,15 +22,16 @@ class K8sClient:
                 raise RuntimeError(
                     "KUBECONFIG environment variable not set and no kubeconfig argument specified"
                 )
+
         if not os.path.exists(kubeconfig):
             raise RuntimeError(
                 f"KUBECONFIG={shlex.quote(kubeconfig)} file does not exist"
             )
-        self._kc = kubeconfig
-
         # Load the file to check that it is valid YAML.
         with open(kubeconfig) as f:
             yaml.safe_load(f)
+
+        self.kubeconfig = kubeconfig
 
     @staticmethod
     def _get_oc_cmd(cmd: str | Iterable[str]) -> list[str]:
@@ -52,7 +53,7 @@ class K8sClient:
         return [
             "kubectl",
             "--kubeconfig",
-            self._kc,
+            self.kubeconfig,
             *namespace_args,
             *self._get_oc_cmd(cmd),
         ]
