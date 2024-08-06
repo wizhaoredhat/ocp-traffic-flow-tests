@@ -19,7 +19,7 @@ jobs:
     - name: Build Multiarch image
       run: |
         docker buildx build \
-          --file ./images/Containerfile \
+          --file ./Containerfile \
           --platform linux/arm64,linux/amd64\
           --tag quay.io/wizhao/tft-tools:pr_test \
           .
