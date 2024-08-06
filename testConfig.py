@@ -3,6 +3,7 @@ import dataclasses
 import json
 import pathlib
 import shlex
+import threading
 import typing
 import yaml
 
@@ -518,6 +519,7 @@ class TestConfig:
     kubeconfig_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
     _client_infra: Optional[K8sClient]
+    _client_lock: threading.Lock
     evaluator_config: Optional[str]
 
     @property
@@ -582,6 +584,7 @@ class TestConfig:
         self.full_config = full_config
         self.config = config
 
+        self._client_lock = threading.Lock()
         self._client_tenant = None
         self._client_infra = None
 
@@ -612,23 +615,24 @@ class TestConfig:
         logger.debug(f"config-full: {self.config.serialize_json()}")
 
     def client(self, *, tenant: bool) -> K8sClient:
-        if tenant:
-            client = self._client_tenant
-        else:
-            if self.kubeconfig_infra is None:
-                raise RuntimeError("TestConfig has no infra client")
-            client = self._client_infra
+        with self._client_lock:
+            if tenant:
+                client = self._client_tenant
+            else:
+                if self.kubeconfig_infra is None:
+                    raise RuntimeError("TestConfig has no infra client")
+                client = self._client_infra
 
-        if client is not None:
-            return client
+            if client is not None:
+                return client
 
-        # Construct the K8sClient on first.
+            # Construct the K8sClient on first.
 
-        if tenant:
-            self._client_tenant = K8sClient(self.kubeconfig)
-        else:
-            assert self.kubeconfig_infra is not None
-            self._client_infra = K8sClient(self.kubeconfig_infra)
+            if tenant:
+                self._client_tenant = K8sClient(self.kubeconfig)
+            else:
+                assert self.kubeconfig_infra is not None
+                self._client_infra = K8sClient(self.kubeconfig_infra)
 
         return self.client(tenant=tenant)
 
