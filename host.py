@@ -156,7 +156,7 @@ class Host(ABC):
         if log_level >= 0:
             logger.log(
                 log_level,
-                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call `{cmd}`",
+                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call {repr(cmd)}",
             )
 
         bin_result = self._run(
@@ -294,7 +294,7 @@ class Host(ABC):
         if result_log_level >= 0:
             logger.log(
                 result_log_level,
-                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> `{cmd}`:{status_msg} {debug_str}",
+                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> {repr(cmd)}:{status_msg} {debug_str}",
             )
 
         if decode_exception:
