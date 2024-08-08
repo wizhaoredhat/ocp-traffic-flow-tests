@@ -413,3 +413,86 @@ def test_kw_only() -> None:
         assert common.KW_ONLY_DATACLASS == {}
         common.StructParseBaseNamed("yamlpath", yamlidx=0, name="name")
         common.StructParseBaseNamed("yamlpath", 0, "name")
+
+
+def test_etc_hosts_update() -> None:
+    assert common.etc_hosts_update_data("", {}) == ""
+    assert common.etc_hosts_update_data("a", {}) == "a\n"
+
+    assert (
+        common.etc_hosts_update_data(
+            "",
+            {
+                "foo": ("192.168.1.3", []),
+            },
+        )
+        == "192.168.1.3 foo\n"
+    )
+    assert (
+        common.etc_hosts_update_data(
+            "10.2.3.4 foo\n",
+            {
+                "foo": ("192.168.1.3", None),
+            },
+        )
+        == "192.168.1.3 foo\n"
+    )
+    assert (
+        common.etc_hosts_update_data(
+            "  \t 10.2.3.4\tfoo foo.alias\t",
+            {
+                "foo": ("192.168.1.3", ["foo2"]),
+                "bar": ("192.168.1.1", None),
+            },
+        )
+        == "192.168.1.3 foo foo2\n\n192.168.1.1 bar\n"
+    )
+
+    assert (
+        common.etc_hosts_update_data(
+            b"  1.1.1.1 xx\xcaxx\n  \t 10.2.3.4\tfoo foo.alias\t".decode(
+                errors="surrogateescape"
+            ),
+            {
+                "foo": ("192.168.1.3", ["foo2"]),
+                "bar": ("192.168.1.1", None),
+            },
+        ).encode(errors="surrogateescape")
+        == b"  1.1.1.1 xx\xcaxx\n192.168.1.3 foo foo2\n\n192.168.1.1 bar\n"
+    )
+
+    assert (
+        common.etc_hosts_update_data(
+            """127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+172.131.100.100 marvell-dpu-42 dpu
+""",
+            {
+                "marvell-dpu-42": ("172.131.100.100", ["dpu"]),
+            },
+        )
+        == """127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+172.131.100.100 marvell-dpu-42 dpu
+"""
+    )
+
+    assert (
+        common.etc_hosts_update_data(
+            """127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+172.131.100.100 marvell-dpu-42 dpu
+""",
+            {
+                "marvell-dpu-42": ("172.131.100.100", ["dpu2"]),
+            },
+        )
+        == """127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+172.131.100.100 marvell-dpu-42 dpu2
+"""
+    )

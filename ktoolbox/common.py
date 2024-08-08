@@ -2,6 +2,8 @@ import abc
 import dataclasses
 import functools
 import json
+import os
+import re
 import typing
 
 from collections.abc import Iterable
@@ -22,6 +24,8 @@ if typing.TYPE_CHECKING:
     # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
     from _typeshed import DataclassInstance
 
+
+PathType = Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]
 
 E = TypeVar("E", bound=Enum)
 T = TypeVar("T")
@@ -605,3 +609,79 @@ def repeat_for_same_result(fcn: TCallable) -> TCallable:
         return result
 
     return typing.cast(TCallable, wrapped)
+
+
+def etc_hosts_update_data(
+    content: str,
+    new_entries: Mapping[str, tuple[str, Optional[Iterable[str]]]],
+) -> str:
+
+    lineregex = re.compile(r"^\s*[a-fA-F0-9:.]+\s+([-a-zA-Z0-9_.]+)(\s+.*)?$")
+
+    def _unpack(
+        v: tuple[str, Optional[Iterable[str]]]
+    ) -> Union[typing.Literal[False], tuple[str, tuple[str, ...]]]:
+        n, a = v
+        if a is None:
+            a = ()
+        else:
+            a = tuple(a)
+        return n, a
+
+    entries = {k: _unpack(v) for k, v in new_entries.items()}
+
+    def _build_line(name: str, ipaddr: str, aliases: tuple[str, ...]) -> str:
+        if aliases:
+            s_aliases = f" {' '.join(aliases)}"
+        else:
+            s_aliases = ""
+        return f"{ipaddr} {name}{s_aliases}"
+
+    result = []
+    for line in content.splitlines():
+        m = lineregex.search(line)
+        if m:
+            name = m.group(1)
+            entry = entries.get(name)
+            if entry is None:
+                pass
+            elif entry is False:
+                continue
+            else:
+                line = _build_line(name, *entry)
+                entries[name] = False
+        result.append(line)
+
+    entries2 = [(k, v) for k, v in entries.items() if v is not False]
+    if entries2:
+        if result and result[-1] != "":
+            result.append("")
+        for name, entry in entries2:
+            result.append(_build_line(name, *entry))
+
+    if not result:
+        return ""
+
+    result.append("")
+    return "\n".join(result)
+
+
+def etc_hosts_update_file(
+    new_entries: Mapping[str, tuple[str, Optional[Iterable[str]]]],
+    filename: PathType = "/etc/hosts",
+) -> str:
+    try:
+        with open(filename, "rb") as f:
+            b_content = f.read()
+    except Exception:
+        b_content = b""
+
+    new_content = etc_hosts_update_data(
+        b_content.decode("utf-8", errors="surrogateescape"),
+        new_entries,
+    )
+
+    with open(filename, "wb") as f:
+        f.write(new_content.encode("utf-8", errors="surrogateescape"))
+
+    return new_content
