@@ -1,9 +1,23 @@
+import functools
 import os
 import pathlib
 import pytest
 import sys
 
 from . import host
+
+
+@functools.cache
+def has_sudo(rsh: host.Host) -> bool:
+    r = rsh.run("sudo -n whoami")
+    return r == host.Result("root\n", "", 0)
+
+
+def skip_without_sudo(rsh: host.Host) -> None:
+    if not has_sudo(rsh):
+        pytest.skip(
+            "sudo on {rsh.pretty_str()} does not seem to work passwordless ({r})"
+        )
 
 
 def test_host_result_bin() -> None:
@@ -120,3 +134,51 @@ def test_result_typing() -> None:
     else:
         host.Result("out", "err", 0, True)
         host.BinResult(b"out", b"err", 0, True)
+
+
+def test_cwd() -> None:
+    res = host.local.run("pwd", cwd="/usr/bin")
+    assert res == host.Result("/usr/bin\n", "", 0)
+
+    res = host.local.run(["pwd"], cwd="/usr/bin")
+    assert res == host.Result("/usr/bin\n", "", 0)
+
+    res = host.local.run("pwd", cwd="/usr/bin/does/not/exist")
+    assert res.out == ""
+    assert res.returncode == 1
+    assert "/usr/bin/does/not/exist" in res.err
+
+
+def test_sudo() -> None:
+    skip_without_sudo(host.local)
+
+    rsh = host.LocalHost(sudo=True)
+
+    assert rsh.run("whoami") == host.Result("root\n", "", 0)
+
+    assert rsh.run(["whoami"]) == host.Result("root\n", "", 0)
+
+    res = rsh.run('echo ">>$FOO<"', env={"FOO": "xx1"})
+    assert res == host.Result(">>xx1<\n", "", 0)
+
+    res = rsh.run(
+        ["bash", "-c", 'echo ">>$FOO2<" >&2; exit 55'], env={"FOO2": "xx1", "F1": None}
+    )
+    assert res == host.Result("", ">>xx1<\n", 55)
+
+    res = rsh.run("pwd", cwd="/usr/bin")
+    assert res == host.Result("/usr/bin\n", "", 0)
+
+    res = rsh.run(["pwd"], cwd="/usr/bin")
+    assert res == host.Result("/usr/bin\n", "", 0)
+
+    res = rsh.run("echo hi; whoami >&2; pwd", cwd="/usr/bin")
+    assert res == host.Result("hi\n/usr/bin\n", "root\n", 0)
+
+    res = rsh.run(["bash", "-c", "echo hi; whoami >&2; pwd"], cwd="/usr/bin")
+    assert res == host.Result("hi\n/usr/bin\n", "root\n", 0)
+
+    res = rsh.run("pwd", cwd="/usr/bin/does/not/exist")
+    assert res.out == ""
+    assert res.returncode == 1
+    assert "/usr/bin/does/not/exist" in res.err
