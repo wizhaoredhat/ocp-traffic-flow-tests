@@ -1,10 +1,11 @@
 import abc
-import collections
 import dataclasses
 import functools
 import json
 import typing
 
+from collections.abc import Iterable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import is_dataclass
@@ -102,7 +103,7 @@ def str_to_bool(
 
 
 def iter_get_first(
-    lst: typing.Iterable[T],
+    lst: Iterable[T],
     *,
     unique: bool = False,
     force_unique: bool = False,
@@ -122,7 +123,7 @@ def iter_get_first(
     return v0
 
 
-def iter_filter_none(lst: typing.Iterable[Optional[T]]) -> typing.Iterable[T]:
+def iter_filter_none(lst: Iterable[Optional[T]]) -> Iterable[T]:
     for v in lst:
         if v is not None:
             yield v
@@ -281,7 +282,7 @@ def dict_add_optional(vdict: dict[T1, T2], key: T1, val: Optional[T2]) -> None:
 
 @typing.overload
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -292,7 +293,7 @@ def dict_get_typed(
 
 @typing.overload
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -302,7 +303,7 @@ def dict_get_typed(
 
 
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -459,7 +460,7 @@ def check_type(
         (arg,) = args
         return isinstance(value, list) and all(check_type(v, arg) for v in value)
 
-    if actual_type is dict or actual_type is collections.abc.Mapping:
+    if actual_type is dict or actual_type is Mapping:
         args = typing.get_args(type_hint)
         (arg_key, arg_val) = args
         return isinstance(value, dict) and all(
