@@ -2,7 +2,8 @@ import dataclasses
 import threading
 import typing
 
-import common
+from ktoolbox import common
+
 import testConfig
 import tftbase
 

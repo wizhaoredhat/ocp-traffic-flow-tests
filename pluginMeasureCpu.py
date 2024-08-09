@@ -3,11 +3,12 @@ import jc
 from typing import Any
 from typing import cast
 
+from ktoolbox.logger import logger
+
 import task
 import pluginbase
 import tftbase
 
-from logger import logger
 from task import PluginTask
 from task import TaskOperation
 from testSettings import TestSettings

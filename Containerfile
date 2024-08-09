@@ -45,13 +45,11 @@ RUN /opt/pyvenv3.11/bin/python -m pip install \
 RUN ln -s /opt/pyvenv3.11/bin/python /usr/bin/python-pyvenv3.11
 
 COPY \
-    common.py \
-    host.py \
-    logger.py \
-    netdev.py \
-    /opt/ocp-tft/
+    ktoolbox/README.md \
+    ktoolbox/*.py \
+    /opt/ocp-tft/ktoolbox/
 
-RUN echo -e "#!/bin/bash\nexec /opt/pyvenv3.11/bin/python /opt/ocp-tft/netdev.py \"\$@\"" > /usr/bin/ocp-tft-netdev && chmod +x /usr/bin/ocp-tft-netdev
+RUN echo -e "#!/bin/bash\ncd /opt/ocp-tft/ && exec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && chmod +x /usr/bin/ocp-tft-netdev
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 

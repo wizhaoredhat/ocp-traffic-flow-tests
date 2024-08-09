@@ -2,7 +2,8 @@ import shlex
 
 from dataclasses import dataclass
 
-import common
+from ktoolbox import common
+
 import task
 import tftbase
 

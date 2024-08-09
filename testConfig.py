@@ -13,18 +13,18 @@ from typing import Any
 from typing import Optional
 from typing import TypeVar
 
-import common
-import host
+from ktoolbox import common
+from ktoolbox import host
+from ktoolbox.common import StructParseBase
+from ktoolbox.common import StructParseBaseNamed
+from ktoolbox.common import strict_dataclass
+from ktoolbox.common import structparse_check_and_pop_name
+from ktoolbox.common import structparse_check_and_pop_name_required
+from ktoolbox.common import structparse_check_empty_dict
+from ktoolbox.common import structparse_check_strdict
+from ktoolbox.k8sClient import K8sClient
+from ktoolbox.logger import logger
 
-from common import StructParseBase
-from common import StructParseBaseNamed
-from common import strict_dataclass
-from common import structparse_check_and_pop_name
-from common import structparse_check_and_pop_name_required
-from common import structparse_check_empty_dict
-from common import structparse_check_strdict
-from k8sClient import K8sClient
-from logger import logger
 from pluginbase import Plugin
 from testType import TestTypeHandler
 from tftbase import ClusterMode

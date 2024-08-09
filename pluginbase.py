@@ -4,9 +4,9 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
-import common
+from ktoolbox import common
+from ktoolbox.logger import logger
 
-from logger import logger
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import TestMetadata

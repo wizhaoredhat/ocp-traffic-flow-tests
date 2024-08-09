@@ -1,12 +1,8 @@
 import functools
-import os
 import pytest
-import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-import host  # noqa: E402
-import netdev  # noqa: E402
+from . import host
+from . import netdev
 
 
 @functools.cache

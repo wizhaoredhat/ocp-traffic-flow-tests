@@ -5,12 +5,13 @@ import task
 
 from pathlib import Path
 
-import host
+from ktoolbox import host
+from ktoolbox.logger import logger
+
 import testConfig
 import tftbase
 
 from evaluator import Evaluator
-from logger import logger
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings

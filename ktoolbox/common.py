@@ -13,6 +13,7 @@ from typing import Any
 from typing import Optional
 from typing import Type
 from typing import TypeVar
+from typing import Union
 from typing import cast
 
 if typing.TYPE_CHECKING:
@@ -41,6 +42,17 @@ class _MISSING_TYPE:
 
 MISSING = _MISSING_TYPE()
 
+# kw_only is Python3.10+. This annotation is very useful, so make it available
+# with 3.9 without breaking mypy.
+#
+# This silences up mypy while retaining the error checking at runtime. It however
+# looses the ability for mypy to detect the error at lint time.
+#
+# So, using this acts as a comment to the reader that the code expects kw_only.
+# It is also enforced at runtime. It also allows to find all the places where
+# we would like to use kw_only=True but cannot due to Python 3.9 compatibility.
+KW_ONLY_DATACLASS = {"kw_only": True} if "kw_only" in dataclass.__kwdefaults__ else {}
+
 
 def bool_to_str(val: bool, *, format: str = "true") -> str:
     if format == "true":
@@ -51,11 +63,11 @@ def bool_to_str(val: bool, *, format: str = "true") -> str:
 
 
 def str_to_bool(
-    val: None | str | bool,
-    on_error: T1 | _MISSING_TYPE = MISSING,
+    val: Optional[Union[str, bool]],
+    on_error: Union[T1, _MISSING_TYPE] = MISSING,
     *,
-    on_default: T2 | _MISSING_TYPE = MISSING,
-) -> bool | T1 | T2:
+    on_default: Union[T2, _MISSING_TYPE] = MISSING,
+) -> Union[bool, T1, T2]:
 
     is_default = False
 
@@ -308,8 +320,8 @@ def dict_get_typed(
 
 
 def serialize_enum(
-    data: Enum | dict[Any, Any] | list[Any] | Any
-) -> str | dict[Any, Any] | list[Any] | Any:
+    data: Union[Enum, dict[Any, Any], list[Any], Any]
+) -> Union[str, dict[Any, Any], list[Any], Any]:
     if isinstance(data, Enum):
         return data.name
     elif isinstance(data, dict):
@@ -418,7 +430,7 @@ def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
 
 def check_type(
     value: typing.Any,
-    type_hint: type[typing.Any] | typing._SpecialForm,
+    type_hint: Union[type[typing.Any], typing._SpecialForm],
 ) -> bool:
 
     # Some naive type checking. This is used for ensuring that data classes
@@ -552,13 +564,13 @@ def structparse_check_and_pop_name_required(
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **KW_ONLY_DATACLASS)
 class StructParseBase(abc.ABC):
     yamlpath: str
     yamlidx: int
 
     @abc.abstractmethod
-    def serialize(self) -> dict[str, Any] | list[Any]:
+    def serialize(self) -> Union[dict[str, Any], list[Any]]:
         pass
 
     def serialize_json(self) -> str:
@@ -566,7 +578,7 @@ class StructParseBase(abc.ABC):
 
 
 @strict_dataclass
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, **KW_ONLY_DATACLASS)
 class StructParseBaseNamed(StructParseBase, abc.ABC):
     name: str
 

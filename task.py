@@ -18,14 +18,15 @@ from typing import Callable
 from typing import Optional
 from typing import TypeVar
 
-import common
-import host
+from ktoolbox import common
+from ktoolbox import host
+from ktoolbox import netdev
+from ktoolbox.k8sClient import K8sClient
+from ktoolbox.logger import logger
+
 import jinja2util
-import netdev
 import tftbase
 
-from k8sClient import K8sClient
-from logger import logger
 from pluginbase import Plugin
 from testSettings import TestSettings
 from tftbase import BaseOutput

@@ -8,10 +8,10 @@ import typing
 import yaml
 
 from collections.abc import Iterable
+from typing import Union
 
-import host
-
-from logger import logger
+from . import host
+from .logger import logger
 
 
 class K8sClient:
@@ -34,7 +34,7 @@ class K8sClient:
         self.kubeconfig = kubeconfig
 
     @staticmethod
-    def _get_oc_cmd(cmd: str | Iterable[str]) -> list[str]:
+    def _get_oc_cmd(cmd: Union[str, Iterable[str]]) -> list[str]:
         if isinstance(cmd, str):
             return shlex.split(cmd)
         return list(cmd)
@@ -42,7 +42,7 @@ class K8sClient:
     def _get_oc_cmd_full(
         self,
         *,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         namespace: typing.Optional[str] = None,
     ) -> list[str]:
         namespace_args: tuple[str, ...]
@@ -60,7 +60,7 @@ class K8sClient:
 
     def oc(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         may_fail: bool = False,
         die_on_error: bool = False,
@@ -76,7 +76,7 @@ class K8sClient:
 
     def oc_exec(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         pod_name: str,
         may_fail: bool = False,
@@ -132,7 +132,7 @@ class K8sClient:
 
     def oc_debug(
         self,
-        cmd: str | Iterable[str],
+        cmd: Union[str, Iterable[str]],
         *,
         node_name: str,
         test_image: str,
