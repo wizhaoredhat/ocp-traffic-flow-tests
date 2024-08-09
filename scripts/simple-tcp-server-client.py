@@ -7,10 +7,10 @@ import socket
 import sys
 import time
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
-from typing import Optional
 from typing import Callable
+from typing import Optional
 
 
 DEFAULT_ADDR = "127.0.0.1"
