@@ -1,4 +1,5 @@
 PyYAML==6.0.1
-jinja2
-jc
 dataclasses
+jc
+jinja2
+pyserial

@@ -4,6 +4,7 @@ import functools
 import json
 import os
 import re
+import time
 import typing
 
 from collections.abc import Iterable
@@ -23,6 +24,7 @@ if typing.TYPE_CHECKING:
     # https://github.com/python/typeshed/tree/main/stdlib/_typeshed#api-stability
     # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
     from _typeshed import DataclassInstance
+    from types import TracebackType
 
 
 PathType = Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]
@@ -685,3 +687,101 @@ def etc_hosts_update_file(
         f.write(new_content.encode("utf-8", errors="surrogateescape"))
 
     return new_content
+
+
+class Serial:
+    def __init__(self, port: str, baudrate: int = 115200):
+        import serial
+        from .logger import logger
+
+        self.port = port
+        self._ser = serial.Serial(port, baudrate=baudrate, timeout=0)
+        self._logger = logger
+        self._buffer = ""
+
+    @property
+    def buffer(self) -> str:
+        return self._buffer
+
+    def close(self) -> None:
+        self._ser.close()
+
+    def send(self, msg: str, *, sleep: float = 1) -> None:
+        self._logger.debug(f"serial[{self.port}]: send {repr(msg)}")
+        self._ser.write(msg.encode("utf-8", errors="surrogateescape"))
+        time.sleep(sleep)
+
+    def read_all(self) -> str:
+        maxsize = 1000000
+        while True:
+            buf: bytes = self._ser.read(maxsize)
+            self._buffer += buf.decode("utf-8", errors="surrogateescape")
+            if len(buf) < maxsize:
+                return self._buffer
+
+    def expect(
+        self,
+        pattern: Union[str, re.Pattern[str]],
+        timeout: float = 30,
+    ) -> str:
+        import select
+
+        end_timestamp = time.monotonic() + timeout
+        first_run = True
+
+        self._logger.debug(f"serial[{self.port}]: expect message {repr(pattern)}")
+
+        if isinstance(pattern, str):
+            # We use DOTALL like pexpect does.
+            # If you need something else, compile the pattern yourself.
+            #
+            # See also https://pexpect.readthedocs.io/en/stable/overview.html#find-the-end-of-line-cr-lf-conventions
+            pattern_re = re.compile(pattern, re.DOTALL)
+        else:
+            pattern_re = pattern
+
+        while True:
+
+            # First, read all data from the serial port that is currently available.
+            while True:
+                b: bytes = self._ser.read(100)
+                if not b:
+                    break
+                s = b.decode("utf-8", errors="surrogateescape")
+                self._logger.debug(
+                    f"serial[{self.port}]: read buffer ({len(self._buffer)} + {len(s)} unicode characters): {repr(s)}"
+                )
+                self._buffer += s
+
+            matches = re.finditer(pattern_re, self._buffer)
+            for match in matches:
+                end_idx = match.end()
+                self._logger.debug(
+                    f"serial[{self.port}]: found expected message {end_idx} unicode characters, {len(self._buffer) - end_idx} remaning"
+                )
+                self._buffer = self._buffer[end_idx:]
+                return self._buffer
+
+            if first_run:
+                first_run = False
+            else:
+                remaining_time = end_timestamp - time.monotonic()
+                if remaining_time <= 0:
+                    self._logger.debug(
+                        f"serial[{self.port}]: did not find expected message {repr(pattern)} (buffer content is {repr(self._buffer)})"
+                    )
+                    raise RuntimeError(
+                        f"Did not receive expected message {repr(pattern)} within timeout (buffer content is {repr(self._buffer)})"
+                    )
+                _, _, _ = select.select([self._ser], [], [], remaining_time)
+
+    def __enter__(self) -> "Serial":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional["TracebackType"],
+    ) -> None:
+        self._ser.close()
