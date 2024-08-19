@@ -134,7 +134,9 @@ def validate_pciaddr(pciaddr: Union[str, bytes]) -> str:
     return pciaddr
 
 
-_ethaddr_re = re.compile("^[0-9a-fA-F:]+$")
+_ethaddr_re = re.compile(
+    "^([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?)$"
+)
 
 
 def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
@@ -149,11 +151,22 @@ def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
             )
     elif not isinstance(ethaddr, str):
         raise TypeError(f"Ethernet address of unexpected type {type(ethaddr)}")
-    if not _ethaddr_re.search(ethaddr):
+    m = _ethaddr_re.search(ethaddr)
+    if not m:
         raise ValueError(
             f"Ethernet address contains invalid characters ({repr(ethaddr)})"
         )
-    return ethaddr.lower()
+
+    def _normalize_hex(s: str) -> str:
+        s = s.lower()
+        if len(s) == 1:
+            return "0" + s
+        return s
+
+    ethaddr2 = ":".join(_normalize_hex(m.group(i)) for i in range(1, 7))
+    if ethaddr2 == ethaddr:
+        return ethaddr
+    return ethaddr2
 
 
 def validate_ethaddr_or_none(ethaddr: Union[str, bytes]) -> Optional[str]:
