@@ -129,6 +129,13 @@ def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
     return ethaddr.lower()
 
 
+def validate_ethaddr_or_none(ethaddr: Union[str, bytes]) -> Optional[str]:
+    try:
+        return validate_ethaddr(ethaddr)
+    except ValueError:
+        return None
+
+
 def pciaddr_get_func_address(pciaddr: Optional[Union[str, bytes]]) -> Optional[int]:
     # https://github.com/k8snetworkplumbingwg/sriovnet/blob/master/sriovnet_switchdev.go#L172
     if pciaddr is None:
@@ -254,11 +261,11 @@ def ip_links_parse(
 
             address = e.get("address")
             if address is not None:
-                address = validate_ethaddr(address)
+                address = validate_ethaddr_or_none(address)
 
             permaddr = e.get("permaddr")
             if permaddr is not None:
-                permaddr = validate_ethaddr(permaddr)
+                permaddr = validate_ethaddr_or_none(permaddr)
 
             entry = IPRouteLinkEntry(
                 ifindex=e["ifindex"],
@@ -386,10 +393,7 @@ def ethtool_permaddr(
     if permaddr is None:
         return None
 
-    try:
-        return validate_ethaddr(permaddr)
-    except Exception:
-        return None
+    return validate_ethaddr_or_none(permaddr)
 
 
 @strict_dataclass
