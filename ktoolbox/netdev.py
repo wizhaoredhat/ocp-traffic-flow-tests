@@ -41,7 +41,12 @@ def isspace_kernel(c: Union[int, bytes]) -> bool:
     return c in _isspace_kernel_set
 
 
-def normalize_ifname(ifname: Union[str, bytes], *, validate: bool = False) -> bytes:
+def normalize_ifname(
+    ifname: Union[str, bytes],
+    *,
+    validate: bool = False,
+    allow_reserved: bool = True,
+) -> bytes:
     if isinstance(ifname, str):
         ifname = ifname.encode("utf-8", errors="surrogateescape")
     elif not isinstance(ifname, bytes):
@@ -63,16 +68,38 @@ def normalize_ifname(ifname: Union[str, bytes], *, validate: bool = False) -> by
                 raise ValueError("Invalid zero bytes")
             if isspace_kernel(c):
                 raise ValueError("Invalid white space")
+        if not allow_reserved:
+            # Certain modules create sysctl files that later prevent creating
+            # interfaces with those names. However, you can create those interfaces
+            # if the module is not loaded.
+            #
+            # You are advised to not use those interface names, but you can
+            # create such interfaces in kernel (if the conflicting module is
+            # not loaded).
+            #
+            # The "all" and "default" names are reserved
+            # due to their directories in "/proc/sys/net/ipv4/conf/" and "/proc/sys/net/ipv6/conf/".
+            # Also, there is "/sys/class/net/bonding_masters" file.
+            if ifname in (
+                b"all",
+                b"default",
+                b"bonding_masters",
+            ):
+                raise ValueError(f"Interface name {repr(ifname)} is reserved")
 
     return ifname
 
 
-def validate_ifname(ifname: Union[str, bytes]) -> str:
+def validate_ifname(
+    ifname: Union[str, bytes],
+    *,
+    allow_reserved: bool = True,
+) -> str:
     # The main point of this validation is whether this can be used
     # safely in a path name.
     #
     # See also, dev_valid_name() in kernel.
-    ifname = normalize_ifname(ifname, validate=True)
+    ifname = normalize_ifname(ifname, validate=True, allow_reserved=allow_reserved)
     return ifname.decode(errors="surrogateescape")
 
 
