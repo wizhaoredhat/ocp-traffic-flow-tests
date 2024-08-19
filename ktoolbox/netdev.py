@@ -554,7 +554,13 @@ def get_ifnames() -> list[str]:
         ifs1 = os.listdir(b"/sys/class/net/")
     except Exception:
         return []
-    return sorted(common.iter_filter_none(validate_ifname(i) for i in ifs1))
+
+    def _validate(ifname: bytes) -> Optional[str]:
+        if not os.path.islink(b"/sys/class/net/" + ifname):
+            return None
+        return validate_ifname_or_none(ifname)
+
+    return sorted(common.iter_filter_none(_validate(i) for i in ifs1))
 
 
 def get_pciaddrs() -> list[str]:
