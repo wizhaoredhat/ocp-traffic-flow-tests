@@ -19,6 +19,9 @@ from typing import Union
 
 from .logger import logger
 
+INTERNAL_ERROR_PREFIX = "Host.run(): "
+INTERNAL_ERROR_RETURNCODE = 1
+
 
 _lock = threading.Lock()
 
@@ -27,6 +30,71 @@ _unique_log_id_value = 0
 # Same as common.KW_ONLY_DATACLASS, but we should not use common module here.
 # See common.KW_ONLY_DATACLASS why this is used.
 KW_ONLY_DATACLASS = {"kw_only": True} if "kw_only" in dataclass.__kwdefaults__ else {}
+
+
+def _normalize_cmd(
+    cmd: Union[str, Iterable[str]],
+) -> Union[str, tuple[str, ...]]:
+    if isinstance(cmd, str):
+        return cmd
+    else:
+        return tuple(cmd)
+
+
+def _normalize_env(
+    env: Optional[Mapping[str, Optional[str]]],
+) -> Optional[dict[str, Optional[str]]]:
+    if env is None:
+        return None
+    return dict(env)
+
+
+def _cmd_to_logstr(cmd: Union[str, tuple[str, ...]]) -> str:
+    return repr(_cmd_to_shell(cmd))
+
+
+def _cmd_to_shell(cmd: Union[str, Iterable[str]]) -> str:
+    if isinstance(cmd, str):
+        return cmd
+    return shlex.join(cmd)
+
+
+def _cmd_to_argv(cmd: Union[str, Iterable[str]]) -> tuple[str, ...]:
+    if isinstance(cmd, str):
+        return ("/bin/sh", "-c", cmd)
+    return tuple(cmd)
+
+
+def _prepare_run(
+    *,
+    sudo: bool,
+    cwd: Optional[str],
+    cmd: Union[str, Iterable[str]],
+    env: Optional[Mapping[str, Optional[str]]],
+) -> tuple[
+    Union[str, tuple[str, ...]],
+    Optional[dict[str, Optional[str]]],
+    Optional[str],
+]:
+    if not sudo:
+        return (
+            _normalize_cmd(cmd),
+            _normalize_env(env),
+            cwd,
+        )
+
+    cmd2 = ["sudo"]
+
+    if env:
+        for k, v in env.items():
+            assert k == shlex.quote(k)
+            assert "=" not in k
+            if v is not None:
+                cmd2.append(f"{k}={v}")
+
+    cmd2.extend(_cmd_to_argv(cmd))
+
+    return tuple(cmd2), None, cwd
 
 
 def _unique_log_id() -> int:
@@ -110,6 +178,13 @@ class BinResult(BaseResult[bytes]):
 
 
 class Host(ABC):
+    def __init__(
+        self,
+        *,
+        sudo: bool = False,
+    ) -> None:
+        self._sudo = sudo
+
     @abstractmethod
     def pretty_str(self) -> str:
         pass
@@ -121,6 +196,8 @@ class Host(ABC):
         *,
         text: typing.Literal[True] = True,
         env: Optional[Mapping[str, Optional[str]]] = None,
+        sudo: Optional[bool] = None,
+        cwd: Optional[str] = None,
         log_prefix: str = "",
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
@@ -138,6 +215,8 @@ class Host(ABC):
         *,
         text: typing.Literal[False],
         env: Optional[Mapping[str, Optional[str]]] = None,
+        sudo: Optional[bool] = None,
+        cwd: Optional[str] = None,
         log_prefix: str = "",
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
@@ -154,6 +233,8 @@ class Host(ABC):
         *,
         text: bool = True,
         env: Optional[Mapping[str, Optional[str]]] = None,
+        sudo: Optional[bool] = None,
+        cwd: Optional[str] = None,
         log_prefix: str = "",
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
@@ -165,18 +246,27 @@ class Host(ABC):
         decode_errors: Optional[str] = None,
     ) -> Union[Result, BinResult]:
         log_id = _unique_log_id()
-        if not isinstance(cmd, str):
-            cmd = shlex.join(list(cmd))
+
+        if sudo is None:
+            sudo = self._sudo
+
+        real_cmd, real_env, real_cwd = _prepare_run(
+            sudo=sudo,
+            cwd=cwd,
+            cmd=cmd,
+            env=env,
+        )
 
         if log_level >= 0:
             logger.log(
                 log_level,
-                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call {repr(cmd)}",
+                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call {_cmd_to_logstr(real_cmd)}",
             )
 
         bin_result = self._run(
-            cmd=cmd,
-            env=env,
+            cmd=real_cmd,
+            env=real_env,
+            cwd=real_cwd,
         )
 
         # The remainder is only concerned with printing a nice logging message and
@@ -309,7 +399,7 @@ class Host(ABC):
         if result_log_level >= 0:
             logger.log(
                 result_log_level,
-                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> {repr(cmd)}:{status_msg} {debug_str}",
+                f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> {_cmd_to_logstr(real_cmd)}:{status_msg} {debug_str}",
             )
 
         if decode_exception:
@@ -331,8 +421,9 @@ class Host(ABC):
     def _run(
         self,
         *,
-        cmd: str,
-        env: Optional[Mapping[str, Optional[str]]],
+        cmd: Union[str, tuple[str, ...]],
+        env: Optional[dict[str, Optional[str]]],
+        cwd: Optional[str],
     ) -> BinResult:
         pass
 
@@ -347,8 +438,9 @@ class LocalHost(Host):
     def _run(
         self,
         *,
-        cmd: str,
-        env: Optional[Mapping[str, Optional[str]]],
+        cmd: Union[str, tuple[str, ...]],
+        env: Optional[dict[str, Optional[str]]],
+        cwd: Optional[str],
     ) -> BinResult:
         full_env: Optional[dict[str, str]] = None
         if env is not None:
@@ -359,12 +451,30 @@ class LocalHost(Host):
                 else:
                     full_env[k] = v
 
-        res = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            env=full_env,
-        )
+        try:
+            res = subprocess.run(
+                cmd,
+                shell=isinstance(cmd, str),
+                capture_output=True,
+                env=full_env,
+                cwd=cwd,
+            )
+        except FileNotFoundError as e:
+            # We get an FileNotFoundError if cwd directory does not exist or if
+            # the binary does not exist (with shell=False). And maybe there are
+            # other cases where we might get exceptions.
+            #
+            # Generally, we don't want to report errors via exceptions, because
+            # you won't get the same exception with shell=True. Instead, we
+            # only report errors via BinResult().
+            #
+            # Usually we avoid creating an artificial BinResult. In this case
+            # there is no choice.
+            return BinResult(
+                b"",
+                (INTERNAL_ERROR_PREFIX + str(e)).encode(errors="surrogateescape"),
+                INTERNAL_ERROR_RETURNCODE,
+            )
 
         return BinResult(res.stdout, res.stderr, res.returncode)
 
