@@ -1,10 +1,13 @@
 import abc
-import collections
 import dataclasses
 import functools
 import json
+import os
+import re
 import typing
 
+from collections.abc import Iterable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import is_dataclass
@@ -21,6 +24,8 @@ if typing.TYPE_CHECKING:
     # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
     from _typeshed import DataclassInstance
 
+
+PathType = Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]
 
 E = TypeVar("E", bound=Enum)
 T = TypeVar("T")
@@ -102,7 +107,7 @@ def str_to_bool(
 
 
 def iter_get_first(
-    lst: typing.Iterable[T],
+    lst: Iterable[T],
     *,
     unique: bool = False,
     force_unique: bool = False,
@@ -122,7 +127,7 @@ def iter_get_first(
     return v0
 
 
-def iter_filter_none(lst: typing.Iterable[Optional[T]]) -> typing.Iterable[T]:
+def iter_filter_none(lst: Iterable[Optional[T]]) -> Iterable[T]:
     for v in lst:
         if v is not None:
             yield v
@@ -281,7 +286,7 @@ def dict_add_optional(vdict: dict[T1, T2], key: T1, val: Optional[T2]) -> None:
 
 @typing.overload
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -292,7 +297,7 @@ def dict_get_typed(
 
 @typing.overload
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -302,7 +307,7 @@ def dict_get_typed(
 
 
 def dict_get_typed(
-    d: typing.Mapping[Any, Any],
+    d: Mapping[Any, Any],
     key: Any,
     vtype: type[T],
     *,
@@ -459,7 +464,7 @@ def check_type(
         (arg,) = args
         return isinstance(value, list) and all(check_type(v, arg) for v in value)
 
-    if actual_type is dict or actual_type is collections.abc.Mapping:
+    if actual_type is dict or actual_type is Mapping:
         args = typing.get_args(type_hint)
         (arg_key, arg_val) = args
         return isinstance(value, dict) and all(
@@ -604,3 +609,79 @@ def repeat_for_same_result(fcn: TCallable) -> TCallable:
         return result
 
     return typing.cast(TCallable, wrapped)
+
+
+def etc_hosts_update_data(
+    content: str,
+    new_entries: Mapping[str, tuple[str, Optional[Iterable[str]]]],
+) -> str:
+
+    lineregex = re.compile(r"^\s*[a-fA-F0-9:.]+\s+([-a-zA-Z0-9_.]+)(\s+.*)?$")
+
+    def _unpack(
+        v: tuple[str, Optional[Iterable[str]]]
+    ) -> Union[typing.Literal[False], tuple[str, tuple[str, ...]]]:
+        n, a = v
+        if a is None:
+            a = ()
+        else:
+            a = tuple(a)
+        return n, a
+
+    entries = {k: _unpack(v) for k, v in new_entries.items()}
+
+    def _build_line(name: str, ipaddr: str, aliases: tuple[str, ...]) -> str:
+        if aliases:
+            s_aliases = f" {' '.join(aliases)}"
+        else:
+            s_aliases = ""
+        return f"{ipaddr} {name}{s_aliases}"
+
+    result = []
+    for line in content.splitlines():
+        m = lineregex.search(line)
+        if m:
+            name = m.group(1)
+            entry = entries.get(name)
+            if entry is None:
+                pass
+            elif entry is False:
+                continue
+            else:
+                line = _build_line(name, *entry)
+                entries[name] = False
+        result.append(line)
+
+    entries2 = [(k, v) for k, v in entries.items() if v is not False]
+    if entries2:
+        if result and result[-1] != "":
+            result.append("")
+        for name, entry in entries2:
+            result.append(_build_line(name, *entry))
+
+    if not result:
+        return ""
+
+    result.append("")
+    return "\n".join(result)
+
+
+def etc_hosts_update_file(
+    new_entries: Mapping[str, tuple[str, Optional[Iterable[str]]]],
+    filename: PathType = "/etc/hosts",
+) -> str:
+    try:
+        with open(filename, "rb") as f:
+            b_content = f.read()
+    except Exception:
+        b_content = b""
+
+    new_content = etc_hosts_update_data(
+        b_content.decode("utf-8", errors="surrogateescape"),
+        new_entries,
+    )
+
+    with open(filename, "wb") as f:
+        f.write(new_content.encode("utf-8", errors="surrogateescape"))
+
+    return new_content
