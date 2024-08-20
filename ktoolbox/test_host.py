@@ -26,15 +26,12 @@ def test_host_result_bin() -> None:
 
 
 def test_host_result_surrogateescape() -> None:
+    res = host.local.run("echo -n hi", decode_errors="surrogateescape")
+    assert res == host.Result("hi", "", 0)
+
     cmd = ["bash", "-c", "printf $'xx<\\325>'"]
 
     res_bin = host.local.run(cmd, text=False)
-    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
-
-    res_bin = host.local.run(["bash", "-c", 'printf "xx<\udcd5>"'], text=False)
-    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
-
-    res_bin = host.local.run(["echo", "-n", "xx<\udcd5>"], text=False)
     assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
     res = host.local.run(cmd, decode_errors="surrogateescape")
@@ -43,8 +40,24 @@ def test_host_result_surrogateescape() -> None:
         res.out.encode()
     assert res.out.encode(errors="surrogateescape") == b"xx<\325>"
 
-    res = host.local.run("echo -n hi", decode_errors="surrogateescape")
-    assert res == host.Result("hi", "", 0)
+    res_bin = host.local.run(["bash", "-c", 'printf "xx<\udcd5>"'], text=False)
+    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
+
+    res_bin = host.local.run(["echo", "-n", "xx<\udcd5>"], text=False)
+    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
+
+    cmd2 = b'echo -n "xx<\325>"'.decode(errors="surrogateescape")
+    res_bin = host.local.run(cmd2, text=False)
+    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
+
+    res = host.local.run(cmd2)
+    assert res == host.Result("xx<�>", "", 0)
+
+    res = host.local.run(cmd2, decode_errors="surrogateescape")
+    assert res == host.Result("xx<\udcd5>", "", 0)
+
+    res_bin = host.local.run(["bash", "-c", cmd2], text=False)
+    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
 
 def test_host_result_str() -> None:
