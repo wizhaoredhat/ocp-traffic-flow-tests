@@ -50,6 +50,11 @@ def test_host_result_surrogateescape() -> None:
     res_bin = host.local.run(cmd2, text=False)
     assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
+    t = False
+    res_any = host.local.run(cmd2, text=t)
+    assert isinstance(res_any, host.BinResult)
+    assert res_any == host.BinResult(b"xx<\325>", b"", 0)
+
     res = host.local.run(cmd2)
     assert res == host.Result("xx<�>", "", 0)
 

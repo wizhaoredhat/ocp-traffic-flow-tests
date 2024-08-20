@@ -227,6 +227,27 @@ class Host(ABC):
     ) -> BinResult:
         pass
 
+    @typing.overload
+    def run(
+        self,
+        cmd: Union[str, Iterable[str]],
+        *,
+        text: bool = True,
+        env: Optional[Mapping[str, Optional[str]]] = None,
+        sudo: Optional[bool] = None,
+        cwd: Optional[str] = None,
+        log_prefix: str = "",
+        log_level: int = logging.DEBUG,
+        log_level_result: Optional[int] = None,
+        log_level_fail: Optional[int] = None,
+        check_success: Optional[
+            Union[Callable[[Result], bool], Callable[[BinResult], bool]]
+        ] = None,
+        die_on_error: bool = False,
+        decode_errors: Optional[str] = None,
+    ) -> Union[Result, BinResult]:
+        pass
+
     def run(
         self,
         cmd: Union[str, Iterable[str]],
