@@ -182,6 +182,14 @@ class BinResult(BaseResult[bytes]):
             self.returncode,
         )
 
+    @staticmethod
+    def internal_failure(msg: str) -> "BinResult":
+        return BinResult(
+            b"",
+            (INTERNAL_ERROR_PREFIX + msg).encode(errors="surrogateescape"),
+            INTERNAL_ERROR_RETURNCODE,
+        )
+
 
 class Host(ABC):
     def __init__(
@@ -497,11 +505,7 @@ class LocalHost(Host):
             #
             # Usually we avoid creating an artificial BinResult. In this case
             # there is no choice.
-            return BinResult(
-                b"",
-                (INTERNAL_ERROR_PREFIX + str(e)).encode(errors="surrogateescape"),
-                INTERNAL_ERROR_RETURNCODE,
-            )
+            return BinResult.internal_failure(str(e))
 
         return BinResult(res.stdout, res.stderr, res.returncode)
 
