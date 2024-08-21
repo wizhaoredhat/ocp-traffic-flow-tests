@@ -83,7 +83,7 @@ def _prepare_run(
             cwd,
         )
 
-    cmd2 = ["sudo"]
+    cmd2 = ["sudo", "-n"]
 
     if env:
         for k, v in env.items():
