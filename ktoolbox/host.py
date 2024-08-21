@@ -1,6 +1,7 @@
 import dataclasses
 import logging
 import os
+import select
 import shlex
 import subprocess
 import sys
@@ -104,7 +105,7 @@ class BaseResult(_BaseResult[T]):
             return self.forced_success
         return self.returncode == 0
 
-    def debug_str(self) -> str:
+    def debug_str(self, *, with_output: bool = True) -> str:
         if self.forced_success is None or self.forced_success == (self.returncode == 0):
             if self.success:
                 status = "success"
@@ -117,11 +118,11 @@ class BaseResult(_BaseResult[T]):
                 status = "failed [forced] (exit 0)"
 
         out = ""
-        if self.out:
+        if self.out and with_output:
             out = f"; out={repr(self.out)}"
 
         err = ""
-        if self.err:
+        if self.err and with_output:
             err = f"; err={repr(self.err)}"
 
         return f"{status}{out}{err}"
@@ -234,6 +235,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[Callable[[Result], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
@@ -253,6 +255,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[Callable[[BinResult], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
@@ -272,6 +275,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[
             Union[Callable[[Result], bool], Callable[[BinResult], bool]]
         ] = None,
@@ -292,6 +296,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[
             Union[Callable[[Result], bool], Callable[[BinResult], bool]]
         ] = None,
@@ -316,10 +321,33 @@ class Host(ABC):
                 f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call {_cmd_to_logstr(real_cmd)}",
             )
 
+        if isinstance(log_lineoutput, bool):
+            if not log_lineoutput:
+                log_lineoutput = -1
+            elif log_level >= 0:
+                log_lineoutput = log_level
+            else:
+                log_lineoutput = logging.DEBUG
+
+        _handle_line: Optional[Callable[[bool, bytes], None]] = None
+        if log_lineoutput >= 0:
+            line_num = [0, 0]
+
+            def _handle_line_log(is_stdout: bool, line: bytes) -> None:
+                outtype = "stdout" if is_stdout else "stderr"
+                logger.log(
+                    log_lineoutput,
+                    f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: {outtype}[{line_num[is_stdout]}] {repr(line)}",
+                )
+                line_num[is_stdout] += 1
+
+            _handle_line = _handle_line_log
+
         bin_result = self._run(
             cmd=real_cmd,
             env=real_env,
             cwd=real_cwd,
+            handle_line=_handle_line,
         )
 
         # The remainder is only concerned with printing a nice logging message and
@@ -433,10 +461,10 @@ class Host(ABC):
                 # Note that we log the output as binary if either "text=False" or if
                 # the output was not valid utf-8. In the latter case, we will still
                 # return a string Result (or re-raise decode_exception).
-                debug_str = bin_result.debug_str()
+                debug_str = bin_result.debug_str(with_output=log_lineoutput < 0)
             else:
                 assert str_result is not None
-                debug_str = str_result.debug_str()
+                debug_str = str_result.debug_str(with_output=log_lineoutput < 0)
 
             logger.log(
                 result_log_level,
@@ -465,6 +493,7 @@ class Host(ABC):
         cmd: Union[str, tuple[str, ...]],
         env: Optional[dict[str, Optional[str]]],
         cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
     ) -> BinResult:
         pass
 
@@ -482,6 +511,7 @@ class LocalHost(Host):
         cmd: Union[str, tuple[str, ...]],
         env: Optional[dict[str, Optional[str]]],
         cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
     ) -> BinResult:
         full_env: Optional[dict[str, str]] = None
         if env is not None:
@@ -493,10 +523,12 @@ class LocalHost(Host):
                     full_env[k] = v
 
         try:
-            res = subprocess.run(
+            pr = subprocess.Popen(
                 cmd,
                 shell=isinstance(cmd, str),
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=False,
                 env=full_env,
                 cwd=cwd,
             )
@@ -513,7 +545,40 @@ class LocalHost(Host):
             # there is no choice.
             return BinResult.internal_failure(str(e))
 
-        return BinResult(res.stdout, res.stderr, res.returncode)
+        buffers = (bytearray(), bytearray())
+
+        def _readlines(
+            stream: Optional[typing.IO[bytes]],
+            *,
+            read_all: bool,
+        ) -> None:
+            assert stream is not None
+            if stream is pr.stdout:
+                is_stdout = True
+            else:
+                assert stream is pr.stderr
+                is_stdout = False
+            while True:
+                b = stream.readline()
+                if not b:
+                    return
+                buffers[is_stdout].extend(b)
+                if handle_line is not None:
+                    handle_line(is_stdout, b)
+                if not read_all:
+                    return
+
+        while True:
+            to_read, _, _ = select.select([pr.stdout, pr.stderr], [], [])
+            for stream in to_read:
+                _readlines(stream, read_all=False)
+            if pr.poll() is not None:
+                break
+        _readlines(pr.stdout, read_all=True)
+        _readlines(pr.stderr, read_all=True)
+        pr.wait()
+
+        return BinResult(bytes(buffers[True]), bytes(buffers[False]), pr.returncode)
 
     def file_exists(self, path: Union[str, os.PathLike[Any]]) -> bool:
         return os.path.exists(path)

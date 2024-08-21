@@ -1,10 +1,36 @@
 import functools
+import logging
 import os
 import pathlib
 import pytest
+import random
 import sys
 
+from typing import Any
+from typing import Optional
+from typing import Union
+
 from . import host
+
+
+def _rnd_log_lineoutput() -> dict[str, Any]:
+    r = random.randint(0, 4)
+
+    val: Optional[Union[int, bool]] = None
+    if r <= 1:
+        val = r == 0
+    elif r == 2:
+        val = -1
+    elif r == 3:
+        val = logging.DEBUG
+    else:
+        val = logging.ERROR
+
+    if val is None:
+        return {}
+    return {
+        "log_lineoutput": val,
+    }
 
 
 @functools.cache
@@ -26,12 +52,14 @@ def test_host_result_bin() -> None:
 
 
 def test_host_result_surrogateescape() -> None:
-    res = host.local.run("echo -n hi", decode_errors="surrogateescape")
+    res = host.local.run(
+        "echo -n hi", decode_errors="surrogateescape", **_rnd_log_lineoutput()
+    )
     assert res == host.Result("hi", "", 0)
 
     cmd = ["bash", "-c", "printf $'xx<\\325>'"]
 
-    res_bin = host.local.run(cmd, text=False)
+    res_bin = host.local.run(cmd, text=False, **_rnd_log_lineoutput())
     assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
     res = host.local.run(cmd, decode_errors="surrogateescape")
@@ -51,7 +79,7 @@ def test_host_result_surrogateescape() -> None:
     assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
     t = False
-    res_any = host.local.run(cmd2, text=t)
+    res_any = host.local.run(cmd2, text=t, **_rnd_log_lineoutput())
     assert isinstance(res_any, host.BinResult)
     assert res_any == host.BinResult(b"xx<\325>", b"", 0)
 
@@ -69,7 +97,7 @@ def test_host_result_str() -> None:
     res = host.local.run("echo -n out; echo -n err >&2", text=True)
     assert res == host.Result("out", "err", 0)
 
-    res = host.local.run("echo -n out; echo -n err >&2")
+    res = host.local.run("echo -n out; echo -n err >&2", **_rnd_log_lineoutput())
     assert res == host.Result("out", "err", 0)
 
 
@@ -90,7 +118,9 @@ def test_host_various_results() -> None:
     with pytest.raises(UnicodeDecodeError):
         res = host.local.run('printf "foo:\\705x"', decode_errors="strict")
 
-    res = host.local.run('printf "foo:\\705x"', decode_errors="backslashreplace")
+    res = host.local.run(
+        'printf "foo:\\705x"', decode_errors="backslashreplace", **_rnd_log_lineoutput()
+    )
     assert res == host.Result("foo:\\xc5x", "", 0)
 
     binres = host.local.run('printf "foo:\\705x"', text=False)
@@ -108,7 +138,10 @@ def test_host_check_success() -> None:
     assert not res.success
 
     binres = host.local.run(
-        "echo -n foo", text=False, check_success=lambda r: r.out != b"foo"
+        "echo -n foo",
+        text=False,
+        check_success=lambda r: r.out != b"foo",
+        **_rnd_log_lineoutput(),
     )
     assert binres == host.BinResult(b"foo", b"", 0, forced_success=False)
     assert not binres.success
