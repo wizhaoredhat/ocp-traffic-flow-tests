@@ -6,6 +6,7 @@ import pytest
 import random
 import sys
 
+from collections.abc import Mapping
 from typing import Any
 from typing import Optional
 from typing import Union
@@ -34,20 +35,96 @@ def _rnd_log_lineoutput() -> dict[str, Any]:
 
 
 @functools.cache
+def get_user() -> Optional[str]:
+    return os.environ.get("USER")
+
+
+@functools.cache
 def has_sudo(rsh: host.Host) -> bool:
     r = rsh.run("sudo -n whoami")
     return r == host.Result("root\n", "", 0)
 
 
+@functools.cache
+def has_paramiko() -> bool:
+    try:
+        import paramiko
+
+        assert paramiko.client
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
+@functools.cache
+def can_ssh_nopass(hostname: str, user: str) -> Optional[host.RemoteHost]:
+
+    if not has_paramiko():
+        return None
+
+    import paramiko
+
+    client = paramiko.client.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(hostname, username=user, password="")
+    except Exception:
+        pass
+    else:
+        _in, _out, _err = client.exec_command("echo -n hello")
+        _in.close()
+        s_out = _out.read()
+        s_err = _err.read()
+        rc = _out.channel.recv_exit_status()
+        if rc == 0 and s_out == b"hello" and s_err == b"":
+            rsh = host.RemoteHost(hostname, host.AutoLogin(user))
+            assert rsh.run("whoami") == host.Result(f"{user}\n", "", 0)
+            return rsh
+    return None
+
+
+def run_local(
+    cmd: Union[str, list[str]],
+    *,
+    text: bool = True,
+    env: Optional[Mapping[str, Optional[str]]] = None,
+    cwd: Optional[str] = None,
+) -> Union[host.Result, host.BinResult]:
+    res = host.local.run(cmd, text=text, cwd=cwd, env=env)
+
+    rsh = can_ssh_nopass("localhost", get_user())
+    if rsh is not None:
+        res2 = rsh.run(cmd, text=text, cwd=cwd, env=env)
+        assert res == res2
+
+    return res
+
+
+def skip_without_paramiko() -> None:
+    if not has_paramiko():
+        pytest.skip("paramiko module is not available")
+
+
+def skip_without_ssh_nopass(
+    hostname: str = "localhost",
+    user: Optional[str] = None,
+) -> tuple[str, host.RemoteHost]:
+    if user is None:
+        user = get_user() or "root"
+    skip_without_paramiko()
+    rsh = can_ssh_nopass(hostname, user)
+    if rsh is None:
+        pytest.skip(f"cannot ssh to {user}@{hostname} without password")
+    return user, rsh
+
+
 def skip_without_sudo(rsh: host.Host) -> None:
     if not has_sudo(rsh):
-        pytest.skip(
-            "sudo on {rsh.pretty_str()} does not seem to work passwordless ({r})"
-        )
+        pytest.skip(f"sudo on {rsh.pretty_str()} does not seem to work passwordless")
 
 
 def test_host_result_bin() -> None:
-    res = host.local.run("echo -n out; echo -n err >&2", text=False)
+    res = run_local("echo -n out; echo -n err >&2", text=False)
     assert res == host.BinResult(b"out", b"err", 0)
 
 
@@ -68,10 +145,10 @@ def test_host_result_surrogateescape() -> None:
         res.out.encode()
     assert res.out.encode(errors="surrogateescape") == b"xx<\325>"
 
-    res_bin = host.local.run(["bash", "-c", 'printf "xx<\udcd5>"'], text=False)
-    assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
+    res_bin2 = run_local(["bash", "-c", 'printf "xx<\udcd5>"'], text=False)
+    assert res_bin2 == host.BinResult(b"xx<\325>", b"", 0)
 
-    res_bin = host.local.run(["echo", "-n", "xx<\udcd5>"], text=False)
+    res_bin = run_local(["echo", "-n", "xx<\udcd5>"], text=False)
     assert res_bin == host.BinResult(b"xx<\325>", b"", 0)
 
     cmd2 = b'echo -n "xx<\325>"'.decode(errors="surrogateescape")
@@ -191,12 +268,15 @@ def test_env() -> None:
     res = host.local.run('echo ">>$FOO<<"', env={"FOO": "xx1"})
     assert res == host.Result(">>xx1<<\n", "", 0)
 
+    res2 = run_local('echo ">>$FOO<<" 1>&2; exit 4', env={"FOO": "xx1"})
+    assert res2 == host.Result("", ">>xx1<<\n", 4)
+
 
 def test_cwd() -> None:
-    res = host.local.run("pwd", cwd="/usr/bin")
+    res = run_local("pwd", cwd="/usr/bin")
     assert res == host.Result("/usr/bin\n", "", 0)
 
-    res = host.local.run(["pwd"], cwd="/usr/bin")
+    res = run_local(["pwd"], cwd="/usr/bin")
     assert res == host.Result("/usr/bin\n", "", 0)
 
     res = host.local.run("pwd", cwd="/usr/bin/does/not/exist")
@@ -250,3 +330,43 @@ def test_sudo() -> None:
 
     res = rsh.run("pwd", cwd="/root")
     assert res == host.Result("/root\n", "", 0)
+
+
+def test_remotehost_userdoesnotexist() -> None:
+    skip_without_paramiko()
+
+    rsh = host.RemoteHost(
+        "localhost", host.AutoLogin(user="userdoesnotexist"), login_retry_duration=0
+    )
+    res = rsh.run("whoami")
+    assert res == host.Result(
+        out="",
+        err="Host.run(): failed to login to remote host localhost",
+        returncode=1,
+    )
+
+
+def test_remotehost_1() -> None:
+    user, rsh = skip_without_ssh_nopass()
+
+    res = rsh.run("whoami", **_rnd_log_lineoutput())
+    assert res == host.Result(f"{user}\n", "", 0)
+
+    res = rsh.run(
+        'whoami; pwd; echo ">>$FOO<"',
+        cwd="/usr",
+        env={"FOO": "hi"},
+        **_rnd_log_lineoutput(),
+    )
+    assert res == host.Result(f"{user}\n/usr\n>>hi<\n", "", 0)
+
+
+def test_remotehost_sudo() -> None:
+    user, rsh = skip_without_ssh_nopass()
+
+    res = rsh.run("whoami", sudo=True, **_rnd_log_lineoutput())
+    if res.success:
+        assert res == host.Result("root\n", "", 0)
+    else:
+        assert res.out == ""
+        assert "sudo" in res.err

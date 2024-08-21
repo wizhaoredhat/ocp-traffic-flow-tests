@@ -41,6 +41,7 @@ RUN /opt/pyvenv3.11/bin/python -m pip install \
         dataclasses \
         jc \
         jinja2 \
+        paramiko \
         pyserial \
         pytest
 RUN ln -s /opt/pyvenv3.11/bin/python /usr/bin/python-pyvenv3.11

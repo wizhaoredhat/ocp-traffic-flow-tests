@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import sys
 import threading
+import time
 import typing
 
 from abc import ABC
@@ -54,10 +55,16 @@ def _cmd_to_logstr(cmd: Union[str, tuple[str, ...]]) -> str:
     return repr(_cmd_to_shell(cmd))
 
 
-def _cmd_to_shell(cmd: Union[str, Iterable[str]]) -> str:
-    if isinstance(cmd, str):
-        return cmd
-    return shlex.join(cmd)
+def _cmd_to_shell(
+    cmd: Union[str, Iterable[str]],
+    *,
+    cwd: Optional[str] = None,
+) -> str:
+    if not isinstance(cmd, str):
+        cmd = shlex.join(cmd)
+    if cwd is not None:
+        cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {cmd}"
+    return cmd
 
 
 def _cmd_to_argv(cmd: Union[str, Iterable[str]]) -> tuple[str, ...]:
@@ -214,9 +221,9 @@ class Host(ABC):
 
         if cwd is not None:
             # sudo's "--chdir" option often does not work based on the sudo
-            # configuration.  Instead, change the directory inside the shell
+            # configuration. Instead, change the directory inside the shell
             # script.
-            cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {_cmd_to_shell(cmd)}"
+            cmd = _cmd_to_shell(cmd, cwd=cwd)
 
         cmd2.extend(_cmd_to_argv(cmd))
 
@@ -584,6 +591,234 @@ class LocalHost(Host):
         return os.path.exists(path)
 
 
+@dataclass(frozen=True)
+class _Login(ABC):
+    user: str
+
+    @abstractmethod
+    def _login(self, client: "paramiko.SSHClient", host: str) -> None:
+        pass
+
+
+@dataclass(frozen=True, **KW_ONLY_DATACLASS)
+class AutoLogin(_Login):
+    def _login(self, client: "paramiko.SSHClient", host: str) -> None:
+        client.connect(
+            host,
+            username=self.user,
+            look_for_keys=True,
+            allow_agent=True,
+        )
+
+
+class RemoteHost(Host):
+    def __init__(
+        self,
+        host: str,
+        *logins: _Login,
+        sudo: bool = False,
+        login_retry_duration: float = 10 * 60,
+    ) -> None:
+        import paramiko
+
+        super().__init__(sudo=sudo)
+        self.host = host
+        self.logins = tuple(logins)
+        self.login_retry_duration = login_retry_duration
+        self._paramiko = paramiko
+        self._tlocal = threading.local()
+
+    def pretty_str(self) -> str:
+        return f"@{self.host}"
+
+    def _prepare_run(
+        self,
+        *,
+        sudo: bool,
+        cwd: Optional[str],
+        cmd: Union[str, Iterable[str]],
+        env: Optional[Mapping[str, Optional[str]]],
+    ) -> tuple[
+        Union[str, tuple[str, ...]],
+        Optional[dict[str, Optional[str]]],
+        Optional[str],
+    ]:
+        cmd, env, cwd = super()._prepare_run(
+            sudo=sudo,
+            cwd=cwd,
+            cmd=cmd,
+            env=env,
+        )
+
+        cmd = _cmd_to_shell(cmd, cwd=cwd)
+
+        if env:
+            # Assume we have a POSIX shell, and we can define variables via `export VAR=...`.
+            cmd2 = ""
+            for k, v in env.items():
+                assert k == shlex.quote(k)
+                if v is None:
+                    cmd2 += f"unset  -v {k} ; "
+                else:
+                    cmd2 += f"export {k}={shlex.quote(v)} ; "
+            cmd = cmd2 + cmd
+
+        return cmd, None, None
+
+    def _get_client(
+        self,
+    ) -> tuple[threading.local, "paramiko.SSHClient", Optional[_Login]]:
+        tlocal = self._tlocal
+        client = getattr(tlocal, "client", None)
+        login: Optional[_Login] = None
+        if client is None:
+            client = self._paramiko.SSHClient()
+            client.set_missing_host_key_policy(self._paramiko.AutoAddPolicy())
+            tlocal.client = client
+            tlocal.login = None
+        else:
+            login = tlocal.login
+        return tlocal, client, login
+
+    def _ensure_login(
+        self,
+        *,
+        force_new_login: bool = False,
+        start_timestamp: float = -1.0,
+    ) -> tuple[Optional["paramiko.SSHClient"], bool]:
+        tlocal, client, login = self._get_client()
+
+        if login is not None:
+            if not force_new_login:
+                return client, False
+
+        if start_timestamp == -1.0:
+            start_timestamp = time.monotonic()
+
+        end_timestamp = start_timestamp + self.login_retry_duration
+
+        tlocal.login = None
+
+        try_count = 0
+
+        while True:
+            for login in self.logins:
+                try:
+                    login._login(client, self.host)
+                except Exception as e:
+                    error = e
+                else:
+                    tlocal.login = login
+                    logger.debug(
+                        f"remote[{self.pretty_str()}]: successfully logged in to {login}"
+                    )
+                    return client, True
+
+                if try_count == 0:
+                    logger.debug(
+                        f"remote[{self.pretty_str()}]: failed to login to {login}: {error}"
+                    )
+
+            try_count += 1
+
+            if time.monotonic() >= end_timestamp:
+                logger.debug(
+                    f"remote[{self.pretty_str()}]: failed to login with credentials {self.logins} ({try_count} tries)"
+                )
+                return None, False
+
+    def _run(
+        self,
+        *,
+        cmd: Union[str, tuple[str, ...]],
+        env: Optional[dict[str, Optional[str]]],
+        cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
+    ) -> BinResult:
+
+        assert isinstance(cmd, str)
+        assert env is None
+        assert cwd is None
+
+        bin_cmd: Any = cmd.encode("utf-8", errors="surrogateescape")
+
+        start_timestamp = time.monotonic()
+        first_try = True
+        while True:
+            client, new_login = self._ensure_login(
+                start_timestamp=start_timestamp,
+                force_new_login=not first_try,
+            )
+            if client is None:
+                return BinResult.internal_failure(
+                    f"failed to login to remote host {self.host}"
+                )
+
+            try:
+                _, stdout, stderr = client.exec_command(bin_cmd)
+            except Exception as e:
+                if new_login:
+                    # We just did a new login and got a failure. Propagate the
+                    # error.
+                    return BinResult.internal_failure(str(e))
+
+                # We had a cached login from earlier. Maybe this was broken
+                # and the cause for error now. Retry and force new login.
+                first_try = False
+                continue
+
+            break
+
+        buffers = (bytearray(), bytearray())
+        sources = (stderr, stdout)
+        fds = tuple(s.channel.fileno() for s in sources)
+
+        for source in sources:
+            source.channel.setblocking(0)
+
+        def _readlines(*, is_stdout: bool) -> None:
+            channel = sources[is_stdout].channel
+            buffer = buffers[is_stdout]
+            start_idx = len(buffer)
+            while True:
+                try:
+                    if is_stdout:
+                        d = channel.recv(32768)
+                    else:
+                        d = channel.recv_stderr(32768)
+                except Exception:
+                    d = b""
+                if not d:
+                    break
+                buffer.extend(d)
+
+            if start_idx == len(buffer):
+                return
+
+            if handle_line is not None:
+                while True:
+                    idx = buffer.find(b"\n", start_idx)
+                    if idx != -1:
+                        line = bytes(buffer[start_idx : idx + 1])
+                        start_idx = idx + 1
+                    elif start_idx < len(buffer):
+                        line = bytes(buffer[start_idx:])
+                        start_idx = len(buffer)
+                    else:
+                        break
+                    handle_line(is_stdout, line)
+
+        while not stdout.channel.exit_status_ready():
+            to_read, _, _ = select.select(fds, [], [])
+            for fd in to_read:
+                _readlines(is_stdout=(fd == fds[True]))
+        returncode = stdout.channel.recv_exit_status()
+        _readlines(is_stdout=True)
+        _readlines(is_stdout=False)
+
+        return BinResult(bytes(buffers[True]), bytes(buffers[False]), returncode)
+
+
 local = LocalHost()
 
 
@@ -591,3 +826,7 @@ def host_or_local(host: Optional[Host]) -> Host:
     if host is None:
         return local
     return host
+
+
+if typing.TYPE_CHECKING:
+    import paramiko
