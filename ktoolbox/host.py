@@ -480,10 +480,10 @@ class LocalHost(Host):
                 env=full_env,
                 cwd=cwd,
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             # We get an FileNotFoundError if cwd directory does not exist or if
-            # the binary does not exist (with shell=False). And maybe there are
-            # other cases where we might get exceptions.
+            # the binary does not exist (with shell=False). We get a PermissionError
+            # if we don't have permissions.
             #
             # Generally, we don't want to report errors via exceptions, because
             # you won't get the same exception with shell=True. Instead, we

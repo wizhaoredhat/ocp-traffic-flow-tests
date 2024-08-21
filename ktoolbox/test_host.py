@@ -166,6 +166,15 @@ def test_cwd() -> None:
     assert res.returncode == 1
     assert "/usr/bin/does/not/exist" in res.err
 
+    res = host.local.run("pwd", cwd="/root")
+    if res == host.Result("/root\n", "", 0):
+        # We have permissions to access the directory.
+        pass
+    else:
+        assert res.out == ""
+        assert res.returncode == 1
+        assert "/root" in res.err
+
 
 def test_sudo() -> None:
     skip_without_sudo(host.local)
