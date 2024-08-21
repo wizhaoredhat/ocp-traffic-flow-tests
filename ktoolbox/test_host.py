@@ -209,3 +209,6 @@ def test_sudo() -> None:
     assert res.out == ""
     assert res.returncode == 1
     assert "/usr/bin/does/not/exist" in res.err
+
+    res = rsh.run("pwd", cwd="/root")
+    assert res == host.Result("/root\n", "", 0)
