@@ -65,44 +65,6 @@ def _cmd_to_argv(cmd: Union[str, Iterable[str]]) -> tuple[str, ...]:
     return tuple(cmd)
 
 
-def _prepare_run(
-    *,
-    sudo: bool,
-    cwd: Optional[str],
-    cmd: Union[str, Iterable[str]],
-    env: Optional[Mapping[str, Optional[str]]],
-) -> tuple[
-    Union[str, tuple[str, ...]],
-    Optional[dict[str, Optional[str]]],
-    Optional[str],
-]:
-    if not sudo:
-        return (
-            _normalize_cmd(cmd),
-            _normalize_env(env),
-            cwd,
-        )
-
-    cmd2 = ["sudo", "-n"]
-
-    if env:
-        for k, v in env.items():
-            assert k == shlex.quote(k)
-            assert "=" not in k
-            if v is not None:
-                cmd2.append(f"{k}={v}")
-
-    if cwd is not None:
-        # sudo's "--chdir" option often does not work based on the sudo
-        # configuration.  Instead, change the directory inside the shell
-        # script.
-        cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {_cmd_to_shell(cmd)}"
-
-    cmd2.extend(_cmd_to_argv(cmd))
-
-    return tuple(cmd2), None, None
-
-
 def _unique_log_id() -> int:
     # For each run() call, we log a message when starting the command and when
     # completing it. Add a unique number to those logging statements, so that
@@ -221,6 +183,44 @@ class Host(ABC):
     def pretty_str(self) -> str:
         pass
 
+    def _prepare_run(
+        self,
+        *,
+        sudo: bool,
+        cwd: Optional[str],
+        cmd: Union[str, Iterable[str]],
+        env: Optional[Mapping[str, Optional[str]]],
+    ) -> tuple[
+        Union[str, tuple[str, ...]],
+        Optional[dict[str, Optional[str]]],
+        Optional[str],
+    ]:
+        if not sudo:
+            return (
+                _normalize_cmd(cmd),
+                _normalize_env(env),
+                cwd,
+            )
+
+        cmd2 = ["sudo", "-n"]
+
+        if env:
+            for k, v in env.items():
+                assert k == shlex.quote(k)
+                assert "=" not in k
+                if v is not None:
+                    cmd2.append(f"{k}={v}")
+
+        if cwd is not None:
+            # sudo's "--chdir" option often does not work based on the sudo
+            # configuration.  Instead, change the directory inside the shell
+            # script.
+            cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {_cmd_to_shell(cmd)}"
+
+        cmd2.extend(_cmd_to_argv(cmd))
+
+        return tuple(cmd2), None, None
+
     @typing.overload
     def run(
         self,
@@ -303,7 +303,7 @@ class Host(ABC):
         if sudo is None:
             sudo = self._sudo
 
-        real_cmd, real_env, real_cwd = _prepare_run(
+        real_cmd, real_env, real_cwd = self._prepare_run(
             sudo=sudo,
             cwd=cwd,
             cmd=cmd,
