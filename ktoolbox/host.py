@@ -92,9 +92,15 @@ def _prepare_run(
             if v is not None:
                 cmd2.append(f"{k}={v}")
 
+    if cwd is not None:
+        # sudo's "--chdir" option often does not work based on the sudo
+        # configuration.  Instead, change the directory inside the shell
+        # script.
+        cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {_cmd_to_shell(cmd)}"
+
     cmd2.extend(_cmd_to_argv(cmd))
 
-    return tuple(cmd2), None, cwd
+    return tuple(cmd2), None, None
 
 
 def _unique_log_id() -> int:
@@ -480,10 +486,10 @@ class LocalHost(Host):
                 env=full_env,
                 cwd=cwd,
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             # We get an FileNotFoundError if cwd directory does not exist or if
-            # the binary does not exist (with shell=False). And maybe there are
-            # other cases where we might get exceptions.
+            # the binary does not exist (with shell=False). We get a PermissionError
+            # if we don't have permissions.
             #
             # Generally, we don't want to report errors via exceptions, because
             # you won't get the same exception with shell=True. Instead, we
