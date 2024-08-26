@@ -22,7 +22,7 @@ jobs:
         python -m pip install flake8
         python -m pip install mypy
         python -m pip install pytest
-        python -m pip install types-PyYAML
+        python -m pip install types-PyYAML>=6.0.1
         python -m pip install -r requirements.txt
     - name: Check code formatting with Black
       run: |
@@ -56,7 +56,7 @@ jobs:
         python -m pip install flake8
         python -m pip install mypy
         python -m pip install pytest
-        python -m pip install types-PyYAML
+        python -m pip install types-PyYAML>=6.0.1
         python -m pip install -r requirements.txt
     - name: Check code formatting with Black
       run: |

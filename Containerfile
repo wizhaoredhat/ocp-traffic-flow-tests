@@ -37,7 +37,7 @@ RUN dnf install \
 RUN python3.11 -m venv /opt/pyvenv3.11
 RUN /opt/pyvenv3.11/bin/python -m pip install --upgrade pip
 RUN /opt/pyvenv3.11/bin/python -m pip install \
-        PyYAML==6.0.1 \
+        PyYAML>=6.0.1 \
         dataclasses \
         jc \
         jinja2 \
