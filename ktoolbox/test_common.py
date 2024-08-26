@@ -496,3 +496,13 @@ def test_etc_hosts_update() -> None:
 172.131.100.100 marvell-dpu-42 dpu2
 """
     )
+
+
+def test_serial() -> None:
+    try:
+        import serial
+    except ModuleNotFoundError:
+        pytest.skip("pyserial module not available")
+
+    with pytest.raises(serial.serialutil.SerialException):
+        common.Serial("")
