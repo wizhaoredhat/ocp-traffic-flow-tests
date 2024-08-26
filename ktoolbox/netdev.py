@@ -41,7 +41,12 @@ def isspace_kernel(c: Union[int, bytes]) -> bool:
     return c in _isspace_kernel_set
 
 
-def normalize_ifname(ifname: Union[str, bytes], *, validate: bool = False) -> bytes:
+def normalize_ifname(
+    ifname: Union[str, bytes],
+    *,
+    validate: bool = False,
+    allow_reserved: bool = True,
+) -> bytes:
     if isinstance(ifname, str):
         ifname = ifname.encode("utf-8", errors="surrogateescape")
     elif not isinstance(ifname, bytes):
@@ -63,16 +68,38 @@ def normalize_ifname(ifname: Union[str, bytes], *, validate: bool = False) -> by
                 raise ValueError("Invalid zero bytes")
             if isspace_kernel(c):
                 raise ValueError("Invalid white space")
+        if not allow_reserved:
+            # Certain modules create sysctl files that later prevent creating
+            # interfaces with those names. However, you can create those interfaces
+            # if the module is not loaded.
+            #
+            # You are advised to not use those interface names, but you can
+            # create such interfaces in kernel (if the conflicting module is
+            # not loaded).
+            #
+            # The "all" and "default" names are reserved
+            # due to their directories in "/proc/sys/net/ipv4/conf/" and "/proc/sys/net/ipv6/conf/".
+            # Also, there is "/sys/class/net/bonding_masters" file.
+            if ifname in (
+                b"all",
+                b"default",
+                b"bonding_masters",
+            ):
+                raise ValueError(f"Interface name {repr(ifname)} is reserved")
 
     return ifname
 
 
-def validate_ifname(ifname: Union[str, bytes]) -> str:
+def validate_ifname(
+    ifname: Union[str, bytes],
+    *,
+    allow_reserved: bool = True,
+) -> str:
     # The main point of this validation is whether this can be used
     # safely in a path name.
     #
     # See also, dev_valid_name() in kernel.
-    ifname = normalize_ifname(ifname, validate=True)
+    ifname = normalize_ifname(ifname, validate=True, allow_reserved=allow_reserved)
     return ifname.decode(errors="surrogateescape")
 
 
@@ -107,7 +134,9 @@ def validate_pciaddr(pciaddr: Union[str, bytes]) -> str:
     return pciaddr
 
 
-_ethaddr_re = re.compile("^[0-9a-fA-F:]+$")
+_ethaddr_re = re.compile(
+    "^([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?):([0-9a-fA-F][0-9a-fA-F]?)$"
+)
 
 
 def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
@@ -122,11 +151,29 @@ def validate_ethaddr(ethaddr: Union[str, bytes]) -> str:
             )
     elif not isinstance(ethaddr, str):
         raise TypeError(f"Ethernet address of unexpected type {type(ethaddr)}")
-    if not _ethaddr_re.search(ethaddr):
+    m = _ethaddr_re.search(ethaddr)
+    if not m:
         raise ValueError(
             f"Ethernet address contains invalid characters ({repr(ethaddr)})"
         )
-    return ethaddr.lower()
+
+    def _normalize_hex(s: str) -> str:
+        s = s.lower()
+        if len(s) == 1:
+            return "0" + s
+        return s
+
+    ethaddr2 = ":".join(_normalize_hex(m.group(i)) for i in range(1, 7))
+    if ethaddr2 == ethaddr:
+        return ethaddr
+    return ethaddr2
+
+
+def validate_ethaddr_or_none(ethaddr: Union[str, bytes]) -> Optional[str]:
+    try:
+        return validate_ethaddr(ethaddr)
+    except ValueError:
+        return None
 
 
 def pciaddr_get_func_address(pciaddr: Optional[Union[str, bytes]]) -> Optional[int]:
@@ -254,11 +301,11 @@ def ip_links_parse(
 
             address = e.get("address")
             if address is not None:
-                address = validate_ethaddr(address)
+                address = validate_ethaddr_or_none(address)
 
             permaddr = e.get("permaddr")
             if permaddr is not None:
-                permaddr = validate_ethaddr(permaddr)
+                permaddr = validate_ethaddr_or_none(permaddr)
 
             entry = IPRouteLinkEntry(
                 ifindex=e["ifindex"],
@@ -386,10 +433,7 @@ def ethtool_permaddr(
     if permaddr is None:
         return None
 
-    try:
-        return validate_ethaddr(permaddr)
-    except Exception:
-        return None
+    return validate_ethaddr_or_none(permaddr)
 
 
 @strict_dataclass
@@ -523,7 +567,13 @@ def get_ifnames() -> list[str]:
         ifs1 = os.listdir(b"/sys/class/net/")
     except Exception:
         return []
-    return sorted(common.iter_filter_none(validate_ifname(i) for i in ifs1))
+
+    def _validate(ifname: bytes) -> Optional[str]:
+        if not os.path.islink(b"/sys/class/net/" + ifname):
+            return None
+        return validate_ifname_or_none(ifname)
+
+    return sorted(common.iter_filter_none(_validate(i) for i in ifs1))
 
 
 def get_pciaddrs() -> list[str]:
