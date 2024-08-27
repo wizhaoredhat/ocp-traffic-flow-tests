@@ -170,7 +170,15 @@ class BaseResult(_BaseResult[T]):
 
 @dataclass(frozen=True)
 class Result(BaseResult[str]):
-    pass
+    def dup_with_forced_success(self, forced_success: bool) -> "Result":
+        if forced_success == self.success:
+            return self
+        return Result(
+            self.out,
+            self.err,
+            self.returncode,
+            forced_success=forced_success,
+        )
 
 
 @dataclass(frozen=True)
@@ -180,6 +188,16 @@ class BinResult(BaseResult[bytes]):
             self.out.decode(errors=errors),
             self.err.decode(errors=errors),
             self.returncode,
+        )
+
+    def dup_with_forced_success(self, forced_success: bool) -> "BinResult":
+        if forced_success == self.success:
+            return self
+        return BinResult(
+            self.out,
+            self.err,
+            self.returncode,
+            forced_success=forced_success,
         )
 
     @staticmethod
@@ -407,31 +425,19 @@ class Host(ABC):
                 result_log_level = logging.ERROR
 
         if str_result is not None:
-            if result_success != str_result.success:
-                str_result = Result(
-                    out=str_result.out,
-                    err=str_result.err,
-                    returncode=str_result.returncode,
-                    forced_success=result_success,
-                )
-        if result_success != bin_result.success:
-            bin_result = BinResult(
-                out=bin_result.out,
-                err=bin_result.err,
-                returncode=bin_result.returncode,
-                forced_success=result_success,
-            )
-
-        if is_binary:
-            # Note that we log the output as binary if either "text=False" or if
-            # the output was not valid utf-8. In the latter case, we will still
-            # return a string Result (or re-raise decode_exception).
-            debug_str = bin_result.debug_str()
-        else:
-            assert str_result is not None
-            debug_str = str_result.debug_str()
+            str_result = str_result.dup_with_forced_success(result_success)
+        bin_result = bin_result.dup_with_forced_success(result_success)
 
         if result_log_level >= 0:
+            if is_binary:
+                # Note that we log the output as binary if either "text=False" or if
+                # the output was not valid utf-8. In the latter case, we will still
+                # return a string Result (or re-raise decode_exception).
+                debug_str = bin_result.debug_str()
+            else:
+                assert str_result is not None
+                debug_str = str_result.debug_str()
+
             logger.log(
                 result_log_level,
                 f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> {_cmd_to_logstr(real_cmd)}:{status_msg} {debug_str}",
