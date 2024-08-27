@@ -154,6 +154,11 @@ def test_result_typing() -> None:
         host.BinResult(b"out", b"err", 0, True)
 
 
+def test_env() -> None:
+    res = host.local.run('echo ">>$FOO<<"', env={"FOO": "xx1"})
+    assert res == host.Result(">>xx1<<\n", "", 0)
+
+
 def test_cwd() -> None:
     res = host.local.run("pwd", cwd="/usr/bin")
     assert res == host.Result("/usr/bin\n", "", 0)
