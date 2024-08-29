@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import socket
 
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -39,6 +40,93 @@ def isspace_kernel(c: Union[int, bytes]) -> bool:
         raise TypeError("Expects either an integer or a single byte")
 
     return c in _isspace_kernel_set
+
+
+def validate_addr_family(
+    addr_family: Optional[Union[str, int]],
+    *,
+    with_unspec: bool = False,
+) -> int:
+    if addr_family is None:
+        if with_unspec:
+            return socket.AF_UNSPEC
+    elif isinstance(addr_family, int):
+        if addr_family in (socket.AF_INET, socket.AF_INET6):
+            return addr_family
+        if with_unspec:
+            if addr_family == socket.AF_UNSPEC:
+                return addr_family
+    elif isinstance(addr_family, str):
+        af2 = addr_family.lower().strip()
+        if af2 in ("4", "inet", "inet4", "ipv4", "ip4", "addr4"):
+            return socket.AF_INET
+        if af2 in ("6", "inet6", "ipv6", "ip6", "addr6"):
+            return socket.AF_INET6
+        if with_unspec:
+            if af2 in ("", "any", "unspec"):
+                return socket.AF_UNSPEC
+    raise ValueError(f"invalid address family {repr(addr_family)}")
+
+
+def addr_family_to_str(addr_family: Optional[Union[str, int]]) -> str:
+    addr_family = validate_addr_family(addr_family, with_unspec=True)
+    if addr_family == socket.AF_INET:
+        return "IPv4"
+    if addr_family == socket.AF_INET6:
+        return "IPv6"
+    return "IP"
+
+
+def validate_ipaddr(
+    addr: str,
+    *,
+    addr_family: Optional[Union[str, int]] = None,
+) -> tuple[str, int]:
+    addr_orig = addr
+    addr_family = validate_addr_family(addr_family, with_unspec=True)
+
+    addrbin = None
+
+    if isinstance(addr, str):
+        # We accept whitespace. Strip it.
+        addr = addr.strip()
+
+    if addr_family in (socket.AF_INET, socket.AF_UNSPEC):
+        try:
+            addrbin = socket.inet_pton(socket.AF_INET, addr)
+        except socket.error:
+            pass
+        else:
+            addr_family = socket.AF_INET
+
+    if addrbin is None and addr_family in (socket.AF_INET6, socket.AF_UNSPEC):
+        try:
+            addrbin = socket.inet_pton(socket.AF_INET6, addr)
+        except socket.error:
+            pass
+        else:
+            addr_family = socket.AF_INET6
+        if (
+            addrbin is None
+            and isinstance(addr, str)
+            and len(addr) > 2
+            and addr[0] == "["
+            and addr[-1] == "]"
+        ):
+            # Maybe the IPv6 address is wrapped in []. Retry.
+            try:
+                addrbin = socket.inet_pton(socket.AF_INET6, addr[1:][0:-1])
+            except socket.error:
+                pass
+            else:
+                addr_family = socket.AF_INET6
+    if addrbin is None:
+        raise ValueError(
+            f"{repr(addr_orig)} is not a valid {addr_family_to_str(addr_family)} address"
+        )
+
+    addr2 = socket.inet_ntop(addr_family, addrbin)
+    return addr2, addr_family
 
 
 def normalize_ifname(
