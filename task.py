@@ -8,6 +8,7 @@ import threading
 import time
 import typing
 import yaml
+import functools
 
 from abc import ABC
 from abc import abstractmethod
@@ -275,6 +276,30 @@ class Task(ABC):
     def get_duration(self) -> int:
         return self.ts.cfg_descr.get_tft().duration
 
+    @functools.cache
+    @staticmethod
+    def _fetch_default_resource_name(
+        client: K8sClient, namespace: str, secondary_network_nad: Optional[str]
+    ) -> Optional[str]:
+        if secondary_network_nad is not None:
+            data = client.oc_get(
+                f"network-attachment-definition/{secondary_network_nad}",
+                namespace=namespace,
+            )
+        else:
+            data = None
+        resource_name = None
+
+        if data is not None:
+            try:
+                r = data["metadata"]["annotations"]["k8s.v1.cni.cncf.io/resourceName"]
+                if isinstance(r, str) and r:
+                    resource_name = r
+            except Exception:
+                pass
+        logger.info(f"autodetected resource_name as {repr(resource_name)}")
+        return resource_name
+
     def get_template_args(self) -> dict[str, str | list[str]]:
         return {
             "name_space": self.get_namespace(),
@@ -284,7 +309,17 @@ class Task(ABC):
             "args": [],
             "index": f"{self.index}",
             "node_name": self.node_name,
-            "secondary_network_nad": self.ts.connection.secondary_network_nad,
+            "secondary_network_nad": self.ts.connection.secondary_network_nad_or_default,
+            "use_secondary_network": (
+                "1" if self.ts.connection.secondary_network_nad else ""
+            ),
+            "resource_name": self.ts.connection.resource_name
+            or Task._fetch_default_resource_name(
+                self.client,
+                self.get_namespace(),
+                self.ts.connection.secondary_network_nad,
+            )
+            or "",
         }
 
     def render_file(
@@ -303,6 +338,7 @@ class Task(ABC):
         logger.info(
             f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}", for {self.log_name})'
         )
+
         rendered = jinja2util.j2_render(in_file_template, out_file_yaml, template_args)
 
         rendered_dict = yaml.safe_load(rendered)
@@ -381,7 +417,22 @@ class Task(ABC):
         pod_ip = None
         try:
             if y:
-                pod_ip = y["status"]["podIP"]
+                if self.ts.connection.secondary_network_nad:
+                    network_status_str = y["metadata"]["annotations"][
+                        "k8s.v1.cni.cncf.io/network-status"
+                    ]
+                    network_status = json.loads(network_status_str)
+
+                    namespace = self.get_namespace()
+                    namespace_and_nad = (
+                        f"{namespace}/{self.ts.connection.secondary_network_nad}"
+                    )
+                    for network in network_status:
+                        if network["name"] == namespace_and_nad:
+                            pod_ip = network["ips"][0]
+                            break
+                else:
+                    pod_ip = y["status"]["podIP"]
         except Exception:
             pass
         if not isinstance(pod_ip, str):
@@ -394,9 +445,13 @@ class Task(ABC):
             f"get pod {self.pod_name} -o jsonpath='{jsonpath}'", die_on_error=True
         )
 
+        namespace = self.get_namespace()
         y = yaml.safe_load(r.out)
         ip_address_with_cidr = typing.cast(
-            str, y[self.ts.connection.secondary_network_nad]["ip_address"]
+            str,
+            y[f"{namespace}/{self.ts.connection.secondary_network_nad_or_default}"][
+                "ip_address"
+            ],
         )
         ip_address = ip_address_with_cidr.split("/")[0] if ip_address_with_cidr else ""
         logger.info(f"Secondary IP: {ip_address}")

@@ -197,9 +197,15 @@ class ConfConnection(StructParseBaseNamed):
     server: tuple[ConfServer, ...]
     client: tuple[ConfClient, ...]
     plugins: tuple[ConfPlugin, ...]
-    secondary_network_nad: str
+    secondary_network_nad: Optional[str]
+    resource_name: Optional[str]
 
     def serialize(self) -> dict[str, Any]:
+        extra: dict[str, Any] = {}
+        common.dict_add_optional(
+            extra, "secondary_network_nad", self.secondary_network_nad
+        )
+        common.dict_add_optional(extra, "resource_name", self.resource_name)
         return {
             **super().serialize(),
             "type": self.test_type.name,
@@ -207,8 +213,14 @@ class ConfConnection(StructParseBaseNamed):
             "server": [s.serialize() for s in self.server],
             "client": [c.serialize() for c in self.client],
             "plugins": [p.serialize() for p in self.plugins],
-            "secondary_network_nad": self.secondary_network_nad,
+            **extra,
         }
+
+    @property
+    def secondary_network_nad_or_default(self) -> str:
+        if self.secondary_network_nad is None:
+            return "ocp-secondary"
+        return self.secondary_network_nad
 
     @staticmethod
     def parse(
@@ -262,7 +274,19 @@ class ConfConnection(StructParseBaseNamed):
 
             secondary_network_nad = common.structparse_pop_str(
                 *varg.for_key("secondary_network_nad"),
-                default=f"{namespace}/ocp-secondary",
+                default=None,
+            )
+
+            if secondary_network_nad is not None and "/" in secondary_network_nad:
+                if not secondary_network_nad.startswith(f"{namespace}/"):
+                    raise ValueError(
+                        f'"{yamlpath}.secondary_network_nad": value {repr(secondary_network_nad)} must not contain a namespace. The referenced NAD is implicitly in the test namespace {repr(namespace)}'
+                    )
+                secondary_network_nad = secondary_network_nad[len(f"{namespace}/") :]
+
+            resource_name = common.structparse_pop_str(
+                *varg.for_key("resource_name"),
+                default=None,
             )
 
         if len(server) > 1:
@@ -300,6 +324,7 @@ class ConfConnection(StructParseBaseNamed):
             client=client,
             plugins=plugins,
             secondary_network_nad=secondary_network_nad,
+            resource_name=resource_name,
         )
 
 
