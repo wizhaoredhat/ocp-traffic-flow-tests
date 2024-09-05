@@ -1,10 +1,12 @@
 import dataclasses
 import logging
 import os
+import select
 import shlex
 import subprocess
 import sys
 import threading
+import time
 import typing
 
 from abc import ABC
@@ -53,54 +55,22 @@ def _cmd_to_logstr(cmd: Union[str, tuple[str, ...]]) -> str:
     return repr(_cmd_to_shell(cmd))
 
 
-def _cmd_to_shell(cmd: Union[str, Iterable[str]]) -> str:
-    if isinstance(cmd, str):
-        return cmd
-    return shlex.join(cmd)
+def _cmd_to_shell(
+    cmd: Union[str, Iterable[str]],
+    *,
+    cwd: Optional[str] = None,
+) -> str:
+    if not isinstance(cmd, str):
+        cmd = shlex.join(cmd)
+    if cwd is not None:
+        cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {cmd}"
+    return cmd
 
 
 def _cmd_to_argv(cmd: Union[str, Iterable[str]]) -> tuple[str, ...]:
     if isinstance(cmd, str):
         return ("/bin/sh", "-c", cmd)
     return tuple(cmd)
-
-
-def _prepare_run(
-    *,
-    sudo: bool,
-    cwd: Optional[str],
-    cmd: Union[str, Iterable[str]],
-    env: Optional[Mapping[str, Optional[str]]],
-) -> tuple[
-    Union[str, tuple[str, ...]],
-    Optional[dict[str, Optional[str]]],
-    Optional[str],
-]:
-    if not sudo:
-        return (
-            _normalize_cmd(cmd),
-            _normalize_env(env),
-            cwd,
-        )
-
-    cmd2 = ["sudo"]
-
-    if env:
-        for k, v in env.items():
-            assert k == shlex.quote(k)
-            assert "=" not in k
-            if v is not None:
-                cmd2.append(f"{k}={v}")
-
-    if cwd is not None:
-        # sudo's "--chdir" option often does not work based on the sudo
-        # configuration.  Instead, change the directory inside the shell
-        # script.
-        cmd = f"cd {shlex.quote(cwd)} || exit 1 ; {_cmd_to_shell(cmd)}"
-
-    cmd2.extend(_cmd_to_argv(cmd))
-
-    return tuple(cmd2), None, None
 
 
 def _unique_log_id() -> int:
@@ -142,7 +112,7 @@ class BaseResult(_BaseResult[T]):
             return self.forced_success
         return self.returncode == 0
 
-    def debug_str(self) -> str:
+    def debug_str(self, *, with_output: bool = True) -> str:
         if self.forced_success is None or self.forced_success == (self.returncode == 0):
             if self.success:
                 status = "success"
@@ -155,11 +125,11 @@ class BaseResult(_BaseResult[T]):
                 status = "failed [forced] (exit 0)"
 
         out = ""
-        if self.out:
+        if self.out and with_output:
             out = f"; out={repr(self.out)}"
 
         err = ""
-        if self.err:
+        if self.err and with_output:
             err = f"; err={repr(self.err)}"
 
         return f"{status}{out}{err}"
@@ -170,7 +140,15 @@ class BaseResult(_BaseResult[T]):
 
 @dataclass(frozen=True)
 class Result(BaseResult[str]):
-    pass
+    def dup_with_forced_success(self, forced_success: bool) -> "Result":
+        if forced_success == self.success:
+            return self
+        return Result(
+            self.out,
+            self.err,
+            self.returncode,
+            forced_success=forced_success,
+        )
 
 
 @dataclass(frozen=True)
@@ -180,6 +158,24 @@ class BinResult(BaseResult[bytes]):
             self.out.decode(errors=errors),
             self.err.decode(errors=errors),
             self.returncode,
+        )
+
+    def dup_with_forced_success(self, forced_success: bool) -> "BinResult":
+        if forced_success == self.success:
+            return self
+        return BinResult(
+            self.out,
+            self.err,
+            self.returncode,
+            forced_success=forced_success,
+        )
+
+    @staticmethod
+    def internal_failure(msg: str) -> "BinResult":
+        return BinResult(
+            b"",
+            (INTERNAL_ERROR_PREFIX + msg).encode(errors="surrogateescape"),
+            INTERNAL_ERROR_RETURNCODE,
         )
 
 
@@ -195,6 +191,44 @@ class Host(ABC):
     def pretty_str(self) -> str:
         pass
 
+    def _prepare_run(
+        self,
+        *,
+        sudo: bool,
+        cwd: Optional[str],
+        cmd: Union[str, Iterable[str]],
+        env: Optional[Mapping[str, Optional[str]]],
+    ) -> tuple[
+        Union[str, tuple[str, ...]],
+        Optional[dict[str, Optional[str]]],
+        Optional[str],
+    ]:
+        if not sudo:
+            return (
+                _normalize_cmd(cmd),
+                _normalize_env(env),
+                cwd,
+            )
+
+        cmd2 = ["sudo", "-n"]
+
+        if env:
+            for k, v in env.items():
+                assert k == shlex.quote(k)
+                assert "=" not in k
+                if v is not None:
+                    cmd2.append(f"{k}={v}")
+
+        if cwd is not None:
+            # sudo's "--chdir" option often does not work based on the sudo
+            # configuration. Instead, change the directory inside the shell
+            # script.
+            cmd = _cmd_to_shell(cmd, cwd=cwd)
+
+        cmd2.extend(_cmd_to_argv(cmd))
+
+        return tuple(cmd2), None, None
+
     @typing.overload
     def run(
         self,
@@ -208,6 +242,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[Callable[[Result], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
@@ -227,6 +262,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[Callable[[BinResult], bool]] = None,
         die_on_error: bool = False,
         decode_errors: Optional[str] = None,
@@ -246,6 +282,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[
             Union[Callable[[Result], bool], Callable[[BinResult], bool]]
         ] = None,
@@ -266,6 +303,7 @@ class Host(ABC):
         log_level: int = logging.DEBUG,
         log_level_result: Optional[int] = None,
         log_level_fail: Optional[int] = None,
+        log_lineoutput: Union[bool, int] = False,
         check_success: Optional[
             Union[Callable[[Result], bool], Callable[[BinResult], bool]]
         ] = None,
@@ -277,7 +315,7 @@ class Host(ABC):
         if sudo is None:
             sudo = self._sudo
 
-        real_cmd, real_env, real_cwd = _prepare_run(
+        real_cmd, real_env, real_cwd = self._prepare_run(
             sudo=sudo,
             cwd=cwd,
             cmd=cmd,
@@ -290,10 +328,33 @@ class Host(ABC):
                 f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: call {_cmd_to_logstr(real_cmd)}",
             )
 
+        if isinstance(log_lineoutput, bool):
+            if not log_lineoutput:
+                log_lineoutput = -1
+            elif log_level >= 0:
+                log_lineoutput = log_level
+            else:
+                log_lineoutput = logging.DEBUG
+
+        _handle_line: Optional[Callable[[bool, bytes], None]] = None
+        if log_lineoutput >= 0:
+            line_num = [0, 0]
+
+            def _handle_line_log(is_stdout: bool, line: bytes) -> None:
+                outtype = "stdout" if is_stdout else "stderr"
+                logger.log(
+                    log_lineoutput,
+                    f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: {outtype}[{line_num[is_stdout]}] {repr(line)}",
+                )
+                line_num[is_stdout] += 1
+
+            _handle_line = _handle_line_log
+
         bin_result = self._run(
             cmd=real_cmd,
             env=real_env,
             cwd=real_cwd,
+            handle_line=_handle_line,
         )
 
         # The remainder is only concerned with printing a nice logging message and
@@ -399,31 +460,19 @@ class Host(ABC):
                 result_log_level = logging.ERROR
 
         if str_result is not None:
-            if result_success != str_result.success:
-                str_result = Result(
-                    out=str_result.out,
-                    err=str_result.err,
-                    returncode=str_result.returncode,
-                    forced_success=result_success,
-                )
-        if result_success != bin_result.success:
-            bin_result = BinResult(
-                out=bin_result.out,
-                err=bin_result.err,
-                returncode=bin_result.returncode,
-                forced_success=result_success,
-            )
-
-        if is_binary:
-            # Note that we log the output as binary if either "text=False" or if
-            # the output was not valid utf-8. In the latter case, we will still
-            # return a string Result (or re-raise decode_exception).
-            debug_str = bin_result.debug_str()
-        else:
-            assert str_result is not None
-            debug_str = str_result.debug_str()
+            str_result = str_result.dup_with_forced_success(result_success)
+        bin_result = bin_result.dup_with_forced_success(result_success)
 
         if result_log_level >= 0:
+            if is_binary:
+                # Note that we log the output as binary if either "text=False" or if
+                # the output was not valid utf-8. In the latter case, we will still
+                # return a string Result (or re-raise decode_exception).
+                debug_str = bin_result.debug_str(with_output=log_lineoutput < 0)
+            else:
+                assert str_result is not None
+                debug_str = str_result.debug_str(with_output=log_lineoutput < 0)
+
             logger.log(
                 result_log_level,
                 f"{log_prefix}cmd[{log_id};{self.pretty_str()}]: └──> {_cmd_to_logstr(real_cmd)}:{status_msg} {debug_str}",
@@ -451,6 +500,7 @@ class Host(ABC):
         cmd: Union[str, tuple[str, ...]],
         env: Optional[dict[str, Optional[str]]],
         cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
     ) -> BinResult:
         pass
 
@@ -468,6 +518,7 @@ class LocalHost(Host):
         cmd: Union[str, tuple[str, ...]],
         env: Optional[dict[str, Optional[str]]],
         cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
     ) -> BinResult:
         full_env: Optional[dict[str, str]] = None
         if env is not None:
@@ -479,10 +530,12 @@ class LocalHost(Host):
                     full_env[k] = v
 
         try:
-            res = subprocess.run(
+            pr = subprocess.Popen(
                 cmd,
                 shell=isinstance(cmd, str),
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=False,
                 env=full_env,
                 cwd=cwd,
             )
@@ -497,16 +550,273 @@ class LocalHost(Host):
             #
             # Usually we avoid creating an artificial BinResult. In this case
             # there is no choice.
-            return BinResult(
-                b"",
-                (INTERNAL_ERROR_PREFIX + str(e)).encode(errors="surrogateescape"),
-                INTERNAL_ERROR_RETURNCODE,
-            )
+            return BinResult.internal_failure(str(e))
 
-        return BinResult(res.stdout, res.stderr, res.returncode)
+        buffers = (bytearray(), bytearray())
+
+        def _readlines(
+            stream: Optional[typing.IO[bytes]],
+            *,
+            read_all: bool,
+        ) -> None:
+            assert stream is not None
+            if stream is pr.stdout:
+                is_stdout = True
+            else:
+                assert stream is pr.stderr
+                is_stdout = False
+            while True:
+                b = stream.readline()
+                if not b:
+                    return
+                buffers[is_stdout].extend(b)
+                if handle_line is not None:
+                    handle_line(is_stdout, b)
+                if not read_all:
+                    return
+
+        while True:
+            to_read, _, _ = select.select([pr.stdout, pr.stderr], [], [])
+            for stream in to_read:
+                _readlines(stream, read_all=False)
+            if pr.poll() is not None:
+                break
+        _readlines(pr.stdout, read_all=True)
+        _readlines(pr.stderr, read_all=True)
+        pr.wait()
+
+        return BinResult(bytes(buffers[True]), bytes(buffers[False]), pr.returncode)
 
     def file_exists(self, path: Union[str, os.PathLike[Any]]) -> bool:
         return os.path.exists(path)
+
+
+@dataclass(frozen=True)
+class _Login(ABC):
+    user: str
+
+    @abstractmethod
+    def _login(self, client: "paramiko.SSHClient", host: str) -> None:
+        pass
+
+
+@dataclass(frozen=True, **KW_ONLY_DATACLASS)
+class AutoLogin(_Login):
+    def _login(self, client: "paramiko.SSHClient", host: str) -> None:
+        client.connect(
+            host,
+            username=self.user,
+            look_for_keys=True,
+            allow_agent=True,
+        )
+
+
+class RemoteHost(Host):
+    def __init__(
+        self,
+        host: str,
+        *logins: _Login,
+        sudo: bool = False,
+        login_retry_duration: float = 10 * 60,
+    ) -> None:
+        import paramiko
+
+        super().__init__(sudo=sudo)
+        self.host = host
+        self.logins = tuple(logins)
+        self.login_retry_duration = login_retry_duration
+        self._paramiko = paramiko
+        self._tlocal = threading.local()
+
+    def pretty_str(self) -> str:
+        return f"@{self.host}"
+
+    def _prepare_run(
+        self,
+        *,
+        sudo: bool,
+        cwd: Optional[str],
+        cmd: Union[str, Iterable[str]],
+        env: Optional[Mapping[str, Optional[str]]],
+    ) -> tuple[
+        Union[str, tuple[str, ...]],
+        Optional[dict[str, Optional[str]]],
+        Optional[str],
+    ]:
+        cmd, env, cwd = super()._prepare_run(
+            sudo=sudo,
+            cwd=cwd,
+            cmd=cmd,
+            env=env,
+        )
+
+        cmd = _cmd_to_shell(cmd, cwd=cwd)
+
+        if env:
+            # Assume we have a POSIX shell, and we can define variables via `export VAR=...`.
+            cmd2 = ""
+            for k, v in env.items():
+                assert k == shlex.quote(k)
+                if v is None:
+                    cmd2 += f"unset  -v {k} ; "
+                else:
+                    cmd2 += f"export {k}={shlex.quote(v)} ; "
+            cmd = cmd2 + cmd
+
+        return cmd, None, None
+
+    def _get_client(
+        self,
+    ) -> tuple[threading.local, "paramiko.SSHClient", Optional[_Login]]:
+        tlocal = self._tlocal
+        client = getattr(tlocal, "client", None)
+        login: Optional[_Login] = None
+        if client is None:
+            client = self._paramiko.SSHClient()
+            client.set_missing_host_key_policy(self._paramiko.AutoAddPolicy())
+            tlocal.client = client
+            tlocal.login = None
+        else:
+            login = tlocal.login
+        return tlocal, client, login
+
+    def _ensure_login(
+        self,
+        *,
+        force_new_login: bool = False,
+        start_timestamp: float = -1.0,
+    ) -> tuple[Optional["paramiko.SSHClient"], bool]:
+        tlocal, client, login = self._get_client()
+
+        if login is not None:
+            if not force_new_login:
+                return client, False
+
+        if start_timestamp == -1.0:
+            start_timestamp = time.monotonic()
+
+        end_timestamp = start_timestamp + self.login_retry_duration
+
+        tlocal.login = None
+
+        try_count = 0
+
+        while True:
+            for login in self.logins:
+                try:
+                    login._login(client, self.host)
+                except Exception as e:
+                    error = e
+                else:
+                    tlocal.login = login
+                    logger.debug(
+                        f"remote[{self.pretty_str()}]: successfully logged in to {login}"
+                    )
+                    return client, True
+
+                if try_count == 0:
+                    logger.debug(
+                        f"remote[{self.pretty_str()}]: failed to login to {login}: {error}"
+                    )
+
+            try_count += 1
+
+            if time.monotonic() >= end_timestamp:
+                logger.debug(
+                    f"remote[{self.pretty_str()}]: failed to login with credentials {self.logins} ({try_count} tries)"
+                )
+                return None, False
+
+    def _run(
+        self,
+        *,
+        cmd: Union[str, tuple[str, ...]],
+        env: Optional[dict[str, Optional[str]]],
+        cwd: Optional[str],
+        handle_line: Optional[Callable[[bool, bytes], None]],
+    ) -> BinResult:
+
+        assert isinstance(cmd, str)
+        assert env is None
+        assert cwd is None
+
+        bin_cmd: Any = cmd.encode("utf-8", errors="surrogateescape")
+
+        start_timestamp = time.monotonic()
+        first_try = True
+        while True:
+            client, new_login = self._ensure_login(
+                start_timestamp=start_timestamp,
+                force_new_login=not first_try,
+            )
+            if client is None:
+                return BinResult.internal_failure(
+                    f"failed to login to remote host {self.host}"
+                )
+
+            try:
+                _, stdout, stderr = client.exec_command(bin_cmd)
+            except Exception as e:
+                if new_login:
+                    # We just did a new login and got a failure. Propagate the
+                    # error.
+                    return BinResult.internal_failure(str(e))
+
+                # We had a cached login from earlier. Maybe this was broken
+                # and the cause for error now. Retry and force new login.
+                first_try = False
+                continue
+
+            break
+
+        buffers = (bytearray(), bytearray())
+        sources = (stderr, stdout)
+        fds = tuple(s.channel.fileno() for s in sources)
+
+        for source in sources:
+            source.channel.setblocking(0)
+
+        def _readlines(*, is_stdout: bool) -> None:
+            channel = sources[is_stdout].channel
+            buffer = buffers[is_stdout]
+            start_idx = len(buffer)
+            while True:
+                try:
+                    if is_stdout:
+                        d = channel.recv(32768)
+                    else:
+                        d = channel.recv_stderr(32768)
+                except Exception:
+                    d = b""
+                if not d:
+                    break
+                buffer.extend(d)
+
+            if start_idx == len(buffer):
+                return
+
+            if handle_line is not None:
+                while True:
+                    idx = buffer.find(b"\n", start_idx)
+                    if idx != -1:
+                        line = bytes(buffer[start_idx : idx + 1])
+                        start_idx = idx + 1
+                    elif start_idx < len(buffer):
+                        line = bytes(buffer[start_idx:])
+                        start_idx = len(buffer)
+                    else:
+                        break
+                    handle_line(is_stdout, line)
+
+        while not stdout.channel.exit_status_ready():
+            to_read, _, _ = select.select(fds, [], [])
+            for fd in to_read:
+                _readlines(is_stdout=(fd == fds[True]))
+        returncode = stdout.channel.recv_exit_status()
+        _readlines(is_stdout=True)
+        _readlines(is_stdout=False)
+
+        return BinResult(bytes(buffers[True]), bytes(buffers[False]), returncode)
 
 
 local = LocalHost()
@@ -516,3 +826,7 @@ def host_or_local(host: Optional[Host]) -> Host:
     if host is None:
         return local
     return host
+
+
+if typing.TYPE_CHECKING:
+    import paramiko
