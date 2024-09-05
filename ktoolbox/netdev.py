@@ -580,7 +580,7 @@ def get_pciaddrs() -> list[str]:
     path = "/sys/bus/pci/devices/"
     pcis = os.listdir(path)
     pcis = [validate_pciaddr(p) for p in pcis if os.path.exists(path + p + "/net/")]
-    pcis2 = {k: None for k in pcis}
+    pcis2 = dict.fromkeys(pcis)
     return list(pcis2)
 
 
@@ -782,7 +782,7 @@ def get_device_infos(with_ethtool: bool = True) -> list[dict[str, Any]]:
     devices: set[tuple[Optional[str], Optional[str]]] = set()
 
     link_infos: dict[str, Optional[IPRouteLinkEntry]]
-    link_infos = {ifname: None for ifname in get_ifnames()}
+    link_infos = dict.fromkeys(get_ifnames())
     link_infos.update((lnk.ifname, lnk) for lnk in ip_links())
 
     ifnames_tmp = set(link_infos)
