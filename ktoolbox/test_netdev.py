@@ -1,5 +1,6 @@
 import functools
 import pytest
+import socket
 
 from . import host
 from . import netdev
@@ -105,3 +106,25 @@ def test_get_device_infos() -> None:
     result = netdev.get_device_infos()
     assert isinstance(result, list)
     assert "lo" in [x.get("ifname") for x in result]
+
+
+def test_validate_addr_family() -> None:
+    with pytest.raises(ValueError):
+        netdev.validate_addr_family(None)
+    assert netdev.validate_addr_family(None, with_unspec=True) == socket.AF_UNSPEC
+    with pytest.raises(ValueError):
+        netdev.validate_addr_family(socket.AF_UNSPEC)
+    assert (
+        netdev.validate_addr_family(socket.AF_UNSPEC, with_unspec=True)
+        == socket.AF_UNSPEC
+    )
+    assert netdev.validate_addr_family("4") == socket.AF_INET
+    assert netdev.validate_addr_family("6") == socket.AF_INET6
+    assert netdev.validate_addr_family(socket.AF_INET) == socket.AF_INET
+    assert netdev.validate_addr_family(socket.AF_INET6) == socket.AF_INET6
+
+
+def test_validate_ipaddr() -> None:
+    assert netdev.validate_ipaddr("::0:1") == ("::1", socket.AF_INET6)
+    assert netdev.validate_ipaddr("192.168.4.5") == ("192.168.4.5", socket.AF_INET)
+    assert netdev.validate_ipaddr(" 192.168.4.5") == ("192.168.4.5", socket.AF_INET)
