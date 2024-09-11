@@ -18,10 +18,6 @@ from ktoolbox import host
 from ktoolbox.common import StructParseBase
 from ktoolbox.common import StructParseBaseNamed
 from ktoolbox.common import strict_dataclass
-from ktoolbox.common import structparse_check_and_pop_name
-from ktoolbox.common import structparse_check_and_pop_name_required
-from ktoolbox.common import structparse_check_empty_dict
-from ktoolbox.common import structparse_check_strdict
 from ktoolbox.k8sClient import K8sClient
 from ktoolbox.logger import logger
 
@@ -80,65 +76,60 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
         yamlpath: str,
         arg: Any,
     ) -> T2:
-        vdict = structparse_check_strdict(arg, yamlpath)
+        with common.structparse_with_strdict(arg, yamlpath) as varg:
 
-        name = structparse_check_and_pop_name_required(vdict, yamlpath)
+            name = common.structparse_pop_str_name(*varg.for_name())
 
-        pod_type = PodType.NORMAL
-        v = vdict.pop("sriov", None)
-        v2 = common.str_to_bool(v, on_error=None, on_default=False)
-        if v2 is None:
-            raise ValueError(f'"{yamlpath}.sriov": expects a a boolean but got {v}')
-        if v2:
-            pod_type = PodType.SRIOV
-
-        default_network = "default/default"
-        v = vdict.pop("default-network", None)
-        if v is not None:
-            if not isinstance(v, str):
-                raise ValueError(
-                    f'"{yamlpath}.default-network": expects a string but got {v}'
-                )
-            default_network = v
-
-        args: Optional[list[str]] = None
-        v = vdict.pop("args", None)
-        if v is None:
-            pass
-        elif isinstance(v, str):
-            args = shlex.split(v)
-        elif isinstance(v, list):
-            if not all(isinstance(x, str) for x in v):
-                raise ValueError(
-                    f'"{yamlpath}.args": expects a list of strings but got {repr(v)}'
-                )
-            args = v
-        else:
-            raise ValueError(
-                f'"{yamlpath}.args": expects a string or a list of strings but got {repr(v)}'
+            sriov = common.structparse_pop_bool(
+                *varg.for_key("sriov"),
+                default=False,
             )
 
-        type_specific_kwargs = {}
+            default_network = common.structparse_pop_str(
+                *varg.for_key("default-network"),
+                default="default/default",
+            )
 
-        if conf_type == ConfServer:
-            v = vdict.pop("persistent", None)
-            persistent = common.str_to_bool(v, on_error=None, on_default=False)
-            if persistent is None:
+            def _construct_args(
+                yamlidx2: int,
+                yamlpath2: str,
+                arg2: Any,
+            ) -> tuple[str, ...]:
+                if isinstance(arg2, str):
+                    return tuple(shlex.split(arg2))
+                if isinstance(arg2, list):
+                    if not all(isinstance(x, str) for x in arg2):
+                        raise ValueError(
+                            f'"{yamlpath2}": expects a list of strings but got {repr(arg2)}'
+                        )
+                    return tuple(arg2)
                 raise ValueError(
-                    f'"{yamlpath}.persistent": expects a a boolean but got {v}'
+                    f'"{yamlpath}.args": expects a string or a list of strings but got {repr(arg2)}'
                 )
-            type_specific_kwargs["persistent"] = persistent
 
-        structparse_check_empty_dict(vdict, yamlpath)
+            args = common.structparse_pop_obj(
+                *varg.for_key("args"),
+                construct=_construct_args,
+                default=None,
+            )
+
+            type_specific_kwargs = {}
+
+            if conf_type == ConfServer:
+                persistent = common.structparse_pop_bool(
+                    *varg.for_key("persistent"),
+                    default=False,
+                )
+                type_specific_kwargs["persistent"] = persistent
 
         result = conf_type(
             yamlidx=yamlidx,
             yamlpath=yamlpath,
             name=name,
-            pod_type=pod_type,
-            sriov=(pod_type == PodType.SRIOV),
+            pod_type=PodType.SRIOV if sriov else PodType.NORMAL,
+            sriov=sriov,
             default_network=default_network,
-            args=tuple(args) if args is not None else None,
+            args=args,
             **type_specific_kwargs,
         )
 
@@ -160,11 +151,8 @@ class ConfPlugin(StructParseBaseNamed):
             # of a dictionary with "name" entry.
             name = arg
         else:
-            vdict = structparse_check_strdict(arg, yamlpath)
-
-            name = structparse_check_and_pop_name_required(vdict, yamlpath)
-
-            structparse_check_empty_dict(vdict, yamlpath)
+            with common.structparse_with_strdict(arg, yamlpath) as varg:
+                name = common.structparse_pop_str_name(*varg.for_name())
 
         plugin = _check_plugin_name(name, yamlpath, is_plain_name)
 
@@ -231,77 +219,51 @@ class ConfConnection(StructParseBaseNamed):
         test_name: str,
         namespace: str,
     ) -> "ConfConnection":
-        v: Any
-        vdict = structparse_check_strdict(arg, yamlpath)
+        with common.structparse_with_strdict(arg, yamlpath) as varg:
 
-        name = structparse_check_and_pop_name(vdict, yamlpath)
-        if name is None:
-            name = f"Connection {test_name}/{yamlidx+1}"
-
-        v = vdict.pop("type", None)
-        try:
-            test_type = common.enum_convert(TestType, v, default=TestType.IPERF_TCP)
-        except Exception:
-            raise ValueError(
-                f"{yamlpath}.type: expects a connection type like iperf-tcp (default), iperf-udp, http but got {v}"
+            name = common.structparse_pop_str_name(
+                *varg.for_name(),
+                default=f"Connection {test_name}/{yamlidx+1}",
             )
 
-        try:
-            test_type_handler = TestTypeHandler.get(test_type)
-        except ValueError:
-            raise ValueError(f'{yamlpath}.type: "{test_type.name}" is not implemented')
+            test_type = common.structparse_pop_enum(
+                *varg.for_key("type"),
+                enum_type=TestType,
+                default=TestType.IPERF_TCP,
+            )
 
-        instances = 1
-        v = vdict.pop("instances", None)
-        if v is not None:
             try:
-                instances = int(v)
-            except Exception:
-                instances = 0
-            if instances <= 0:
-                raise ValueError(f'"{yamlpath}.instances": expects a positive number')
-
-        server: list[ConfServer] = []
-        v = vdict.pop("server", None)
-        if v is not None:
-            if not isinstance(v, list):
-                raise ValueError(f'"{yamlpath}.server": mandatory list is empty')
-            for yamlidx2, arg in enumerate(v):
-                server.append(
-                    ConfServer.parse(yamlidx2, f"{yamlpath}.server[{yamlidx}]", arg)
+                test_type_handler = TestTypeHandler.get(test_type)
+            except ValueError:
+                raise ValueError(
+                    f'"{yamlpath}.type": "{test_type.name}" is not implemented'
                 )
 
-        client: list[ConfClient] = []
-        v = vdict.pop("client", None)
-        if v is not None:
-            if not isinstance(v, list):
-                raise ValueError(f'"{yamlpath}.client": mandatory list is empty')
-            for yamlidx2, arg in enumerate(v):
-                client.append(
-                    ConfClient.parse(yamlidx2, f"{yamlpath}.client[{yamlidx}]", arg)
-                )
-
-        plugins: list[ConfPlugin] = []
-        v = vdict.pop("plugins", None)
-        if v is not None:
-            if not isinstance(v, list):
-                raise ValueError(f'"{yamlpath}.plugins": mandatory list is empty')
-            for yamlidx2, arg in enumerate(v):
-                plugins.append(
-                    ConfPlugin.parse(yamlidx2, f"{yamlpath}.plugins[{yamlidx}]", arg)
-                )
-
-        v = vdict.pop("secondary_network_nad", None)
-        if v is None:
-            secondary_network_nad = f"{namespace}/ocp-secondary"
-        elif not isinstance(v, str):
-            raise ValueError(
-                f'"{yamlpath}.secondary_network_nad": expects a string but got {v}'
+            instances = common.structparse_pop_int(
+                *varg.for_key("instances"),
+                default=1,
+                check=lambda val: val > 0,
             )
-        else:
-            secondary_network_nad = v
 
-        structparse_check_empty_dict(vdict, yamlpath)
+            server = common.structparse_pop_objlist(
+                *varg.for_key("server"),
+                construct=ConfServer.parse,
+            )
+
+            client = common.structparse_pop_objlist(
+                *varg.for_key("client"),
+                construct=ConfClient.parse,
+            )
+
+            plugins = common.structparse_pop_objlist(
+                *varg.for_key("plugins"),
+                construct=ConfPlugin.parse,
+            )
+
+            secondary_network_nad = common.structparse_pop_str(
+                *varg.for_key("secondary_network_nad"),
+                default=f"{namespace}/ocp-secondary",
+            )
 
         if len(server) > 1:
             raise ValueError(
@@ -334,9 +296,9 @@ class ConfConnection(StructParseBaseNamed):
             test_type=test_type,
             test_type_handler=test_type_handler,
             instances=instances,
-            server=tuple(server),
-            client=tuple(client),
-            plugins=tuple(plugins),
+            server=server,
+            client=client,
+            plugins=plugins,
             secondary_network_nad=secondary_network_nad,
         )
 
@@ -362,71 +324,66 @@ class ConfTest(StructParseBaseNamed):
 
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfTest":
-        v: Any
-        vdict = structparse_check_strdict(arg, yamlpath)
 
-        name = structparse_check_and_pop_name(vdict, yamlpath)
-        if name is None:
-            name = f"Test {yamlidx+1}"
+        with common.structparse_with_strdict(arg, yamlpath) as varg:
 
-        namespace = vdict.pop("namespace", None)
-        if namespace is None:
-            namespace = "default"
-        elif not isinstance(namespace, str):
-            raise ValueError(
-                f'"{yamlpath}.namespace": expects a string but got {namespace}'
+            name = common.structparse_pop_str_name(
+                *varg.for_name(),
+                default=f"Test {yamlidx+1}",
             )
 
-        v = vdict.pop("test_cases", None)
-        if v is None or (isinstance(v, str) and v == ""):
-            # By default, all test case are run.
-            v = "*"
-        try:
-            test_cases = common.enum_convert_list(TestCaseType, v)
-        except Exception:
-            raise ValueError(f'"{yamlpath}.namespace": mandatory parameter is missing')
-
-        duration = 0
-        v = vdict.pop("duration", None)
-        if v is not None:
-            try:
-                duration = int(v)
-            except Exception:
-                duration = -1
-            if duration < 0:
-                raise ValueError(
-                    f'"{yamlpath}.duration": expects a positive duration in seconds'
-                )
-        if duration == 0:
-            duration = 3600
-
-        connections: list[ConfConnection] = []
-        v = vdict.pop("connections", None)
-        if v is None:
-            raise ValueError(
-                f'"{yamlpath}.connections": mandatory parameter is missing'
+            namespace = common.structparse_pop_str(
+                *varg.for_key("namespace"),
+                default="default",
             )
-        if not isinstance(v, list):
-            raise ValueError(f'"{yamlpath}.connections": mandatory list is empty')
-        for yamlidx2, arg in enumerate(v):
-            connections.append(
-                ConfConnection.parse(
+
+            def _construct_test_cases(
+                yamlidx2: int,
+                yamlpath2: str,
+                arg2: Any,
+            ) -> tuple[TestCaseType, ...]:
+                if arg2 is None or (isinstance(arg2, str) and arg2 == ""):
+                    # By default, all test case are run.
+                    arg2 = "*"
+                try:
+                    lst = common.enum_convert_list(TestCaseType, arg2)
+                except Exception:
+                    raise ValueError(
+                        f'"{yamlpath2}": value is not a valid list of test cases'
+                    ) from None
+                return tuple(lst)
+
+            test_cases = common.structparse_pop_obj(
+                *varg.for_key("test_cases"),
+                construct=_construct_test_cases,
+                construct_default=True,
+            )
+
+            duration = common.structparse_pop_int(
+                *varg.for_key("duration"),
+                default=0,
+                check=lambda val: val >= 0,
+                description="a duration in seconds",
+            )
+            if duration == 0:
+                duration = 3600
+
+            connections = common.structparse_pop_objlist(
+                *varg.for_key("connections"),
+                construct=lambda yamlidx2, yamlpath2, arg: ConfConnection.parse(
                     yamlidx2,
-                    f"{yamlpath}.connections[{yamlidx}]",
+                    yamlpath2,
                     arg,
                     test_name=name,
                     namespace=namespace,
-                )
+                ),
+                allow_empty=False,
             )
 
-        logs = "ft-logs"
-        v = vdict.pop("logs", None)
-        if v is not None:
-            if not isinstance(v, str):
-                raise ValueError(f'"{yamlpath}.logs": expects a string but got {v}')
-            logs = v
-
-        structparse_check_empty_dict(vdict, yamlpath)
+            logs = common.structparse_pop_str(
+                *varg.for_key("logs"),
+                default="ft-logs",
+            )
 
         return ConfTest(
             yamlidx=yamlidx,
@@ -435,7 +392,7 @@ class ConfTest(StructParseBaseNamed):
             namespace=namespace,
             test_cases=tuple(test_cases),
             duration=duration,
-            connections=tuple(connections),
+            connections=connections,
             logs=pathlib.Path(logs),
         )
 
@@ -456,47 +413,29 @@ class ConfConfig(StructParseBase):
 
     @staticmethod
     def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfConfig":
-        v: Any
-        vdict = structparse_check_strdict(arg, yamlpath)
+        with common.structparse_with_strdict(arg, yamlpath) as varg:
 
-        v = vdict.pop("tft", None)
-        if v is None:
-            raise ValueError(f'"{yamlpath}": needs a "tft" key')
-        if not isinstance(v, list):
-            raise ValueError(
-                f'"{yamlpath}.tft" must contain a list of tests but contains a type {type(v)}'
+            tft = common.structparse_pop_objlist(
+                *varg.for_key("tft"),
+                construct=ConfTest.parse,
+                allow_empty=False,
             )
-        tft = tuple(
-            ConfTest.parse(yamlidx2, f"{yamlpath}.tft[{yamlidx}]", arg)
-            for yamlidx2, arg in enumerate(v)
-        )
 
-        kubeconfig: Optional[str] = None
-        v = vdict.pop("kubeconfig", None)
-        if v is not None:
-            if not v:
-                raise ValueError(f'"{yamlpath}.kubeconfig" cannot be empty')
-            kubeconfig = v
+            kubeconfig = common.structparse_pop_str(
+                *varg.for_key("kubeconfig"),
+                default=None,
+            )
 
-        kubeconfig_infra: Optional[str] = None
-        v = vdict.pop("kubeconfig_infra", None)
-        if v is not None:
-            if not v:
-                raise ValueError(f'"{yamlpath}.kubeconfig_infra" cannot be empty')
-            kubeconfig_infra = v
-
-        if not tft:
-            raise ValueError(
-                f'"{yamlpath}.tft" must contain a list of tests but list is empty'
+            kubeconfig_infra = common.structparse_pop_str(
+                *varg.for_key("kubeconfig_infra"),
+                default=None,
             )
 
         if kubeconfig_infra is not None:
             if kubeconfig is None:
                 raise ValueError(
-                    f"{yamlpath}.kubeconfig: missing parameter when kubeconfig_infra is given"
+                    f'"{yamlpath}.kubeconfig": missing parameter when kubeconfig_infra is given'
                 )
-
-        structparse_check_empty_dict(vdict, yamlpath)
 
         return ConfConfig(
             yamlidx=yamlidx,
