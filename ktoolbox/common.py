@@ -135,6 +135,19 @@ def iter_filter_none(lst: Iterable[Optional[T]]) -> Iterable[T]:
             yield v
 
 
+def unwrap(val: Optional[T], *, or_else: Optional[T] = None) -> T:
+    # Like Rust's unwrap. Get the value or die (with an exception).
+    #
+    # The error message here is not good, so this function
+    # is more for asserting (and shutting up the type checker)
+    # when we expect that the value is not set.
+    if val is None:
+        if or_else is not None:
+            return or_else
+        raise ValueError("Unexpected optional value unset")
+    return val
+
+
 def enum_convert(
     enum_type: Type[E],
     value: Any,
