@@ -112,6 +112,9 @@ class BaseResult(_BaseResult[T]):
             return self.forced_success
         return self.returncode == 0
 
+    def __bool__(self) -> bool:
+        return self.success
+
     def debug_str(self, *, with_output: bool = True) -> str:
         if self.forced_success is None or self.forced_success == (self.returncode == 0):
             if self.success:
