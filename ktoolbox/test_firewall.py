@@ -1,4 +1,12 @@
+import functools
+
 from . import firewall
+from . import host
+
+
+@functools.cache
+def has_nft_cmd() -> bool:
+    return host.local.run("bash -c 'command -v nft'").success
 
 
 def test_nft_cmd_masquerade() -> None:
@@ -26,3 +34,27 @@ add rule ip foo filter_forward iifname "eno4" reject;
 add rule ip foo filter_forward oifname "eno4" reject;
 """
     )
+
+
+def test_nft_call() -> None:
+    data = firewall.nft_data_masquerade_down(table_name="foo")
+    res = firewall.nft_call(data, nft_cmd="cat")
+    assert res == host.Result(data, "", 0)
+
+    res = firewall.nft_call(data, nft_cmd="echo foo 1>&2; cat")
+    assert res == host.Result(data, "foo\n", 0)
+
+    data = firewall.nft_data_masquerade_up(
+        table_name="foo",
+        subnet="192.168.5.0/24",
+        ifname="eth0",
+    )
+    res = firewall.nft_call(data, nft_cmd="bash -c 'echo hi; cat'")
+    assert res == host.Result("hi\n" + data, "", 0)
+
+    if has_nft_cmd():
+        # Usually, nft requires CAP_NET_ADMIN, so it's unsuitable for unit
+        # tests (unless we create a seprate netns). But if we pipe in nothing
+        # it also does nothing. So let's call that.
+        res = firewall.nft_call("")
+        assert res == host.Result("", "", 0)

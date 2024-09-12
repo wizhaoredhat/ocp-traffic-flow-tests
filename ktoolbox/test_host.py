@@ -226,6 +226,7 @@ def test_host_check_success() -> None:
     res = host.local.run("echo -n foo; exit 74", check_success=lambda r: r.success)
     assert res == host.Result("foo", "", 74)
     assert not res.success
+    assert not res
 
     res = host.local.run("echo -n foo; exit 74", check_success=lambda r: r.out == "foo")
     assert res == host.Result("foo", "", 74, forced_success=True)
@@ -236,6 +237,7 @@ def test_host_check_success() -> None:
     )
     assert binres == host.BinResult(b"foo", b"", 74, forced_success=True)
     assert binres.success
+    assert binres
 
 
 def test_host_file_exists() -> None:
