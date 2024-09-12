@@ -22,6 +22,7 @@ RUN dnf install \
         nc \
         net-tools \
         netperf \
+        nftables \
         pciutils \
         procps-ng \
         python3 \
@@ -59,5 +60,6 @@ COPY ./scripts/simple-tcp-server-client.py /usr/bin/simple-tcp-server-client
 
 COPY ./images/container-entry-point.sh /usr/bin/container-entry-point.sh
 
+WORKDIR /opt/ocp-tft
 ENTRYPOINT ["/usr/bin/container-entry-point.sh"]
 CMD ["/usr/bin/sleep", "infinity"]
