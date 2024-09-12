@@ -22,6 +22,7 @@ RUN dnf install \
         nc \
         net-tools \
         netperf \
+        nftables \
         pciutils \
         procps-ng \
         python3 \
