@@ -69,8 +69,8 @@ def nft_call(
     data: str,
     rsh: host.Host = host.local,
     *,
-    nft_cmd: str = "nft",
-) -> bool:
+    nft_cmd: str = "nft -f -",
+) -> host.Result:
     """
     Calls a subprocess (via rsh.run()) with `nft -f -`. Data is fed into
     stdin of the nft process.
@@ -78,8 +78,8 @@ def nft_call(
     Args:
         data: the data for nft. Use for example nft_data_masquerade_up() to generate it.
         rsh: the Host instance one which to call nft.
-        nft_cmd: if given, the "nft" command. Defaults to "nft".
+        nft_cmd: defaults to "nft -f -". This is a shell script that receives data on stdin.
+            Note that if you set this, you must make sure that this is the full shell script
+            that does something similar as "nft -f -".
     """
-    return rsh.run(
-        f"printf '%s' {shlex.quote(data)} | {shlex.quote(nft_cmd)} -f -"
-    ).success
+    return rsh.run(f"printf '%s' {shlex.quote(data)} | {{ {nft_cmd} ; }}")
