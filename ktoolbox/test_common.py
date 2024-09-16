@@ -409,6 +409,106 @@ def test_dataclass_tofrom_dict() -> None:
     assert type(C10(1.0).x) is float
 
 
+def test_iter_get_first() -> None:
+
+    lst: list[int]
+
+    lst = []
+    v2a = common.iter_get_first(lst)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v2a, Optional[int])
+    assert v2a is None
+
+    lst = [123]
+    v2b = common.iter_get_first(lst)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v2b, Optional[int])
+    assert v2b == 123
+
+    lst = [12, 13]
+    v2c = common.iter_get_first(lst)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v2c, Optional[int])
+    assert v2c == 12
+
+    lst = []
+    v3a = common.iter_get_first(lst, unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v3a, Optional[int])
+    assert v3a is None
+
+    lst = [123]
+    v3b = common.iter_get_first(lst, unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v3b, Optional[int])
+    assert v3b == 123
+
+    lst = [12, 13]
+    v3c = common.iter_get_first(lst, unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v3c, Optional[int])
+    assert v3c is None
+
+    lst = []
+    v5a = common.iter_get_first(lst, force_unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v5a, Optional[int])
+    assert v5a is None
+
+    lst = [123]
+    v5b = common.iter_get_first(lst, force_unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v5b, Optional[int])
+    assert v5b == 123
+
+    with pytest.raises(ValueError):
+        lst = [12, 13]
+        v5c = common.iter_get_first(lst, force_unique=True)
+        if sys.version_info >= (3, 10):
+            typing.assert_type(v5c, Optional[int])
+        assert False
+
+    with pytest.raises(ValueError):
+        lst = []
+        v1a = common.iter_get_first(lst, unique=True, force_unique=True)
+        if sys.version_info >= (3, 10):
+            typing.assert_type(v1a, int)
+        assert False
+
+    lst = [101]
+    v1b = common.iter_get_first(lst, unique=True, force_unique=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v1b, int)
+    assert v1b == 101
+
+    with pytest.raises(ValueError):
+        lst = [102, 103]
+        v1c = common.iter_get_first(lst, unique=True, force_unique=True)
+        if sys.version_info >= (3, 10):
+            typing.assert_type(v1c, int)
+        assert False
+
+    with pytest.raises(ValueError):
+        lst = []
+        v6a = common.iter_get_first(lst, single=True)
+        if sys.version_info >= (3, 10):
+            typing.assert_type(v6a, int)
+        assert False
+
+    lst = [101]
+    v6b = common.iter_get_first(lst, single=True)
+    if sys.version_info >= (3, 10):
+        typing.assert_type(v6b, int)
+    assert v6b == 101
+
+    with pytest.raises(ValueError):
+        lst = [102, 103]
+        v6c = common.iter_get_first(lst, single=True)
+        if sys.version_info >= (3, 10):
+            typing.assert_type(v6c, int)
+        assert False
+
+
 def test_kw_only() -> None:
     common.StructParseBaseNamed(yamlpath="yamlpath", yamlidx=0, name="name")
     if sys.version_info >= (3, 10):

@@ -117,24 +117,102 @@ def str_to_bool(
     raise ValueError(f"Value {val} is not a boolean")
 
 
+@typing.overload
+def iter_get_first(
+    lst: Iterable[T],
+    *,
+    unique: typing.Literal[True],
+    force_unique: typing.Literal[True],
+    single: bool = False,
+) -> T:
+    pass
+
+
+@typing.overload
 def iter_get_first(
     lst: Iterable[T],
     *,
     unique: bool = False,
     force_unique: bool = False,
+    single: typing.Literal[True],
+) -> T:
+    pass
+
+
+@typing.overload
+def iter_get_first(
+    lst: Iterable[T],
+    *,
+    unique: bool = False,
+    force_unique: bool = False,
+    single: bool = False,
 ) -> Optional[T]:
-    v0: Optional[T] = None
-    for idx, v in enumerate(lst):
-        if idx == 0:
-            v0 = v
-            continue
+    pass
+
+
+def iter_get_first(
+    lst: Iterable[T],
+    *,
+    unique: bool = False,
+    force_unique: bool = False,
+    single: bool = False,
+) -> Optional[T]:
+    """
+    Returns the first item from the iterable `lst` based on specified conditions.
+
+    The function behaves differently depending on the parameters:
+
+    - By default, if neither `unique`, `force_unique` or `single` is set, the
+      function simply returns the first item from the iterable, or `None` if the
+      iterable is empty.
+
+    - If `unique=True`, it returns the first item if the iterable only contains
+      a single element. Otherwise `None` is returned.
+
+    - If `force_unique=True`, it ensures the iterable contains at most one
+      item and raises a ValueError if multiple unique items are found. An
+      empty iterable will give `None`.
+
+    - Setting both `unique=True` and `force_unique=True` together or setting
+      `single=True` enforces that the iterable contains exactly one element and
+      returns it (raising an ValueError otherwise).
+
+    Args:
+        lst (Iterable[T]): The input iterable.
+        unique (bool, optional): Returns `None` if the iterable contains multiple elements. Defaults to False.
+        force_unique (bool, optional): Raises a ValueError if the iterable contains multiple elements. Defaults to False.
+        single (bool, optional): Shorthand for `unique=True` and `force_unique=True` to raise a ValueError if the iterable does not contain exaclty one element. Defaults to False.
+
+    Returns:
+        Optional[T]: The first item from the iterable, or `None` if the iterable is empty. Raises an error if conditions set
+        by `unique`, `force_unique`, or `single` are violated.
+    """
+    if single:
+        # This is a shorthand for setting both "unique" and "force_unique".
+        unique = True
+        force_unique = True
+    itr = iter(lst)
+    try:
+        v0 = next(itr)
+    except StopIteration:
+        if unique and force_unique:
+            # Usually, an empty iterable is accepted, unless "unique" and
+            # "force_unique" are both True.
+            raise ValueError(
+                "Iterable was expected to contain one element but was empty"
+            )
+        return None
+    try:
+        next(itr)
+    except StopIteration:
+        # There is only one element, we are good.
+        pass
+    else:
+        # Handle multiple elements.
         if force_unique:
-            raise RuntimeError("Iterable was expected to only contain one entry")
+            raise ValueError("Iterable was expected to only contain one entry")
         if unique:
-            # We have more than one entries. The caller requested to reject
-            # that.
             return None
-        return v0
     return v0
 
 
