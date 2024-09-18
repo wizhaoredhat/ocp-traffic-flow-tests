@@ -22,7 +22,10 @@ tft:
           - name: measure_cpu
           - name: measure_power
           - name: validate_offload
-        # Secondary network is required for tests 27, 28 and 29
-        # secondary_network_nad: "default/ocp-secondary"
+        # (Optional) Secondary network is required for tests 27-29. For these tests, it is mandatory; if not specified, it will default to "ocp-secondary." For other tests, 
+        # the secondary network is optional. If it is undefined, the tests will default to using the primary network.
+        # (Optional) Define the resource name for SRIOV pods, where the resource requests and limits are configured. Defaults to None if not set. If the user specified the secondary nad 
+        # it will try to autopopulate the resource name based on the nad. 
+        # resource_name: "openshift.io/dpu"
 kubeconfig:
 kubeconfig_infra:
