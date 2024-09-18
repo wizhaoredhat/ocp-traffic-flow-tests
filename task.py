@@ -282,9 +282,13 @@ class Task(ABC):
         client: K8sClient, namespace: str, secondary_network_nad: Optional[str]
     ) -> Optional[str]:
         if secondary_network_nad is not None:
+            if "/" in secondary_network_nad:
+                ns, nad = secondary_network_nad.split("/", 1)
+            else:
+                ns, nad = namespace, secondary_network_nad
             data = client.oc_get(
-                f"network-attachment-definition/{secondary_network_nad}",
-                namespace=namespace,
+                f"network-attachment-definition/{nad}",
+                namespace=ns,
             )
         else:
             data = None
@@ -309,7 +313,7 @@ class Task(ABC):
             "args": [],
             "index": f"{self.index}",
             "node_name": self.node_name,
-            "secondary_network_nad": self.ts.connection.secondary_network_nad_or_default,
+            "secondary_network_nad": self.ts.connection.effective_secondary_network_nad,
             "use_secondary_network": (
                 "1" if self.ts.connection.secondary_network_nad else ""
             ),
@@ -423,12 +427,9 @@ class Task(ABC):
                     ]
                     network_status = json.loads(network_status_str)
 
-                    namespace = self.get_namespace()
-                    namespace_and_nad = (
-                        f"{namespace}/{self.ts.connection.secondary_network_nad}"
-                    )
+                    nad = self.ts.connection.effective_secondary_network_nad
                     for network in network_status:
-                        if network["name"] == namespace_and_nad:
+                        if network["name"] == nad:
                             pod_ip = network["ips"][0]
                             break
                 else:
@@ -445,14 +446,9 @@ class Task(ABC):
             f"get pod {self.pod_name} -o jsonpath='{jsonpath}'", die_on_error=True
         )
 
-        namespace = self.get_namespace()
         y = yaml.safe_load(r.out)
-        ip_address_with_cidr = typing.cast(
-            str,
-            y[f"{namespace}/{self.ts.connection.secondary_network_nad_or_default}"][
-                "ip_address"
-            ],
-        )
+        nad = self.ts.connection.effective_secondary_network_nad
+        ip_address_with_cidr = typing.cast(str, y[nad]["ip_address"])
         ip_address = ip_address_with_cidr.split("/")[0] if ip_address_with_cidr else ""
         logger.info(f"Secondary IP: {ip_address}")
         return ip_address

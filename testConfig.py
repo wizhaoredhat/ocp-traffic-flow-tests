@@ -200,6 +200,10 @@ class ConfConnection(StructParseBaseNamed):
     secondary_network_nad: Optional[str]
     resource_name: Optional[str]
 
+    # This parameter is not expressed in YAML. It gets passed by the parent to
+    # ConfConnection.parse()
+    namespace: str
+
     def serialize(self) -> dict[str, Any]:
         extra: dict[str, Any] = {}
         common.dict_add_optional(
@@ -217,10 +221,13 @@ class ConfConnection(StructParseBaseNamed):
         }
 
     @property
-    def secondary_network_nad_or_default(self) -> str:
-        if self.secondary_network_nad is None:
-            return "ocp-secondary"
-        return self.secondary_network_nad
+    def effective_secondary_network_nad(self) -> str:
+        nad = self.secondary_network_nad
+        if nad is None:
+            nad = "ocp-secondary"
+        if "/" not in nad:
+            nad = f"{self.namespace}/{nad}"
+        return nad
 
     @staticmethod
     def parse(
@@ -277,13 +284,6 @@ class ConfConnection(StructParseBaseNamed):
                 default=None,
             )
 
-            if secondary_network_nad is not None and "/" in secondary_network_nad:
-                if not secondary_network_nad.startswith(f"{namespace}/"):
-                    raise ValueError(
-                        f'"{yamlpath}.secondary_network_nad": value {repr(secondary_network_nad)} must not contain a namespace. The referenced NAD is implicitly in the test namespace {repr(namespace)}'
-                    )
-                secondary_network_nad = secondary_network_nad[len(f"{namespace}/") :]
-
             resource_name = common.structparse_pop_str(
                 *varg.for_key("resource_name"),
                 default=None,
@@ -325,6 +325,7 @@ class ConfConnection(StructParseBaseNamed):
             plugins=plugins,
             secondary_network_nad=secondary_network_nad,
             resource_name=resource_name,
+            namespace=namespace,
         )
 
 
