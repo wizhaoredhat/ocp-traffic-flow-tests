@@ -467,14 +467,28 @@ class Host(ABC):
         bin_result = bin_result.dup_with_forced_success(result_success)
 
         if result_log_level >= 0:
+            if log_lineoutput < 0:
+                # Line logging is disabled, we print the result now
+                with_output = True
+            elif result_log_level > log_lineoutput:
+                # We printed the lines, but that was at a lower log level than
+                # we are to print the result now. Log the output again.
+                #
+                # This is because here we are likely to log an error, and we
+                # want to see the output of the command for why the error
+                # happened.
+                with_output = True
+            else:
+                # No need to print the output again.
+                with_output = False
             if is_binary:
                 # Note that we log the output as binary if either "text=False" or if
                 # the output was not valid utf-8. In the latter case, we will still
                 # return a string Result (or re-raise decode_exception).
-                debug_str = bin_result.debug_str(with_output=log_lineoutput < 0)
+                debug_str = bin_result.debug_str(with_output=with_output)
             else:
                 assert str_result is not None
-                debug_str = str_result.debug_str(with_output=log_lineoutput < 0)
+                debug_str = str_result.debug_str(with_output=with_output)
 
             logger.log(
                 result_log_level,
