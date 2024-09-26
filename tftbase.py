@@ -342,6 +342,7 @@ class TestResult:
 
     tft_metadata: TestMetadata
     success: bool
+    msg: Optional[str] = None
     bitrate_gbps: Bitrate
 
 

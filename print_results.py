@@ -17,6 +17,11 @@ def read_test_result(filename: str) -> tftbase.TestResultCollection:
 
 
 def print_result(test_result: tftbase.TestResult) -> None:
+    msg = ""
+    if not test_result.success:
+        msg = test_result.msg or "unspecified failure"
+        msg = f", {msg}"
+
     print(
         '"'
         f"Test ID: {test_result.tft_metadata.test_case_id.name}, "
@@ -24,6 +29,7 @@ def print_result(test_result: tftbase.TestResult) -> None:
         f"Reverse: {common.bool_to_str(test_result.tft_metadata.reverse)}, "
         f"TX Bitrate: {test_result.bitrate_gbps.tx} Gbps, "
         f"RX Bitrate: {test_result.bitrate_gbps.rx} Gbps"
+        f"{msg}"
         '"'
     )
 
