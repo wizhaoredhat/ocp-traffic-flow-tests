@@ -1,6 +1,7 @@
 import dataclasses
 import logging
 import os
+import re
 import select
 import shlex
 import subprocess
@@ -83,7 +84,7 @@ def _unique_log_id() -> int:
         return _unique_log_id_value
 
 
-T = typing.TypeVar("T", bound=Union[str, bytes])
+T = typing.TypeVar("T", str, bytes)
 
 
 @dataclass(frozen=True)
@@ -139,6 +140,26 @@ class BaseResult(_BaseResult[T]):
 
     def debug_msg(self) -> str:
         return f"cmd {self.debug_str()}"
+
+    def match(
+        self,
+        *,
+        out: Optional[Union[T, re.Pattern[T]]] = None,
+        err: Optional[Union[T, re.Pattern[T]]] = None,
+        returncode: Optional[int] = None,
+    ) -> bool:
+        if returncode is not None:
+            if self.returncode != returncode:
+                return False
+
+        def _check(val: T, compare: Optional[Union[T, re.Pattern[T]]]) -> bool:
+            if compare is None:
+                return True
+            if isinstance(compare, re.Pattern):
+                return bool(compare.search(val))
+            return val == compare
+
+        return _check(self.out, out) and _check(self.err, err)
 
 
 @dataclass(frozen=True)
