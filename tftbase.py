@@ -344,6 +344,7 @@ class TestResult:
     success: bool
     msg: Optional[str] = None
     bitrate_gbps: Bitrate
+    bitrate_threshold: Optional[float]
 
 
 @strict_dataclass

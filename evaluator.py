@@ -59,6 +59,7 @@ class Evaluator:
             success=success,
             msg=msg,
             bitrate_gbps=run.bitrate_gbps,
+            bitrate_threshold=bitrate_threshold,
         )
 
     def eval_log(
