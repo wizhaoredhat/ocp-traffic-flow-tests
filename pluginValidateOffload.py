@@ -1,9 +1,9 @@
+import logging
 import typing
 
 from typing import Optional
 
 from ktoolbox import common
-from ktoolbox.logger import logger
 
 import pluginbase
 import task
@@ -15,6 +15,9 @@ from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
 from tftbase import PodType
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 VF_REP_TRAFFIC_THRESHOLD = 1000

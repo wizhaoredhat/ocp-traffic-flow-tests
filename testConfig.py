@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import json
+import logging
 import pathlib
 import shlex
 import threading
@@ -19,7 +20,6 @@ from ktoolbox.common import StructParseBase
 from ktoolbox.common import StructParseBaseNamed
 from ktoolbox.common import strict_dataclass
 from ktoolbox.k8sClient import K8sClient
-from ktoolbox.logger import logger
 
 from pluginbase import Plugin
 from testType import TestTypeHandler
@@ -27,6 +27,9 @@ from tftbase import ClusterMode
 from tftbase import PodType
 from tftbase import TestCaseType
 from tftbase import TestType
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 T1 = TypeVar("T1")

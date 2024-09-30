@@ -1,12 +1,14 @@
+import logging
 import typing
 
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from ktoolbox.logger import logger
-
 from tftbase import TestType
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 @dataclass(frozen=True)

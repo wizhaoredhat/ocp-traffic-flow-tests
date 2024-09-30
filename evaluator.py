@@ -1,12 +1,13 @@
 import argparse
+import logging
 import sys
 import yaml
 
 from pathlib import Path
 from typing import Optional
 
+from ktoolbox import common
 from ktoolbox.common import dataclass_to_json
-from ktoolbox.logger import logger
 
 import evalConfig
 import tftbase
@@ -15,6 +16,9 @@ from tftbase import FlowTestOutput
 from tftbase import PassFailStatus
 from tftbase import TestResult
 from tftbase import TestResultCollection
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 class Evaluator:
@@ -154,8 +158,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "output", type=str, help="Output file to write evaluation results to"
     )
+    common.log_argparse_add_argument_verbose(parser)
 
     args = parser.parse_args()
+
+    common.log_config_loggers(args.verbose, "tft", "ktoolbox")
 
     if not Path(args.config).exists():
         logger.error(f"No config file found at {args.config}, exiting")

@@ -1,9 +1,8 @@
+import logging
 import jc
 
 from typing import Any
 from typing import cast
-
-from ktoolbox.logger import logger
 
 import task
 import pluginbase
@@ -14,6 +13,9 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 class PluginMeasureCpu(pluginbase.Plugin):
