@@ -6,7 +6,6 @@ import task
 from pathlib import Path
 
 from ktoolbox import host
-from ktoolbox.logger import logger
 
 import testConfig
 import tftbase
@@ -16,6 +15,9 @@ from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TftAggregateOutput
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 class TrafficFlowTests:

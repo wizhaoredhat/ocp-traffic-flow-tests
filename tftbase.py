@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import json
+import logging
 import math
 import os
 import shlex
@@ -16,7 +17,9 @@ from typing import Optional
 from ktoolbox import common
 from ktoolbox import host
 from ktoolbox.common import strict_dataclass
-from ktoolbox.logger import logger
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 ENV_TFT_TEST_IMAGE = "TFT_TEST_IMAGE"

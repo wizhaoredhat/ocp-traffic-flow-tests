@@ -3,6 +3,7 @@ import contextlib
 import dataclasses
 import functools
 import json
+import logging
 import os
 import re
 import time
@@ -27,6 +28,10 @@ if typing.TYPE_CHECKING:
     # https://github.com/python/typeshed/blob/6220c20d9360b12e2287511587825217eec3e5b5/stdlib/_typeshed/__init__.pyi#L349
     from _typeshed import DataclassInstance
     from types import TracebackType
+    import argparse
+
+
+logger = logging.getLogger(__name__)
 
 
 PathType = Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]
@@ -1204,11 +1209,9 @@ def etc_hosts_update_file(
 class Serial:
     def __init__(self, port: str, baudrate: int = 115200):
         import serial
-        from .logger import logger
 
         self.port = port
         self._ser = serial.Serial(port, baudrate=baudrate, timeout=0)
-        self._logger = logger
         self._buffer = ""
 
     @property
@@ -1219,7 +1222,7 @@ class Serial:
         self._ser.close()
 
     def send(self, msg: str, *, sleep: float = 1) -> None:
-        self._logger.debug(f"serial[{self.port}]: send {repr(msg)}")
+        logger.debug(f"serial[{self.port}]: send {repr(msg)}")
         self._ser.write(msg.encode("utf-8", errors="surrogateescape"))
         time.sleep(sleep)
 
@@ -1241,7 +1244,7 @@ class Serial:
         end_timestamp = time.monotonic() + timeout
         first_run = True
 
-        self._logger.debug(f"serial[{self.port}]: expect message {repr(pattern)}")
+        logger.debug(f"serial[{self.port}]: expect message {repr(pattern)}")
 
         if isinstance(pattern, str):
             # We use DOTALL like pexpect does.
@@ -1260,7 +1263,7 @@ class Serial:
                 if not b:
                     break
                 s = b.decode("utf-8", errors="surrogateescape")
-                self._logger.debug(
+                logger.debug(
                     f"serial[{self.port}]: read buffer ({len(self._buffer)} + {len(s)} unicode characters): {repr(s)}"
                 )
                 self._buffer += s
@@ -1268,7 +1271,7 @@ class Serial:
             matches = re.finditer(pattern_re, self._buffer)
             for match in matches:
                 end_idx = match.end()
-                self._logger.debug(
+                logger.debug(
                     f"serial[{self.port}]: found expected message {end_idx} unicode characters, {len(self._buffer) - end_idx} remaning"
                 )
                 self._buffer = self._buffer[end_idx:]
@@ -1279,7 +1282,7 @@ class Serial:
             else:
                 remaining_time = end_timestamp - time.monotonic()
                 if remaining_time <= 0:
-                    self._logger.debug(
+                    logger.debug(
                         f"serial[{self.port}]: did not find expected message {repr(pattern)} (buffer content is {repr(self._buffer)})"
                     )
                     raise RuntimeError(
@@ -1297,3 +1300,122 @@ class Serial:
         traceback: Optional["TracebackType"],
     ) -> None:
         self._ser.close()
+
+
+def _log_parse_level_str(lvl: str) -> Optional[int]:
+    lvl2 = lvl.lower().strip()
+    if lvl2:
+        log_levels = {
+            "debug": logging.DEBUG,
+            "info": logging.INFO,
+            "warning": logging.WARNING,
+            "error": logging.ERROR,
+            "critical": logging.CRITICAL,
+        }
+        if lvl2 in log_levels:
+            return log_levels[lvl2]
+    return None
+
+
+def log_parse_level(
+    lvl: Optional[Union[int, bool, str]],
+    *,
+    default_level: int = logging.INFO,
+) -> int:
+    if lvl is None or (isinstance(lvl, str) and lvl.lower().strip() == ""):
+        v = log_default_level()
+        if v is not None:
+            return v
+        return default_level
+    if isinstance(lvl, bool):
+        return logging.DEBUG if lvl else logging.INFO
+    if isinstance(lvl, int):
+        return lvl
+    if isinstance(lvl, str):
+        v = _log_parse_level_str(lvl)
+        if v is not None:
+            return v
+    raise ValueError(f"invalid log level {repr(lvl)}")
+
+
+@functools.cache
+def log_all_loggers() -> bool:
+    # By default, the main application calls common.log_config_loggers()
+    # and configures only certain loggers ("myapp", "ktoolbox"). If
+    # KTOOLBOX_ALL_LOGGERS is set to True, then instead the root logger
+    # will be configured which may affect also other python modules.
+    return str_to_bool(os.getenv("KTOOLBOX_ALL_LOGGERS"), False)
+
+
+@functools.cache
+def log_default_level() -> Optional[int]:
+    # On the command line, various main programs allow to specify the log
+    # level. If they leave it unspecified, the default can be configured via
+    # "KTOOLBOX_LOGLEVEL" environment variable. If still unspecified, the
+    # default is determined by the main application that calls
+    # common.log_config_loggers().
+    v = os.getenv("KTOOLBOX_LOGLEVEL")
+    if v is not None:
+        return _log_parse_level_str(v)
+    return None
+
+
+def log_config_logger(
+    logger: logging.Logger,
+    lvl: Optional[Union[int, bool, str]],
+    *,
+    default_level: int = logging.INFO,
+) -> None:
+    lvl = log_parse_level(lvl, default_level=default_level)
+
+    logger.setLevel(lvl)
+
+    fmt = "%(asctime)s.%(msecs)03d %(levelname)-7s [th:%(thread)s]: %(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S"
+    formatter = logging.Formatter(fmt, datefmt)
+
+    handler = logging.StreamHandler()
+    handler.setLevel(lvl)
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+
+
+def log_config_loggers(
+    lvl: Optional[Union[int, bool, str]],
+    *loggers: str,
+    default_level: int = logging.INFO,
+) -> None:
+    if log_all_loggers():
+        # If the environment variable KTOOLBOX_ALL_LOGGERS is True,
+        # we configure the root logger instead.
+        loggers = ("",)
+    elif not loggers:
+        loggers = ("",)
+
+    for logger_name in loggers:
+        log_config_logger(
+            logging.getLogger(logger_name),
+            lvl,
+            default_level=default_level,
+        )
+
+
+def log_argparse_add_argument_verbose(parser: "argparse.ArgumentParser") -> None:
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=None,
+        help="Enable debug logging (overwrites KTOOLBOX_LOGLEVEL environment). Set KTOOLBOX_ALL_LOGGERS to configure all loggers.",
+    )
+
+
+def log_argparse_add_argument_verbosity(parser: "argparse.ArgumentParser") -> None:
+    parser.add_argument(
+        "-v",
+        "--verbosity",
+        choices=["debug", "info", "warning", "error", "critical"],
+        default=None,
+        help="Set the logging level (default: info, overwrites KTOOLBOX_LOGLEVEL environment). Set KTOOLBOX_ALL_LOGGERS to configure all loggers.",
+    )

@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 
@@ -5,7 +6,6 @@ from typing import Any
 from typing import Optional
 
 from ktoolbox import common
-from ktoolbox.logger import logger
 
 import pluginbase
 import task
@@ -16,6 +16,9 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 class PluginMeasurePower(pluginbase.Plugin):

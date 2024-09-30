@@ -19,11 +19,11 @@ from typing import Callable
 from typing import Optional
 from typing import Union
 
-from .logger import logger
 
 INTERNAL_ERROR_PREFIX = "Host.run(): "
 INTERNAL_ERROR_RETURNCODE = 1
 
+logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 

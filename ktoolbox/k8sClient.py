@@ -11,7 +11,9 @@ from collections.abc import Iterable
 from typing import Union
 
 from . import host
-from .logger import logger
+
+
+logger = logging.getLogger(__name__)
 
 
 class K8sClient:

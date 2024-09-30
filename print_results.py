@@ -37,7 +37,11 @@ def main() -> None:
         type=str,
         help="The JSON result file from TFT Flow test",
     )
+    common.log_argparse_add_argument_verbose(parser)
+
     args = parser.parse_args()
+
+    common.log_config_loggers(args.verbose, "tft", "ktoolbox")
 
     test_results = read_test_result(args.result)
 

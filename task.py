@@ -23,7 +23,6 @@ from ktoolbox import common
 from ktoolbox import host
 from ktoolbox import netdev
 from ktoolbox.k8sClient import K8sClient
-from ktoolbox.logger import logger
 
 import jinja2util
 import tftbase
@@ -34,6 +33,9 @@ from tftbase import BaseOutput
 from tftbase import ClusterMode
 from tftbase import ConnectionMode
 from tftbase import PodType
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 EXTERNAL_PERF_SERVER = "external-perf-server"

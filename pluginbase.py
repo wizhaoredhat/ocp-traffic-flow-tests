@@ -1,3 +1,4 @@
+import logging
 import typing
 
 from abc import ABC
@@ -5,11 +6,13 @@ from abc import abstractmethod
 from typing import Optional
 
 from ktoolbox import common
-from ktoolbox.logger import logger
 
 from tftbase import PluginOutput
 from tftbase import PluginResult
 from tftbase import TestMetadata
+
+
+logger = logging.getLogger("tft." + __name__)
 
 
 class Plugin(ABC):
