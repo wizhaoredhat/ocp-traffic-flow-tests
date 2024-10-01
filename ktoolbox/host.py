@@ -183,6 +183,7 @@ class BinResult(BaseResult[bytes]):
             self.out.decode(errors=errors),
             self.err.decode(errors=errors),
             self.returncode,
+            forced_success=self.forced_success,
         )
 
     def dup_with_forced_success(self, forced_success: bool) -> "BinResult":
