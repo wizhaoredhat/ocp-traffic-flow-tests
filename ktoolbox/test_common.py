@@ -249,7 +249,7 @@ def test_strict_dataclass() -> None:
     @common.strict_dataclass
     @dataclasses.dataclass
     class C3:
-        a: typing.List[str]
+        a: list[str]
 
     C3([])
     C3([""])
@@ -263,14 +263,14 @@ def test_strict_dataclass() -> None:
     @common.strict_dataclass
     @dataclasses.dataclass
     class C4:
-        a: typing.Optional[typing.List[str]]
+        a: typing.Optional[list[str]]
 
     C4(None)
 
     @common.strict_dataclass
     @dataclasses.dataclass
     class C5:
-        a: typing.Optional[typing.List[typing.Dict[str, str]]] = None
+        a: typing.Optional[list[dict[str, str]]] = None
 
     C5(None)
     C5([])
@@ -286,7 +286,7 @@ def test_strict_dataclass() -> None:
     @common.strict_dataclass
     @dataclasses.dataclass
     class C6:
-        a: typing.Optional[typing.Tuple[str, str]] = None
+        a: typing.Optional[tuple[str, str]] = None
 
     C6()
     C6(None)
@@ -311,7 +311,7 @@ def test_strict_dataclass() -> None:
     @common.strict_dataclass
     @dataclasses.dataclass
     class C7:
-        addr_info: typing.List[TstPodInfo]
+        addr_info: list[TstPodInfo]
 
         def _post_check(self) -> None:
             pass
