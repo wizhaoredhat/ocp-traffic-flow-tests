@@ -33,20 +33,18 @@ class TrafficFlowTests:
 
     def _cleanup_previous_testspace(self, cfg_descr: ConfigDescriptor) -> None:
         namespace = cfg_descr.get_tft().namespace
+        client = cfg_descr.tc.client_tenant
         logger.info(
             f"Cleaning pods, services and multi-networkpolicies with label tft-tests in namespace {namespace}"
         )
-        cfg_descr.tc.client_tenant.oc(
-            "delete pods -l tft-tests",
-            namespace=namespace,
-        )
-        cfg_descr.tc.client_tenant.oc(
-            "delete services -l tft-tests",
-            namespace=namespace,
-        )
-        cfg_descr.tc.client_tenant.oc(
+        client.oc("delete pods -l tft-tests", namespace=namespace)
+        client.oc("delete services -l tft-tests", namespace=namespace)
+        client.oc(
             "delete multi-networkpolicies -l tft-tests",
             namespace=namespace,
+            check_success=client.check_success_delete_ignore_noexist(
+                "multi-networkpolicies"
+            ),
         )
 
         logger.info(

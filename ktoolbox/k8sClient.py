@@ -201,3 +201,16 @@ class K8sClient:
             )
 
         return result
+
+    @staticmethod
+    def check_success_delete_ignore_noexist(
+        resource_type: str,
+    ) -> typing.Callable[[host.Result], bool]:
+        return lambda r: (
+            r.returncode == 0
+            or r.match(
+                out="",
+                err=f'error: the server doesn\'t have a resource type "{resource_type}"\n',
+                returncode=1,
+            )
+        )

@@ -321,7 +321,7 @@ def test_strict_dataclass() -> None:
     C7([])
     C7([TstPodInfo("name", TstPodType.NORMAL, True, 5)])
     with pytest.raises(TypeError):
-        C7([TstPodInfo("name", TstPodType.NORMAL, True, 5), None])  # type:ignore
+        C7([TstPodInfo("name", TstPodType.NORMAL, True, 5), None])  # type: ignore
 
     @common.strict_dataclass
     @dataclasses.dataclass
@@ -1194,7 +1194,7 @@ def test_structparse_pop_objlist_as_dict() -> None:
         typing.assert_type(val2, dict[str, str])
 
     with pytest.raises(RuntimeError):
-        common.structparse_pop_objlist_to_dict(  # type:ignore
+        common.structparse_pop_objlist_to_dict(  # type: ignore
             {"foo": [0, 1, 2]},
             "path",
             "foo",

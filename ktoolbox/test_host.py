@@ -4,6 +4,7 @@ import os
 import pathlib
 import pytest
 import random
+import re
 import sys
 
 from collections.abc import Mapping
@@ -176,6 +177,36 @@ def test_host_result_str() -> None:
 
     res = host.local.run("echo -n out; echo -n err >&2", **_rnd_log_lineoutput())
     assert res == host.Result("out", "err", 0)
+
+
+def test_host_result_match() -> None:
+    res = host.Result("out", "err", 0)
+
+    assert res.match()
+    assert res.match(returncode=0)
+    assert not res.match(returncode=4)
+
+    assert res.match(out="out")
+    assert res.match(out="out", err="err", returncode=0)
+    assert res.match(out=re.compile("o"), err="err", returncode=0)
+    assert not res.match(out=re.compile("xx"), err="err", returncode=0)
+
+    assert res.match(out=re.compile("."))
+
+    rx = re.compile(b".")
+    with pytest.raises(TypeError):
+        res.match(out=rx)  # type: ignore
+
+    res_bin = host.BinResult(b"out", b"err", 0)
+    assert res_bin.match(out=b"out")
+    assert res_bin.match(err=b"err")
+    assert res_bin.match(out=re.compile(b"out"))
+    assert res_bin.match(out=re.compile(b"^out$"))
+    assert res_bin.match(out=re.compile(b"u"))
+
+    assert res_bin.match(out=re.compile(b"."))
+    with pytest.raises(TypeError):
+        res_bin.match(out=re.compile("."))  # type: ignore
 
 
 def test_host_various_results() -> None:

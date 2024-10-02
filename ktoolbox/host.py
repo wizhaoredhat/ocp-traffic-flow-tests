@@ -1,6 +1,7 @@
 import dataclasses
 import logging
 import os
+import re
 import select
 import shlex
 import subprocess
@@ -15,6 +16,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import AnyStr
 from typing import Callable
 from typing import Optional
 from typing import Union
@@ -83,22 +85,19 @@ def _unique_log_id() -> int:
         return _unique_log_id_value
 
 
-T = typing.TypeVar("T", bound=Union[str, bytes])
-
-
 @dataclass(frozen=True)
-class _BaseResult(ABC, typing.Generic[T]):
+class _BaseResult(ABC, typing.Generic[AnyStr]):
     # _BaseResult only exists to have the first 3 parameters positional
     # arguments and the subsequent parameters (in BaseResult) marked as
     # KW_ONLY_DATACLASS. Once we no longer support Python 3.9, the classes
     # can be merged.
-    out: T
-    err: T
+    out: AnyStr
+    err: AnyStr
     returncode: int
 
 
 @dataclass(frozen=True, **KW_ONLY_DATACLASS)
-class BaseResult(_BaseResult[T]):
+class BaseResult(_BaseResult[AnyStr]):
     # In most cases, "success" is the same as checking for returncode zero.  In
     # some cases, it can be overwritten to be of a certain value.
     forced_success: Optional[bool] = dataclasses.field(
@@ -140,6 +139,29 @@ class BaseResult(_BaseResult[T]):
     def debug_msg(self) -> str:
         return f"cmd {self.debug_str()}"
 
+    def match(
+        self,
+        *,
+        out: Optional[Union[AnyStr, re.Pattern[AnyStr]]] = None,
+        err: Optional[Union[AnyStr, re.Pattern[AnyStr]]] = None,
+        returncode: Optional[int] = None,
+    ) -> bool:
+        if returncode is not None:
+            if self.returncode != returncode:
+                return False
+
+        def _check(
+            val: AnyStr,
+            compare: Optional[Union[AnyStr, re.Pattern[AnyStr]]],
+        ) -> bool:
+            if compare is None:
+                return True
+            if isinstance(compare, re.Pattern):
+                return bool(compare.search(val))
+            return val == compare
+
+        return _check(self.out, out) and _check(self.err, err)
+
 
 @dataclass(frozen=True)
 class Result(BaseResult[str]):
@@ -161,6 +183,7 @@ class BinResult(BaseResult[bytes]):
             self.out.decode(errors=errors),
             self.err.decode(errors=errors),
             self.returncode,
+            forced_success=self.forced_success,
         )
 
     def dup_with_forced_success(self, forced_success: bool) -> "BinResult":
