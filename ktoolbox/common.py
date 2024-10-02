@@ -18,7 +18,6 @@ from enum import Enum
 from typing import Any
 from typing import Literal
 from typing import Optional
-from typing import Type
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -241,7 +240,7 @@ def unwrap(val: Optional[T], *, or_else: Optional[T] = None) -> T:
 
 
 def enum_convert(
-    enum_type: Type[E],
+    enum_type: type[E],
     value: Any,
     default: Optional[E] = None,
 ) -> E:
@@ -284,7 +283,7 @@ def enum_convert(
     raise ValueError(f"Invalid type for conversion to {enum_type}")
 
 
-def enum_convert_list(enum_type: Type[E], value: Any) -> list[E]:
+def enum_convert_list(enum_type: type[E], value: Any) -> list[E]:
     output: list[E] = []
 
     if isinstance(value, str):
@@ -456,7 +455,7 @@ def dataclass_to_json(obj: "DataclassInstance") -> str:
 
 # Takes a dataclass and the dict you want to convert from
 # If your dataclass has a dataclass member, it handles that recursively
-def dataclass_from_dict(cls: Type[T], data: dict[str, Any]) -> T:
+def dataclass_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     if not is_dataclass(cls):
         raise ValueError(
             f"dataclass_from_dict() should only be used with dataclasses but is called with {cls}"
