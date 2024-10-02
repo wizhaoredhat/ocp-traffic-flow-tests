@@ -42,10 +42,24 @@ class Evaluator:
             if cfg_test_case is not None:
                 bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
 
+        success = True
+        msg: Optional[str] = None
+        if not run.success:
+            success = False
+            if run.msg is not None:
+                msg = f"Run failed: {run.msg}"
+            else:
+                msg = "Run failed for unspecified reason"
+        elif not run.bitrate_gbps.is_passing(bitrate_threshold):
+            success = False
+            msg = f"Run succeeded but {run.bitrate_gbps} is below threshold {bitrate_threshold}"
+
         return TestResult(
             tft_metadata=md,
-            success=run.success and run.bitrate_gbps.is_passing(bitrate_threshold),
+            success=success,
+            msg=msg,
             bitrate_gbps=run.bitrate_gbps,
+            bitrate_threshold=bitrate_threshold,
         )
 
     def eval_log(
