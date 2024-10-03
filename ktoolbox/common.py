@@ -6,9 +6,10 @@ import json
 import logging
 import os
 import re
+import sys
+import threading
 import time
 import typing
-import threading
 
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -1403,6 +1404,8 @@ def log_config_logger(
     for logger in loggers:
         if isinstance(logger, str):
             logger = logging.getLogger(logger)
+        elif isinstance(logger, ExtendedLogger):
+            logger = logger.wrapped_logger
 
         with common_lock:
             handler = iter_get_first(
@@ -1441,3 +1444,36 @@ def log_argparse_add_argument_verbosity(parser: "argparse.ArgumentParser") -> No
         default=None,
         help="Set the logging level (default: info, overwrites KTOOLBOX_LOGLEVEL environment). Set KTOOLBOX_ALL_LOGGERS to configure all loggers.",
     )
+
+
+class ExtendedLogger(logging.Logger):
+    """A wrapper around a logger class with additional API
+
+    This is-a Logger, and it delegates almost everything to the intenal
+    logger instance. It implements a few convenience methods on top,
+    but it has no state of it's own. That means, as long as you call
+    API of the Logger base class, there is no difference between calling
+    an operation on the extended logger or the wrapped logger.
+    """
+
+    def __init__(self, logger: Union[str, logging.Logger]):
+        if isinstance(logger, str):
+            logger = logging.getLogger(logger)
+        self.wrapped_logger = logger
+
+    _EXTENDED_ATTRIBUTES = (
+        "wrapped_logger",
+        "error_and_exit",
+    )
+
+    def __getattribute__(self, name: str) -> Any:
+        # ExtendedLogger is-a logging.Logger, but it delegates most calls to
+        # the wrapped-logger (which is also a logging.Logger).
+        if name in ExtendedLogger._EXTENDED_ATTRIBUTES:
+            return object.__getattribute__(self, name)
+        logger = object.__getattribute__(self, "wrapped_logger")
+        return logger.__getattribute__(name)
+
+    def error_and_exit(self, msg: str, *, exit_code: int = -1) -> typing.NoReturn:
+        self.error(msg)
+        sys.exit(exit_code)
