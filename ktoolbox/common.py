@@ -1436,13 +1436,21 @@ def log_argparse_add_argument_verbose(parser: "argparse.ArgumentParser") -> None
     )
 
 
-def log_argparse_add_argument_verbosity(parser: "argparse.ArgumentParser") -> None:
+def log_argparse_add_argument_verbosity(
+    parser: "argparse.ArgumentParser",
+    *,
+    default: Optional[str] = None,
+) -> None:
+    if default is None:
+        msg_default = "default: info, overwrites KTOOLBOX_LOGLEVEL environment"
+    else:
+        msg_default = f"default: {repr(default)}"
     parser.add_argument(
         "-v",
         "--verbosity",
         choices=["debug", "info", "warning", "error", "critical"],
-        default=None,
-        help="Set the logging level (default: info, overwrites KTOOLBOX_LOGLEVEL environment). Set KTOOLBOX_ALL_LOGGERS to configure all loggers.",
+        default=default,
+        help=f"Set the logging level ({msg_default}). Set KTOOLBOX_ALL_LOGGERS to configure all loggers.",
     )
 
 
