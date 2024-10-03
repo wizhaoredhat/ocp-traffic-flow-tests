@@ -176,7 +176,7 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    common.log_config_loggers(args.verbose, "tft", "ktoolbox")
+    common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
     if not Path(args.config).exists():
         logger.error(f"No config file found at {args.config}, exiting")

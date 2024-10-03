@@ -8,6 +8,7 @@ import os
 import re
 import time
 import typing
+import threading
 
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -29,6 +30,8 @@ if typing.TYPE_CHECKING:
     from types import TracebackType
     import argparse
 
+
+common_lock = threading.Lock()
 
 logger = logging.getLogger(__name__)
 
@@ -1339,7 +1342,7 @@ def log_parse_level(
 
 @functools.cache
 def log_all_loggers() -> bool:
-    # By default, the main application calls common.log_config_loggers()
+    # By default, the main application calls common.log_config_logger()
     # and configures only certain loggers ("myapp", "ktoolbox"). If
     # KTOOLBOX_ALL_LOGGERS is set to True, then instead the root logger
     # will be configured which may affect also other python modules.
@@ -1352,52 +1355,72 @@ def log_default_level() -> Optional[int]:
     # level. If they leave it unspecified, the default can be configured via
     # "KTOOLBOX_LOGLEVEL" environment variable. If still unspecified, the
     # default is determined by the main application that calls
-    # common.log_config_loggers().
+    # common.log_config_logger().
     v = os.getenv("KTOOLBOX_LOGLEVEL")
     if v is not None:
         return _log_parse_level_str(v)
     return None
 
 
+if typing.TYPE_CHECKING:
+    # https://github.com/python/cpython/issues/92128#issue-1222296106
+    # https://github.com/python/typeshed/pull/5954#issuecomment-1114270968
+    # https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-classes-that-are-generic-in-stubs-but-not-at-runtime
+    _LogStreamHandler = logging.StreamHandler[typing.TextIO]
+else:
+    _LogStreamHandler = logging.StreamHandler
+
+
+class _LogHandler(_LogStreamHandler):
+    def __init__(self, level: int):
+        super().__init__()
+        fmt = "%(asctime)s.%(msecs)03d %(levelname)-7s [th:%(thread)s]: %(message)s"
+        datefmt = "%Y-%m-%d %H:%M:%S"
+        formatter = logging.Formatter(fmt, datefmt)
+        self.setLevel(level)
+        self.setFormatter(formatter)
+
+    def setLevelWithLock(self, *, level: int) -> None:
+        self.acquire()
+        try:
+            self.setLevel(level)
+        finally:
+            self.release()
+
+
 def log_config_logger(
-    logger: logging.Logger,
-    lvl: Optional[Union[int, bool, str]],
-    *,
+    level: Optional[Union[int, bool, str]],
+    *loggers: Union[str, logging.Logger],
     default_level: int = logging.INFO,
 ) -> None:
-    lvl = log_parse_level(lvl, default_level=default_level)
+    level = log_parse_level(level, default_level=default_level)
 
-    logger.setLevel(lvl)
-
-    fmt = "%(asctime)s.%(msecs)03d %(levelname)-7s [th:%(thread)s]: %(message)s"
-    datefmt = "%Y-%m-%d %H:%M:%S"
-    formatter = logging.Formatter(fmt, datefmt)
-
-    handler = logging.StreamHandler()
-    handler.setLevel(lvl)
-    handler.setFormatter(formatter)
-
-    logger.addHandler(handler)
-
-
-def log_config_loggers(
-    lvl: Optional[Union[int, bool, str]],
-    *loggers: str,
-    default_level: int = logging.INFO,
-) -> None:
     if log_all_loggers():
         # If the environment variable KTOOLBOX_ALL_LOGGERS is True,
         # we configure the root logger instead.
         loggers = ("",)
-    elif not loggers:
-        loggers = ("",)
 
-    for logger_name in loggers:
-        log_config_logger(
-            logging.getLogger(logger_name),
-            lvl,
-            default_level=default_level,
-        )
+    for logger in loggers:
+        if isinstance(logger, str):
+            logger = logging.getLogger(logger)
+
+        with common_lock:
+            handler = iter_get_first(
+                h for h in logger.handlers if isinstance(h, _LogHandler)
+            )
+
+            if handler is None:
+                handler = _LogHandler(level=level)
+                is_new_handler = True
+            else:
+                is_new_handler = False
+
+            logger.setLevel(level)
+
+            if is_new_handler:
+                logger.addHandler(handler)
+            else:
+                handler.setLevelWithLock(level=level)
 
 
 def log_argparse_add_argument_verbose(parser: "argparse.ArgumentParser") -> None:

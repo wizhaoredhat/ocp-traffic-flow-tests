@@ -47,7 +47,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    common.log_config_loggers(args.verbose, "tft", "ktoolbox")
+    common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
     test_results = read_test_result(args.result)
 
