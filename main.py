@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    common.log_config_loggers(args.verbosity, "tft", "ktoolbox")
+    common.log_config_logger(args.verbosity, "tft", "ktoolbox")
 
     if not Path(args.config).exists():
         raise ValueError("Must provide a valid config.yaml file (see config.yaml)")
