@@ -40,7 +40,7 @@ jobs:
     - name: Run tests with Pytest
       run: |
        pytest --version
-       pytest
+       pytest -vvv
 
   check3_9:
     runs-on: ubuntu-latest
