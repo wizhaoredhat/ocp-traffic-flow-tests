@@ -35,24 +35,19 @@ RUN dnf install \
         wget \
         -y
 
+
 RUN python3.11 -m venv /opt/pyvenv3.11
 RUN /opt/pyvenv3.11/bin/python -m pip install --upgrade pip
 RUN /opt/pyvenv3.11/bin/python -m pip install \
-        PyYAML>=6.0.1 \
-        dataclasses \
-        jc \
-        jinja2 \
-        paramiko \
-        pyserial \
         pytest
-RUN ln -s /opt/pyvenv3.11/bin/python /usr/bin/python-pyvenv3.11
-
-COPY \
-    ktoolbox/README.md \
-    ktoolbox/*.py \
-    /opt/ocp-tft/ktoolbox/
-
-RUN echo -e "#!/bin/bash\ncd /opt/ocp-tft/ && exec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && chmod +x /usr/bin/ocp-tft-netdev
+COPY requirements.txt /tmp/
+RUN /opt/pyvenv3.11/bin/python -m pip install -r /tmp/requirements.txt && \
+    rm -rf /tmp/requirements.txt
+RUN \
+    echo -e "#/bin/sh\nexec /opt/pyvenv3.11/bin/python \"\$@\"" > /usr/bin/python-pyvenv3.11 && \
+    chmod +x /usr/bin/python-pyvenv3.11 && \
+    echo -e "#!/bin/sh\ncd /opt/ocp-tft/ && exec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && \
+    chmod +x /usr/bin/ocp-tft-netdev
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
 
