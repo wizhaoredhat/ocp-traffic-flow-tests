@@ -71,10 +71,8 @@ class TestTypeHandlerNetPerf(TestTypeHandler):
         return (s, c)
 
 
-test_type_handler_netperf_tcp_stream = TestTypeHandlerNetPerf(
-    TestType.NETPERF_TCP_STREAM
-)
-test_type_handler_netperf_tcp_rr = TestTypeHandlerNetPerf(TestType.NETPERF_TCP_RR)
+TestTypeHandler.register_test_type(TestTypeHandlerNetPerf(TestType.NETPERF_TCP_STREAM))
+TestTypeHandler.register_test_type(TestTypeHandlerNetPerf(TestType.NETPERF_TCP_RR))
 
 
 class NetPerfServer(task.ServerTask):
