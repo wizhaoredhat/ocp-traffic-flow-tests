@@ -5,6 +5,8 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 
+from ktoolbox import common
+
 from tftbase import TestType
 
 
@@ -32,31 +34,30 @@ class TestTypeHandler(ABC):
     def can_run_reverse(self) -> bool:
         return False
 
+    _registry: typing.ClassVar[dict[TestType, "TestTypeHandler"]] = {}
+
     @staticmethod
     def get(test_type: TestType) -> "TestTypeHandler":
-        # The test types are all known statically. No extensive plugin loading
-        # mechanism is done here.
-        if test_type in (TestType.IPERF_TCP, TestType.IPERF_UDP):
-            import testTypeIperf
+        # Handlers self-register via TestTypeHandler.register_test_type() when
+        # being imported. Ensure they are imported.
+        import testTypeHttp  # noqa: F401
+        import testTypeIperf  # noqa: F401
+        import testTypeNetPerf  # noqa: F401
+        import testTypeSimple  # noqa: F401
 
-            if test_type == TestType.IPERF_TCP:
-                return testTypeIperf.test_type_handler_iperf_tcp
-            return testTypeIperf.test_type_handler_iperf_udp
-        if test_type in (TestType.NETPERF_TCP_STREAM, TestType.NETPERF_TCP_RR):
-            import testTypeNetPerf
+        with common.common_lock:
+            handler = TestTypeHandler._registry.get(test_type)
+        if handler is None:
+            raise ValueError(f"Unsupported test type {test_type}")
+        return handler
 
-            if test_type == TestType.NETPERF_TCP_STREAM:
-                return testTypeNetPerf.test_type_handler_netperf_tcp_stream
-            return testTypeNetPerf.test_type_handler_netperf_tcp_rr
-        if test_type == TestType.HTTP:
-            import testTypeHttp
-
-            return testTypeHttp.test_type_handler_http
-        if test_type == TestType.SIMPLE:
-            import testTypeSimple
-
-            return testTypeSimple.test_type_handler_simple
-        raise ValueError(f"Unsupported test type {test_type}")
+    @staticmethod
+    def register_test_type(handler: "TestTypeHandler") -> None:
+        test_type = handler.test_type
+        with common.common_lock:
+            h2 = TestTypeHandler._registry.setdefault(test_type, handler)
+        if h2 is not handler:
+            raise ValueError(f"Handler for test type {test_type} is already registered")
 
 
 if typing.TYPE_CHECKING:

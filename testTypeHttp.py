@@ -30,7 +30,7 @@ class TestTypeHandlerHttp(TestTypeHandler):
         return (s, c)
 
 
-test_type_handler_http = TestTypeHandlerHttp()
+TestTypeHandler.register_test_type(TestTypeHandlerHttp())
 
 
 class HttpServer(task.ServerTask):
