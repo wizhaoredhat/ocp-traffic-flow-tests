@@ -118,7 +118,7 @@ python main.py config.yaml
 
 ## Environment variables
 
-- `TFT_TEST_IMAGE` specify the test image. Defaults to `quay.io/wizhao/tft-tools:latest`.
+- `TFT_TEST_IMAGE` specify the test image. Defaults to `ghcr.io/wizhaoredhat/ocp-traffic-flow-tests:latest`.
      This is mainly for development and manual testing, to inject another container image.
 - `TFT_IMAGE_PULL_POLICY` the image pull policy. One of `IfNotPresent`, `Always`, `Never`.
      Defaults to `IfNotPresent`m unless `$TFT_TEST_IMAGE` is set (in which case it defaults

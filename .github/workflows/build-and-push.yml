@@ -34,6 +34,6 @@ jobs:
         docker buildx build \
           --file ./Containerfile \
           --platform linux/arm64,linux/amd64 \
-          --tag ghcr.io/${{ env.owner }}/ocp-traffic-flow-tests:pr_test \
+          --tag ghcr.io/${{ env.owner }}/ocp-traffic-flow-tests:latest \
           --push \
           .
