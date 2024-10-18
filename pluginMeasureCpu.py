@@ -37,7 +37,7 @@ class PluginMeasureCpu(pluginbase.Plugin):
         ]
 
 
-plugin = PluginMeasureCpu()
+plugin = pluginbase.register_plugin(PluginMeasureCpu())
 
 
 class TaskMeasureCPU(PluginTask):
