@@ -20,6 +20,6 @@ jobs:
       run: |
         docker buildx build \
           --file ./Containerfile \
-          --platform linux/arm64,linux/amd64\
-          --tag quay.io/wizhao/tft-tools:pr_test \
+          --platform linux/arm64,linux/amd64 \
+          --tag ghcr.io/${{ github.repository_owner }}/ocp-traffic-flow-tests:pr_test \
           .
