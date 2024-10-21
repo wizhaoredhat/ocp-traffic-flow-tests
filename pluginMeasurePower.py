@@ -40,7 +40,7 @@ class PluginMeasurePower(pluginbase.Plugin):
         ]
 
 
-plugin = PluginMeasurePower()
+plugin = pluginbase.register_plugin(PluginMeasurePower())
 
 
 def _extract(ipmitool_output: str) -> Optional[int]:
