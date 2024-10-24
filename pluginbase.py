@@ -1,4 +1,5 @@
 import logging
+import threading
 import typing
 
 from abc import ABC
@@ -76,46 +77,40 @@ class Plugin(ABC):
         )
 
 
-_plugins: dict[str, Plugin] = {}
+_plugin_registry_lock = threading.Lock()
+
+_plugin_registry: dict[str, Plugin] = {}
 
 
-def _plugins_ensure_loaded() -> None:
+def _get_plugin_registry() -> dict[str, Plugin]:
+    # Plugins self-register via pluginbase.register_plugin()
+    # when being imported. Ensure they are imported.
+    import pluginMeasureCpu  # noqa: F401
+    import pluginMeasurePower  # noqa: F401
+    import pluginValidateOffload  # noqa: F401
 
-    if _plugins:
-        # already loaded.
-        return
+    return _plugin_registry
 
-    # Plugins register themselves when we load their module.
-    # But we must ensure that the module is loaded.
-    #
-    # We could search the file system for plugins, instead just hardcode
-    # the list of known plugins. This is the only place where we refer to
-    # plugins explicitly.
-    import pluginMeasureCpu
-    import pluginMeasurePower
-    import pluginValidateOffload
 
-    modules = [
-        pluginMeasureCpu,
-        pluginMeasurePower,
-        pluginValidateOffload,
-    ]
-    for m in modules:
-        p = m.plugin
-        assert isinstance(p, Plugin)
-        assert p.PLUGIN_NAME
-        assert p.PLUGIN_NAME not in _plugins
-        _plugins[p.PLUGIN_NAME] = p
+def register_plugin(plugin: Plugin) -> Plugin:
+    name = plugin.PLUGIN_NAME
+    with _plugin_registry_lock:
+        p2 = _plugin_registry.setdefault(name, plugin)
+    if p2 is not plugin:
+        raise ValueError(f"plugin {repr(name)} is already registered")
+    return plugin
 
 
 def get_all() -> list[Plugin]:
-    _plugins_ensure_loaded()
-    return list(_plugins.values())
+    registry = _get_plugin_registry()
+    with _plugin_registry_lock:
+        return [registry[k] for k in sorted(registry)]
 
 
 def get_by_name(plugin_name: str) -> Plugin:
-    _plugins_ensure_loaded()
-    plugin = _plugins.get(plugin_name)
+    registry = _get_plugin_registry()
+    with _plugin_registry_lock:
+        plugin = registry.get(plugin_name)
     if plugin is None:
         raise ValueError(f'Plugin "{plugin_name}" does not exist')
     return plugin

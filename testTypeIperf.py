@@ -64,8 +64,8 @@ class TestTypeHandlerIperf(TestTypeHandler):
         return False
 
 
-test_type_handler_iperf_tcp = TestTypeHandlerIperf(TestType.IPERF_TCP)
-test_type_handler_iperf_udp = TestTypeHandlerIperf(TestType.IPERF_UDP)
+TestTypeHandler.register_test_type(TestTypeHandlerIperf(TestType.IPERF_TCP))
+TestTypeHandler.register_test_type(TestTypeHandlerIperf(TestType.IPERF_UDP))
 
 
 class IperfServer(task.ServerTask):

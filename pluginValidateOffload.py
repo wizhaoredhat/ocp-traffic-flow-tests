@@ -136,7 +136,7 @@ class PluginValidateOffload(pluginbase.Plugin):
         ]
 
 
-plugin = PluginValidateOffload()
+plugin = pluginbase.register_plugin(PluginValidateOffload())
 
 
 class TaskValidateOffload(PluginTask):

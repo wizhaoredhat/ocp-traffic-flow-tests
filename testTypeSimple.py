@@ -28,7 +28,7 @@ class TestTypeHandlerSimple(TestTypeHandler):
         return (s, c)
 
 
-test_type_handler_simple = TestTypeHandlerSimple()
+TestTypeHandler.register_test_type(TestTypeHandlerSimple())
 
 CMD_SIMPLE_TCP_SERVER_CLIENT = "simple-tcp-server-client"
 
