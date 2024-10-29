@@ -570,7 +570,7 @@ class Task(ABC):
 
         logger.info(f"Waiting for Pod {self.pod_name} to become ready.")
         self.run_oc(
-            f"wait --for=condition=ready pod/{self.pod_name} --timeout=1m",
+            f"wait --for=condition=ready pod/{self.pod_name} --timeout=3m",
             die_on_error=True,
         )
 
