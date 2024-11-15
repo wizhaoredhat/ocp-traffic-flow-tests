@@ -582,7 +582,7 @@ class TestConfig:
         try:
             config = ConfConfig.parse(0, "", full_config)
         except Exception as e:
-            p = (f' "{config_path}"') if config_path else ""
+            p = (f" {repr(config_path)}") if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
 
         config._owner_reference.init(self)
@@ -594,18 +594,22 @@ class TestConfig:
         self._client_tenant = None
         self._client_infra = None
 
-        if self.config.kubeconfig is not None:
-            self.kubeconfig, self.kubeconfig_infra = (
-                self.config.kubeconfig,
-                self.config.kubeconfig_infra,
-            )
+        if kubeconfigs is not None:
+            kubeconfigs_pair = kubeconfigs
+        elif self.config.kubeconfig is not None:
+            kubeconfigs_pair = (self.config.kubeconfig, self.config.kubeconfig_infra)
         else:
-            if kubeconfigs is None:
-                kubeconfigs = TestConfig._detect_kubeconfigs()
-            else:
-                if kubeconfigs[0] is None:
-                    raise ValueError("Missing kubeconfig")
-            self.kubeconfig, self.kubeconfig_infra = kubeconfigs
+            kubeconfigs_pair = TestConfig._detect_kubeconfigs()
+
+        self.kubeconfig, self.kubeconfig_infra = kubeconfigs_pair
+
+        if not isinstance(self.kubeconfig, str):
+            if kubeconfigs is not None:
+                raise ValueError("Missing kubeconfig in arguments")
+            p = (f" {repr(config_path)}") if config_path else ""
+            raise ValueError(
+                f"kubeconfig is neither specified in the configuration{p} nor detected in /root"
+            )
 
         self.evaluator_config = evaluator_config
 
