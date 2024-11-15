@@ -454,6 +454,13 @@ class ConfTest(StructParseBaseNamed):
             logs=pathlib.Path(logs),
         )
 
+    @property
+    def logs_abspath(self) -> pathlib.Path:
+        return common.path_norm(
+            self.logs,
+            cwd=self.config.test_config.cwddir,
+        )
+
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)

@@ -56,7 +56,7 @@ class TrafficFlowTests:
         )
 
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
-        log_path = test.logs
+        log_path = test.logs_abspath
         log_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         log_file = log_path / f"{timestamp}.json"
