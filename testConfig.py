@@ -52,7 +52,15 @@ T2 = TypeVar("T2", bound="ConfServer | ConfClient")
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
+class _ConfBaseConnectionItem(StructParseBaseNamed, abc.ABC):
+    @property
+    def connection(self) -> "ConfConnection":
+        return self._owner_reference.get(ConfConnection)
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
     sriov: bool
     pod_type: PodType
     default_network: str
@@ -141,7 +149,7 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class ConfPlugin(StructParseBaseNamed):
+class ConfPlugin(_ConfBaseConnectionItem):
     plugin: Plugin
 
     @staticmethod
@@ -206,6 +214,18 @@ class ConfConnection(StructParseBaseNamed):
     # This parameter is not expressed in YAML. It gets passed by the parent to
     # ConfConnection.parse()
     namespace: str
+
+    def __post_init__(self) -> None:
+        for s in self.server:
+            s._owner_reference.init(self)
+        for c in self.client:
+            c._owner_reference.init(self)
+        for p in self.plugins:
+            p._owner_reference.init(self)
+
+    @property
+    def tft(self) -> "ConfTest":
+        return self._owner_reference.get(ConfTest)
 
     def serialize(self) -> dict[str, Any]:
         extra: dict[str, Any] = {}
@@ -341,6 +361,14 @@ class ConfTest(StructParseBaseNamed):
     connections: tuple[ConfConnection, ...]
     logs: pathlib.Path
 
+    def __post_init__(self) -> None:
+        for c in self.connections:
+            c._owner_reference.init(self)
+
+    @property
+    def config(self) -> "ConfConfig":
+        return self._owner_reference.get(ConfConfig)
+
     def serialize(self) -> dict[str, Any]:
         return {
             **super().serialize(),
@@ -432,6 +460,14 @@ class ConfConfig(StructParseBase):
     tft: tuple[ConfTest, ...]
     kubeconfig: Optional[str]
     kubeconfig_infra: Optional[str]
+
+    def __post_init__(self) -> None:
+        for t in self.tft:
+            t._owner_reference.init(self)
+
+    @property
+    def test_config(self) -> "TestConfig":
+        return self._owner_reference.get(TestConfig)
 
     def serialize(self) -> dict[str, Any]:
         return {
@@ -548,6 +584,8 @@ class TestConfig:
         except Exception as e:
             p = (f' "{config_path}"') if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
+
+        config._owner_reference.init(self)
 
         self.full_config = full_config
         self.config = config

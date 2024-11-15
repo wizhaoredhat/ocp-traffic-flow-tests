@@ -128,6 +128,12 @@ def test_config1() -> None:
         == ".tft[0].connections[0].plugins[0]"
     )
 
+    server0 = tc.config.tft[0].connections[0].server[0]
+    assert server0.connection.tft.config.test_config is tc
+
+    assert server0.connection is tc.config.tft[0].connections[0].plugins[0].connection
+    assert server0.connection is tc.config.tft[0].connections[0].client[0].connection
+
     _check_testConfig(tc)
 
 
