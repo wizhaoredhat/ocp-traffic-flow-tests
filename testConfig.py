@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import json
 import logging
+import os
 import pathlib
 import shlex
 import threading
@@ -519,6 +520,9 @@ class TestConfig:
 
     full_config: dict[str, Any]
     config: ConfConfig
+    configpath: Optional[str]
+    configdir: str
+    cwddir: str
     kubeconfig: str
     kubeconfig_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
@@ -564,15 +568,30 @@ class TestConfig:
         config_path: Optional[str] = None,
         kubeconfigs: Optional[tuple[str, Optional[str]]] = None,
         evaluator_config: Optional[str] = None,
+        cwddir: str = ".",
     ) -> None:
+
+        cwddir = common.path_norm(cwddir, cwd=os.getcwd())
+
+        config_path = common.path_norm(config_path, cwd=cwddir)
+
+        if config_path is not None:
+            configdir = os.path.dirname(config_path)
+        else:
+            configdir = cwddir
 
         if config_path is not None:
             if full_config is not None:
                 raise ValueError(
                     "Must either specify a full_config or a config_path argument"
                 )
-            with open(config_path, "r") as f:
-                full_config = yaml.safe_load(f)
+            try:
+                with open(config_path, "r") as f:
+                    full_config = yaml.safe_load(f)
+            except Exception as e:
+                raise ValueError(
+                    f"Failure to read YAML configuration {repr(config_path)}: {e}"
+                )
 
         if not isinstance(full_config, dict):
             raise ValueError(
@@ -590,26 +609,35 @@ class TestConfig:
         self.full_config = full_config
         self.config = config
 
+        self.configdir = configdir
+        self.cwddir = cwddir
+        self.configpath = config_path
+
         self._client_lock = threading.Lock()
         self._client_tenant = None
         self._client_infra = None
 
+        kubeconfigs_cwd = cwddir
         if kubeconfigs is not None:
             kubeconfigs_pair = kubeconfigs
         elif self.config.kubeconfig is not None:
             kubeconfigs_pair = (self.config.kubeconfig, self.config.kubeconfig_infra)
+            kubeconfigs_cwd = configdir
         else:
             kubeconfigs_pair = TestConfig._detect_kubeconfigs()
-
-        self.kubeconfig, self.kubeconfig_infra = kubeconfigs_pair
-
-        if not isinstance(self.kubeconfig, str):
+        kubeconfig1, kubeconfig_infra1 = kubeconfigs_pair
+        if not isinstance(kubeconfig1, str):
             if kubeconfigs is not None:
                 raise ValueError("Missing kubeconfig in arguments")
             p = (f" {repr(config_path)}") if config_path else ""
             raise ValueError(
                 f"kubeconfig is neither specified in the configuration{p} nor detected in /root"
             )
+        kubeconfig1 = common.path_norm(kubeconfig1, cwd=kubeconfigs_cwd)
+        kubeconfig_infra1 = common.path_norm(kubeconfig_infra1, cwd=kubeconfigs_cwd)
+
+        self.kubeconfig = kubeconfig1
+        self.kubeconfig_infra = kubeconfig_infra1
 
         self.evaluator_config = evaluator_config
 

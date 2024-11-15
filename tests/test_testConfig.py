@@ -115,7 +115,7 @@ def test_config1() -> None:
 
     assert tc.config.kubeconfig is None
     assert tc.kubeconfig is not None
-    assert tc.kubeconfig is testConfigKubeconfigsArgs1[0]
+    assert tc.kubeconfig == testConfigKubeconfigsArgs1[0]
 
     assert tc.config.tft[0].name == "Test 1"
     assert tc.config.tft[0].connections[0].name == "Connection_1"
@@ -175,8 +175,8 @@ kubeconfig_infra: /path/to/kubeconfig_infra
 
     assert tc.config.kubeconfig == "/path/to/kubeconfig"
     assert tc.config.kubeconfig_infra == "/path/to/kubeconfig_infra"
-    assert tc.kubeconfig is tc.config.kubeconfig
-    assert tc.kubeconfig_infra is tc.config.kubeconfig_infra
+    assert tc.kubeconfig == tc.config.kubeconfig
+    assert tc.kubeconfig_infra == tc.config.kubeconfig_infra
 
     assert tc.config.tft[0].test_cases == (
         TestCaseType(1),
