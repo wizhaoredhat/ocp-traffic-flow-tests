@@ -17,21 +17,26 @@ def read_test_result(filename: str) -> tftbase.TestResultCollection:
 
 
 def print_result(test_result: tftbase.TestResult) -> None:
-    msg = ""
     if not test_result.success:
-        msg = test_result.msg or "unspecified failure"
-        msg = f", {msg}"
-
+        msg = f"failed: {test_result.msg or 'unspecified failure'}"
+    else:
+        msg = "succeeded"
     print(
-        '"'
         f"Test ID: {test_result.tft_metadata.test_case_id.name}, "
         f"Test Type: {test_result.tft_metadata.test_type.name}, "
         f"Reverse: {common.bool_to_str(test_result.tft_metadata.reverse)}, "
         f"TX Bitrate: {test_result.bitrate_gbps.tx} Gbps, "
-        f"RX Bitrate: {test_result.bitrate_gbps.rx} Gbps"
+        f"RX Bitrate: {test_result.bitrate_gbps.rx} Gbps, "
         f"{msg}"
-        '"'
     )
+
+
+def print_plugin_result(plugin_result: tftbase.PluginResult) -> None:
+    if not plugin_result.success:
+        msg = f"failed: {plugin_result.msg or 'unspecified failure'}"
+    else:
+        msg = "succeeded"
+    print("     " f"plugin {plugin_result.plugin_name}, " f"{msg}")
 
 
 def main() -> None:
@@ -51,18 +56,33 @@ def main() -> None:
 
     test_results = read_test_result(args.result)
 
-    if test_results.passing:
-        print(f"There are {len(test_results.passing)} passing flows. Details:")
-        for test_result in test_results.passing:
-            print_result(test_result)
-        print("\n\n\n")
+    group_passing, group_failing = tftbase.GroupedResult.grouped_from(test_results)
 
-    if test_results.failing:
-        print(f"There are {len(test_results.failing)} failing flows. Details:")
-        for test_result in test_results.failing:
+    print(
+        f"There are {len(group_passing)} passing flows.{' Details:' if group_passing else ''}"
+    )
+    for group in group_passing:
+        for test_result in group.test_results:
             print_result(test_result)
+        for plugin_result in group.plugin_results:
+            print_plugin_result(plugin_result)
+
+    if group_passing:
+        print("\n\n", end="")
+    print(
+        f"There are {len(group_failing)} failing flows.{' Details:' if group_failing else ''}"
+    )
+    for group in group_failing:
+        for test_result in group.test_results:
+            print_result(test_result)
+        for plugin_result in group.plugin_results:
+            print_plugin_result(plugin_result)
+
+    if group_failing:
+        print("Failures detected")
         sys.exit(1)
-    print("No failures detected in results")
+    else:
+        print("No failures detected in results")
 
 
 if __name__ == "__main__":
