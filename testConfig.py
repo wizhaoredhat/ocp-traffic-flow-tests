@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import json
 import logging
+import os
 import pathlib
 import shlex
 import threading
@@ -52,7 +53,15 @@ T2 = TypeVar("T2", bound="ConfServer | ConfClient")
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
+class _ConfBaseConnectionItem(StructParseBaseNamed, abc.ABC):
+    @property
+    def connection(self) -> "ConfConnection":
+        return self._owner_reference.get(ConfConnection)
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
     sriov: bool
     pod_type: PodType
     default_network: str
@@ -141,7 +150,7 @@ class _ConfBaseClientServer(StructParseBaseNamed, abc.ABC):
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class ConfPlugin(StructParseBaseNamed):
+class ConfPlugin(_ConfBaseConnectionItem):
     plugin: Plugin
 
     @staticmethod
@@ -206,6 +215,18 @@ class ConfConnection(StructParseBaseNamed):
     # This parameter is not expressed in YAML. It gets passed by the parent to
     # ConfConnection.parse()
     namespace: str
+
+    def __post_init__(self) -> None:
+        for s in self.server:
+            s._owner_reference.init(self)
+        for c in self.client:
+            c._owner_reference.init(self)
+        for p in self.plugins:
+            p._owner_reference.init(self)
+
+    @property
+    def tft(self) -> "ConfTest":
+        return self._owner_reference.get(ConfTest)
 
     def serialize(self) -> dict[str, Any]:
         extra: dict[str, Any] = {}
@@ -341,6 +362,14 @@ class ConfTest(StructParseBaseNamed):
     connections: tuple[ConfConnection, ...]
     logs: pathlib.Path
 
+    def __post_init__(self) -> None:
+        for c in self.connections:
+            c._owner_reference.init(self)
+
+    @property
+    def config(self) -> "ConfConfig":
+        return self._owner_reference.get(ConfConfig)
+
     def serialize(self) -> dict[str, Any]:
         return {
             **super().serialize(),
@@ -425,6 +454,13 @@ class ConfTest(StructParseBaseNamed):
             logs=pathlib.Path(logs),
         )
 
+    @property
+    def logs_abspath(self) -> pathlib.Path:
+        return common.path_norm(
+            self.logs,
+            cwd=self.config.test_config.cwddir,
+        )
+
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
@@ -432,6 +468,14 @@ class ConfConfig(StructParseBase):
     tft: tuple[ConfTest, ...]
     kubeconfig: Optional[str]
     kubeconfig_infra: Optional[str]
+
+    def __post_init__(self) -> None:
+        for t in self.tft:
+            t._owner_reference.init(self)
+
+    @property
+    def test_config(self) -> "TestConfig":
+        return self._owner_reference.get(TestConfig)
 
     def serialize(self) -> dict[str, Any]:
         return {
@@ -483,6 +527,9 @@ class TestConfig:
 
     full_config: dict[str, Any]
     config: ConfConfig
+    configpath: Optional[str]
+    configdir: str
+    cwddir: str
     kubeconfig: str
     kubeconfig_infra: Optional[str]
     _client_tenant: Optional[K8sClient]
@@ -528,15 +575,30 @@ class TestConfig:
         config_path: Optional[str] = None,
         kubeconfigs: Optional[tuple[str, Optional[str]]] = None,
         evaluator_config: Optional[str] = None,
+        cwddir: str = ".",
     ) -> None:
+
+        cwddir = common.path_norm(cwddir, cwd=os.getcwd())
+
+        config_path = common.path_norm(config_path, cwd=cwddir)
+
+        if config_path is not None:
+            configdir = os.path.dirname(config_path)
+        else:
+            configdir = cwddir
 
         if config_path is not None:
             if full_config is not None:
                 raise ValueError(
                     "Must either specify a full_config or a config_path argument"
                 )
-            with open(config_path, "r") as f:
-                full_config = yaml.safe_load(f)
+            try:
+                with open(config_path, "r") as f:
+                    full_config = yaml.safe_load(f)
+            except Exception as e:
+                raise ValueError(
+                    f"Failure to read YAML configuration {repr(config_path)}: {e}"
+                )
 
         if not isinstance(full_config, dict):
             raise ValueError(
@@ -546,28 +608,43 @@ class TestConfig:
         try:
             config = ConfConfig.parse(0, "", full_config)
         except Exception as e:
-            p = (f' "{config_path}"') if config_path else ""
+            p = (f" {repr(config_path)}") if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
+
+        config._owner_reference.init(self)
 
         self.full_config = full_config
         self.config = config
+
+        self.configdir = configdir
+        self.cwddir = cwddir
+        self.configpath = config_path
 
         self._client_lock = threading.Lock()
         self._client_tenant = None
         self._client_infra = None
 
-        if self.config.kubeconfig is not None:
-            self.kubeconfig, self.kubeconfig_infra = (
-                self.config.kubeconfig,
-                self.config.kubeconfig_infra,
-            )
+        kubeconfigs_cwd = cwddir
+        if kubeconfigs is not None:
+            kubeconfigs_pair = kubeconfigs
+        elif self.config.kubeconfig is not None:
+            kubeconfigs_pair = (self.config.kubeconfig, self.config.kubeconfig_infra)
+            kubeconfigs_cwd = configdir
         else:
-            if kubeconfigs is None:
-                kubeconfigs = TestConfig._detect_kubeconfigs()
-            else:
-                if kubeconfigs[0] is None:
-                    raise ValueError("Missing kubeconfig")
-            self.kubeconfig, self.kubeconfig_infra = kubeconfigs
+            kubeconfigs_pair = TestConfig._detect_kubeconfigs()
+        kubeconfig1, kubeconfig_infra1 = kubeconfigs_pair
+        if not isinstance(kubeconfig1, str):
+            if kubeconfigs is not None:
+                raise ValueError("Missing kubeconfig in arguments")
+            p = (f" {repr(config_path)}") if config_path else ""
+            raise ValueError(
+                f"kubeconfig is neither specified in the configuration{p} nor detected in /root"
+            )
+        kubeconfig1 = common.path_norm(kubeconfig1, cwd=kubeconfigs_cwd)
+        kubeconfig_infra1 = common.path_norm(kubeconfig_infra1, cwd=kubeconfigs_cwd)
+
+        self.kubeconfig = kubeconfig1
+        self.kubeconfig_infra = kubeconfig_infra1
 
         self.evaluator_config = evaluator_config
 

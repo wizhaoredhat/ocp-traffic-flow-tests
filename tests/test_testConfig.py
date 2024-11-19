@@ -113,6 +113,10 @@ def test_config1() -> None:
     assert isinstance(tc.full_config, dict)
     assert list(tc.full_config.keys()) == ["tft", "kubeconfig", "kubeconfig_infra"]
 
+    assert tc.config.kubeconfig is None
+    assert tc.kubeconfig is not None
+    assert tc.kubeconfig == testConfigKubeconfigsArgs1[0]
+
     assert tc.config.tft[0].name == "Test 1"
     assert tc.config.tft[0].connections[0].name == "Connection_1"
 
@@ -127,6 +131,12 @@ def test_config1() -> None:
         tc.config.tft[0].connections[0].plugins[0].yamlpath
         == ".tft[0].connections[0].plugins[0]"
     )
+
+    server0 = tc.config.tft[0].connections[0].server[0]
+    assert server0.connection.tft.config.test_config is tc
+
+    assert server0.connection is tc.config.tft[0].connections[0].plugins[0].connection
+    assert server0.connection is tc.config.tft[0].connections[0].client[0].connection
 
     _check_testConfig(tc)
 
@@ -160,9 +170,7 @@ kubeconfig: /path/to/kubeconfig
 kubeconfig_infra: /path/to/kubeconfig_infra
 """
     )
-    tc = testConfig.TestConfig(
-        full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
-    )
+    tc = testConfig.TestConfig(full_config=full_config, kubeconfigs=None)
     assert isinstance(tc, testConfig.TestConfig)
 
     assert tc.config.kubeconfig == "/path/to/kubeconfig"
