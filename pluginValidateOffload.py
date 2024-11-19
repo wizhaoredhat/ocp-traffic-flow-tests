@@ -112,7 +112,7 @@ def check_no_traffic_on_vf_rep(
             return f"missing ethtool output for {direction}"
         return None
     if end - start >= VF_REP_TRAFFIC_THRESHOLD:
-        return "traffic on VF rep detected"
+        return f"traffic on VF rep detected for {repr(direction)} ({end-start} packets is higher than threshold {VF_REP_TRAFFIC_THRESHOLD})"
     return None
 
 
