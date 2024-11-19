@@ -221,24 +221,6 @@ class TestMetadata:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        plugin_name: the plugin
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    tft_metadata: TestMetadata
-    plugin_name: str
-    success: bool
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
 class BaseOutput:
     success: bool = True
     msg: Optional[str] = None
@@ -345,6 +327,26 @@ class TestResult:
     msg: Optional[str] = None
     bitrate_gbps: Bitrate
     bitrate_threshold: Optional[float]
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class PluginResult:
+    """Result of a single plugin from a given run
+
+    Attributes:
+        plugin_name: the plugin
+        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
+        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        reverse: Specify whether test is client->server or reversed server->client
+        success: boolean representing whether the test passed or failed
+    """
+
+    tft_metadata: TestMetadata
+    plugin_name: str
+    success: bool
+    msg: Optional[str]
+    plugin_output: PluginOutput
 
 
 @strict_dataclass
