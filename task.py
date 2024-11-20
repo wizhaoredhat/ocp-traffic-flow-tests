@@ -822,29 +822,32 @@ class ServerTask(Task, ABC):
 
         logger.info(f"Running {cmd}")
 
-        def _run_cmd(cmd: str, *, ignore_failure: bool) -> BaseOutput:
-            force_success: Optional[bool] = None
-            if ignore_failure:
-                # We ignore the exit code of the command, that is because this is
-                # commonly a long running process that needs to get killed with the
-                # "cancel_action".  In that case, the exit code will be non-zero, but
-                # it's the normal termination of the command. Suppress such "failures".
-                force_success = True
+        def _run_cmd(cmd: str) -> BaseOutput:
+            # We ignore the exit code of the command, that is because this is
+            # commonly a long running process that needs to get killed with the
+            # "cancel_action".  In that case, the exit code will be non-zero, but
+            # it's the normal termination of the command. Suppress such "failures".
+            #
+            # Or, it's the _cancel_action(), in which case we also ignore failures.
+            may_fail = True
 
             if self.connection_mode == ConnectionMode.EXTERNAL_IP:
-                return BaseOutput.from_cmd(self.lh.run(cmd), success=force_success)
-            if self.exec_persistent:
+                res = self.lh.run(
+                    cmd,
+                    log_level_fail=logging.DEBUG if may_fail else logging.ERROR,
+                )
+            elif self.exec_persistent:
                 return BaseOutput(msg="Server is persistent")
-            return BaseOutput.from_cmd(
-                self.run_oc_exec(cmd, may_fail=ignore_failure),
-                success=force_success,
-            )
+            else:
+                res = self.run_oc_exec(cmd, may_fail=may_fail)
+
+            return BaseOutput.from_cmd(res, success=True if may_fail else None)
 
         def _thread_action() -> BaseOutput:
-            return _run_cmd(cmd, ignore_failure=True)
+            return _run_cmd(cmd)
 
         def _cancel_action() -> None:
-            _run_cmd(cancel_cmd, ignore_failure=False)
+            _run_cmd(cancel_cmd)
 
         return TaskOperation(
             log_name=self.log_name_setup,
