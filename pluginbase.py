@@ -74,6 +74,8 @@ class Plugin(ABC):
             tft_metadata=md,
             plugin_name=self.PLUGIN_NAME,
             success=plugin_output.success,
+            msg=plugin_output.err_msg,
+            plugin_output=plugin_output,
         )
 
 

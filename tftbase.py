@@ -221,24 +221,6 @@ class TestMetadata:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        plugin_name: the plugin
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    tft_metadata: TestMetadata
-    plugin_name: str
-    success: bool
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
 class BaseOutput:
     success: bool = True
     msg: Optional[str] = None
@@ -349,11 +331,121 @@ class TestResult:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
+class PluginResult:
+    """Result of a single plugin from a given run
+
+    Attributes:
+        plugin_name: the plugin
+        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
+        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
+        reverse: Specify whether test is client->server or reversed server->client
+        success: boolean representing whether the test passed or failed
+    """
+
+    tft_metadata: TestMetadata
+    plugin_name: str
+    success: bool
+    msg: Optional[str]
+    plugin_output: PluginOutput
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
 class TestResultCollection:
     passing: list[TestResult]
     failing: list[TestResult]
     plugin_passing: list[PluginResult]
     plugin_failing: list[PluginResult]
+
+
+@common.strict_dataclass
+@dataclasses.dataclass(frozen=True, kw_only=True, unsafe_hash=True)
+class GroupedResult:
+    tft_metadata: TestMetadata
+    test_results: list[TestResult] = dataclasses.field(
+        default_factory=list,
+        compare=False,
+    )
+    plugin_results: list[PluginResult] = dataclasses.field(
+        default_factory=list,
+        compare=False,
+    )
+
+    @property
+    def results_all_good(self) -> bool:
+        return all(test_result.success for test_result in self.test_results)
+
+    @property
+    def plugins_all_good(self) -> bool:
+        return all(plugin_result.success for plugin_result in self.plugin_results)
+
+    @property
+    def all_good(self) -> bool:
+        return self.results_all_good and self.plugins_all_good
+
+    @staticmethod
+    def _dict_get_or_default(
+        grouped_results: dict[TestMetadata, "GroupedResult"],
+        tft_metadata: TestMetadata,
+    ) -> "GroupedResult":
+        grouped_result = grouped_results.get(tft_metadata, None)
+        if grouped_result is None:
+            grouped_result = GroupedResult(tft_metadata=tft_metadata)
+            grouped_results[tft_metadata] = grouped_result
+        return grouped_result
+
+    @staticmethod
+    def _build_list(
+        test_results: TestResultCollection,
+    ) -> list["GroupedResult"]:
+        grouped_results: dict[TestMetadata, GroupedResult] = {}
+        for test_result in test_results.passing + test_results.failing:
+            grouped_result = GroupedResult._dict_get_or_default(
+                grouped_results,
+                test_result.tft_metadata,
+            )
+            grouped_result.test_results.append(test_result)
+        for plugin_result in test_results.plugin_passing + test_results.plugin_failing:
+            grouped_result = GroupedResult._dict_get_or_default(
+                grouped_results,
+                plugin_result.tft_metadata,
+            )
+            grouped_result.plugin_results.append(plugin_result)
+
+        return list(grouped_results.values())
+
+    @staticmethod
+    def _split_list(grouped_results: list["GroupedResult"]) -> tuple[
+        list["GroupedResult"],
+        list["GroupedResult"],
+    ]:
+        result_success = [
+            group_result for group_result in grouped_results if group_result.all_good
+        ]
+        result_failed = [
+            group_result
+            for group_result in grouped_results
+            if not group_result.all_good
+        ]
+
+        def _key_fcn(gr: GroupedResult) -> int:
+            if gr.results_all_good:
+                if gr.plugins_all_good:
+                    return 4
+                return 3
+            return 2
+
+        result_failed.sort(key=_key_fcn)
+
+        return result_success, result_failed
+
+    @staticmethod
+    def grouped_from(test_results: TestResultCollection) -> tuple[
+        list["GroupedResult"],
+        list["GroupedResult"],
+    ]:
+        lst = GroupedResult._build_list(test_results)
+        return GroupedResult._split_list(lst)
 
 
 class TestCaseTypInfo(typing.NamedTuple):
