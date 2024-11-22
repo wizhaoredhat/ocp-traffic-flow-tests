@@ -149,8 +149,8 @@ def test_eval_config(test_eval_config: str) -> None:
             "Reverse": {"threshold": 5.0},
         }
     )
-    assert c3.yamlpath == ".IPERF_UDP[1]"
-    assert c3.normal.yamlpath == ".IPERF_UDP[1].Normal"
+    assert c3.yamlpath == ".IPERF_UDP[3]"
+    assert c3.normal.yamlpath == ".IPERF_UDP[3].Normal"
 
 
 @pytest.mark.parametrize("test_input_file", TEST_CONFIG_FILES)

@@ -108,7 +108,7 @@ class TestTypeData(StructParseBase):
             raise ValueError(f'"{yamlpath}": expects a list of test cases')
         test_cases = {}
         for yamlidx2, arg2 in enumerate(arg):
-            c = TestCaseData.parse(yamlidx2, f"{yamlpath}[{yamlidx}]", arg2)
+            c = TestCaseData.parse(yamlidx2, f"{yamlpath}[{yamlidx2}]", arg2)
             if c.test_case_type in test_cases:
                 raise ValueError(
                     f'"{yamlpath}[{yamlidx2}]": duplicate key {c.test_case_type.name}'
