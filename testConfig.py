@@ -20,6 +20,7 @@ from ktoolbox import common
 from ktoolbox import host
 from ktoolbox.common import StructParseBase
 from ktoolbox.common import StructParseBaseNamed
+from ktoolbox.common import StructParseParseContext
 from ktoolbox.common import strict_dataclass
 from ktoolbox.k8sClient import K8sClient
 
@@ -37,16 +38,18 @@ logger = logging.getLogger("tft." + __name__)
 T1 = TypeVar("T1")
 
 
-def _check_plugin_name(name: str, yamlpath: str, is_plain_name: bool) -> Plugin:
+def _check_plugin_name(
+    pctx: StructParseParseContext, name: str, is_plain_name: bool
+) -> Plugin:
     import pluginbase
 
     try:
         return pluginbase.get_by_name(name)
     except ValueError:
-        yamlpath_suffix = "" if is_plain_name else ".name"
-        raise ValueError(
-            f'"{yamlpath}{yamlpath_suffix}": unknown plugin "{name}" (valid: {[p.PLUGIN_NAME for p in pluginbase.get_all()]}'
-        )
+        raise pctx.value_error(
+            f"unknown plugin {repr(name)} (valid: {[p.PLUGIN_NAME for p in pluginbase.get_all()]}",
+            key=None if is_plain_name else "name",
+        ) from None
 
 
 T2 = TypeVar("T2", bound="ConfServer | ConfClient")
@@ -85,43 +88,37 @@ class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
     @staticmethod
     def _parse(
         conf_type: type[T2],
-        yamlidx: int,
-        yamlpath: str,
-        arg: Any,
+        pctx: StructParseParseContext,
     ) -> T2:
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
+        with pctx.with_strdict() as varg:
 
-            name = common.structparse_pop_str_name(*varg.for_name())
+            name = common.structparse_pop_str_name(varg.for_name())
 
             sriov = common.structparse_pop_bool(
-                *varg.for_key("sriov"),
+                varg.for_key("sriov"),
                 default=False,
             )
 
             default_network = common.structparse_pop_str(
-                *varg.for_key("default-network"),
+                varg.for_key("default-network"),
                 default="default/default",
             )
 
-            def _construct_args(
-                yamlidx2: int,
-                yamlpath2: str,
-                arg2: Any,
-            ) -> tuple[str, ...]:
-                if isinstance(arg2, str):
-                    return tuple(shlex.split(arg2))
-                if isinstance(arg2, list):
-                    if not all(isinstance(x, str) for x in arg2):
-                        raise ValueError(
-                            f'"{yamlpath2}": expects a list of strings but got {repr(arg2)}'
+            def _construct_args(pctx2: StructParseParseContext) -> tuple[str, ...]:
+                if isinstance(pctx2.arg, str):
+                    return tuple(shlex.split(pctx2.arg))
+                if isinstance(pctx2.arg, list):
+                    if not all(isinstance(x, str) for x in pctx2.arg):
+                        raise pctx2.value_error(
+                            f"expects a list of strings but got {repr(pctx2.arg)}"
                         )
-                    return tuple(arg2)
-                raise ValueError(
-                    f'"{yamlpath}.args": expects a string or a list of strings but got {repr(arg2)}'
+                    return tuple(pctx2.arg)
+                raise pctx2.value_error(
+                    f"expects a string or a list of strings but got {repr(pctx2.arg)}"
                 )
 
             args = common.structparse_pop_obj(
-                *varg.for_key("args"),
+                varg.for_key("args"),
                 construct=_construct_args,
                 default=None,
             )
@@ -130,14 +127,14 @@ class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
 
             if conf_type == ConfServer:
                 persistent = common.structparse_pop_bool(
-                    *varg.for_key("persistent"),
+                    varg.for_key("persistent"),
                     default=False,
                 )
                 type_specific_kwargs["persistent"] = persistent
 
         result = conf_type(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             name=name,
             pod_type=PodType.SRIOV if sriov else PodType.NORMAL,
             sriov=sriov,
@@ -155,23 +152,23 @@ class ConfPlugin(_ConfBaseConnectionItem):
     plugin: Plugin
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfPlugin":
+    def parse(pctx: StructParseParseContext) -> "ConfPlugin":
 
-        is_plain_name = isinstance(arg, str)
+        is_plain_name = isinstance(pctx.arg, str)
 
         if is_plain_name:
             # For convenience, we allow that the entry is a plain string instead
             # of a dictionary with "name" entry.
-            name = arg
+            name = pctx.arg
         else:
-            with common.structparse_with_strdict(arg, yamlpath) as varg:
-                name = common.structparse_pop_str_name(*varg.for_name())
+            with pctx.with_strdict() as varg:
+                name = common.structparse_pop_str_name(varg.for_name())
 
-        plugin = _check_plugin_name(name, yamlpath, is_plain_name)
+        plugin = _check_plugin_name(pctx, name, is_plain_name)
 
         return ConfPlugin(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             name=name,
             plugin=plugin,
         )
@@ -189,16 +186,16 @@ class ConfServer(_ConfBaseClientServer):
         }
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfServer":
-        return _ConfBaseClientServer._parse(ConfServer, yamlidx, yamlpath, arg)
+    def parse(pctx: StructParseParseContext) -> "ConfServer":
+        return _ConfBaseClientServer._parse(ConfServer, pctx)
 
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class ConfClient(_ConfBaseClientServer):
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfClient":
-        return _ConfBaseClientServer._parse(ConfClient, yamlidx, yamlpath, arg)
+    def parse(pctx: StructParseParseContext) -> "ConfClient":
+        return _ConfBaseClientServer._parse(ConfClient, pctx)
 
 
 @strict_dataclass
@@ -256,22 +253,20 @@ class ConfConnection(StructParseBaseNamed):
 
     @staticmethod
     def parse(
-        yamlidx: int,
-        yamlpath: str,
-        arg: Any,
+        pctx: StructParseParseContext,
         *,
         test_name: str,
         namespace: str,
     ) -> "ConfConnection":
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
+        with pctx.with_strdict() as varg:
 
             name = common.structparse_pop_str_name(
-                *varg.for_name(),
-                default=f"Connection {test_name}/{yamlidx+1}",
+                varg.for_name(),
+                default=f"Connection {test_name}/{pctx.yamlidx+1}",
             )
 
             test_type = common.structparse_pop_enum(
-                *varg.for_key("type"),
+                varg.for_key("type"),
                 enum_type=TestType,
                 default=TestType.IPERF_TCP,
             )
@@ -279,68 +274,70 @@ class ConfConnection(StructParseBaseNamed):
             try:
                 test_type_handler = TestTypeHandler.get(test_type)
             except ValueError:
-                raise ValueError(
-                    f'"{yamlpath}.type": "{test_type.name}" is not implemented'
-                )
+                raise pctx.value_error(
+                    f"{repr(test_type.name)} is not implemented", key="type"
+                ) from None
 
             instances = common.structparse_pop_int(
-                *varg.for_key("instances"),
+                varg.for_key("instances"),
                 default=1,
                 check=lambda val: val > 0,
             )
 
             server = common.structparse_pop_objlist(
-                *varg.for_key("server"),
+                varg.for_key("server"),
                 construct=ConfServer.parse,
             )
 
             client = common.structparse_pop_objlist(
-                *varg.for_key("client"),
+                varg.for_key("client"),
                 construct=ConfClient.parse,
             )
 
             plugins = common.structparse_pop_objlist(
-                *varg.for_key("plugins"),
+                varg.for_key("plugins"),
                 construct=ConfPlugin.parse,
             )
 
             secondary_network_nad = common.structparse_pop_str(
-                *varg.for_key("secondary_network_nad"),
+                varg.for_key("secondary_network_nad"),
                 default=None,
             )
 
             resource_name = common.structparse_pop_str(
-                *varg.for_key("resource_name"),
+                varg.for_key("resource_name"),
                 default=None,
             )
 
         if len(server) > 1:
-            raise ValueError(
-                f'"{yamlpath}.server": currently only one server entry is supported'
+            raise pctx.value_error(
+                "currently only one server entry is supported", key="server"
             )
 
         if len(client) > 1:
-            raise ValueError(
-                f'"{yamlpath}.client": currently only one client entry is supported'
+            raise pctx.value_error(
+                "currently only one client entry is supported", key="client"
             )
 
         for idx, s in enumerate(server):
             if s.args is not None:
                 if test_type not in (TestType.SIMPLE,):
-                    raise ValueError(
-                        f'"{yamlpath}.server[{idx}].args": args are not supported for test type {test_type}'
+                    raise pctx.value_error(
+                        f"args are not supported for test type {test_type}",
+                        subpath=f".server[{idx}].args",
                     )
 
         for idx, c in enumerate(client):
             if c.args is not None:
                 if test_type not in (TestType.SIMPLE,):
-                    raise ValueError(
-                        f'"{yamlpath}.client[{idx}].args": args are not supported for test type {test_type}'
+                    raise pctx.value_error(
+                        f"args are not supported for test type {test_type}",
+                        subpath=f".client[{idx}].args",
                     )
 
         return ConfConnection(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             name=name,
             test_type=test_type,
             test_type_handler=test_type_handler,
@@ -382,44 +379,43 @@ class ConfTest(StructParseBaseNamed):
         }
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfTest":
+    def parse(pctx: StructParseParseContext) -> "ConfTest":
 
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
+        with pctx.with_strdict() as varg:
 
             name = common.structparse_pop_str_name(
-                *varg.for_name(),
-                default=f"Test {yamlidx+1}",
+                varg.for_name(),
+                default=f"Test {pctx.yamlidx+1}",
             )
 
             namespace = common.structparse_pop_str(
-                *varg.for_key("namespace"),
+                varg.for_key("namespace"),
                 default="default",
             )
 
             def _construct_test_cases(
-                yamlidx2: int,
-                yamlpath2: str,
-                arg2: Any,
+                pctx2: StructParseParseContext,
             ) -> tuple[TestCaseType, ...]:
-                if arg2 is None or (isinstance(arg2, str) and arg2 == ""):
+                arg = pctx2.arg
+                if arg is None or (isinstance(arg, str) and arg == ""):
                     # By default, all test case are run.
-                    arg2 = "*"
+                    arg = "*"
                 try:
-                    lst = common.enum_convert_list(TestCaseType, arg2)
+                    lst = common.enum_convert_list(TestCaseType, arg)
                 except Exception:
-                    raise ValueError(
-                        f'"{yamlpath2}": value is not a valid list of test cases'
+                    raise pctx2.value_error(
+                        "value is not a valid list of test cases"
                     ) from None
                 return tuple(lst)
 
             test_cases = common.structparse_pop_obj(
-                *varg.for_key("test_cases"),
+                varg.for_key("test_cases"),
                 construct=_construct_test_cases,
                 construct_default=True,
             )
 
             duration = common.structparse_pop_int(
-                *varg.for_key("duration"),
+                varg.for_key("duration"),
                 default=0,
                 check=lambda val: val >= 0,
                 description="a duration in seconds",
@@ -428,11 +424,9 @@ class ConfTest(StructParseBaseNamed):
                 duration = 3600
 
             connections = common.structparse_pop_objlist(
-                *varg.for_key("connections"),
-                construct=lambda yamlidx2, yamlpath2, arg: ConfConnection.parse(
-                    yamlidx2,
-                    yamlpath2,
-                    arg,
+                varg.for_key("connections"),
+                construct=lambda pctx2: ConfConnection.parse(
+                    pctx2,
                     test_name=name,
                     namespace=namespace,
                 ),
@@ -440,13 +434,13 @@ class ConfTest(StructParseBaseNamed):
             )
 
             logs = common.structparse_pop_str(
-                *varg.for_key("logs"),
+                varg.for_key("logs"),
                 default="ft-logs",
             )
 
         return ConfTest(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             name=name,
             namespace=namespace,
             test_cases=tuple(test_cases),
@@ -510,34 +504,36 @@ class ConfConfig(StructParseBase):
         }
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "ConfConfig":
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
+    def parse(full_config: Any) -> "ConfConfig":
+        pctx = StructParseParseContext(full_config)
+        with pctx.with_strdict() as varg:
 
             tft = common.structparse_pop_objlist(
-                *varg.for_key("tft"),
+                varg.for_key("tft"),
                 construct=ConfTest.parse,
                 allow_empty=False,
             )
 
             kubeconfig = common.structparse_pop_str(
-                *varg.for_key("kubeconfig"),
+                varg.for_key("kubeconfig"),
                 default=None,
             )
 
             kubeconfig_infra = common.structparse_pop_str(
-                *varg.for_key("kubeconfig_infra"),
+                varg.for_key("kubeconfig_infra"),
                 default=None,
             )
 
         if kubeconfig_infra is not None:
             if kubeconfig is None:
-                raise ValueError(
-                    f'"{yamlpath}.kubeconfig": missing parameter when kubeconfig_infra is given'
+                raise pctx.value_error(
+                    "missing parameter when kubeconfig_infra is given",
+                    key="kubeconfig",
                 )
 
         return ConfConfig(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             tft=tft,
             kubeconfig=kubeconfig,
             kubeconfig_infra=kubeconfig_infra,
@@ -633,7 +629,7 @@ class TestConfig:
             )
 
         try:
-            config = ConfConfig.parse(0, "", full_config)
+            config = ConfConfig.parse(full_config)
         except Exception as e:
             p = (f" {repr(config_path)}") if config_path else ""
             raise ValueError(f"invalid configuration{p}: {e}")
