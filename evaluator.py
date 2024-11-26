@@ -35,9 +35,7 @@ class Evaluator:
 
         bitrate_threshold: Optional[float] = None
 
-        # We accept a missing eval_config entry. That is also because we can
-        # generate a eval_config with "generate_new_eval_config.py", but for
-        # that we require to successfully generate a RESULT first.
+        # We accept a missing eval_config entry.
         cfg = self.eval_config.configs.get(md.test_type)
         if cfg is not None:
             cfg_test_case = cfg.test_cases.get(md.test_case_id)
