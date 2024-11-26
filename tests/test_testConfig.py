@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 import sys
 import yaml
 
@@ -170,7 +171,11 @@ kubeconfig: /path/to/kubeconfig
 kubeconfig_infra: /path/to/kubeconfig_infra
 """
     )
-    tc = testConfig.TestConfig(full_config=full_config, kubeconfigs=None)
+    tc = testConfig.TestConfig(
+        full_config=full_config,
+        kubeconfigs=None,
+        output_base="/tmp/",
+    )
     assert isinstance(tc, testConfig.TestConfig)
 
     assert tc.config.kubeconfig == "/path/to/kubeconfig"
@@ -196,6 +201,7 @@ kubeconfig_infra: /path/to/kubeconfig_infra
     assert tc.config.tft[0].connections[1].test_type == TestType.SIMPLE
     assert tc.config.tft[0].connections[1].client[0].args == ("foo", "-x x")
     assert tc.config.tft[0].connections[1].server[0].args == ("hi x",)
+    assert tc.config.tft[0].get_output_file() == pathlib.Path("/tmp/result-000.json")
 
     _check_testConfig(tc)
 
@@ -215,7 +221,9 @@ tft:
 """
     )
     tc = testConfig.TestConfig(
-        full_config=full_config, kubeconfigs=testConfigKubeconfigsArgs1
+        full_config=full_config,
+        kubeconfigs=testConfigKubeconfigsArgs1,
+        output_base="/tmp/result2-",
     )
     assert isinstance(tc, testConfig.TestConfig)
 
@@ -230,5 +238,6 @@ tft:
         common.enum_convert_list(TestCaseType, "*")
     )
     assert tc.config.tft[0].connections[0].name == "Connection Test 1/1"
+    assert tc.config.tft[0].get_output_file() == pathlib.Path("/tmp/result2-000.json")
 
     _check_testConfig(tc)

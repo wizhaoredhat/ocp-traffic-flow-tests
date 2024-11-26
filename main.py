@@ -32,6 +32,18 @@ def parse_args() -> argparse.Namespace:
         "./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` on "
         "the result file. You can run this step separately.",
     )
+    parser.add_argument(
+        "-o",
+        "--output-base",
+        type=str,
+        default=None,
+        help="The base name for the result files. If specified, the result will be "
+        'written to "${output_base}$(printf \'%%03d\' "$number").json" where ${number} is the '
+        "zero-based index of the test. This can include the directory name and is relative to "
+        'the current directory. If unspecified, the files are written to "${logs}/${timestamp}.json" '
+        'where "${logs}" can be specified in the config file (and defaults to "./ft-logs/").',
+    )
+
     common.log_argparse_add_argument_verbosity(parser)
 
     args = parser.parse_args()
@@ -50,6 +62,7 @@ def main() -> None:
     tc = TestConfig(
         config_path=args.config,
         evaluator_config=args.evaluator_config,
+        output_base=args.output_base,
     )
     tft = TrafficFlowTests()
 
