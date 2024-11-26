@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import task
@@ -56,10 +55,8 @@ class TrafficFlowTests:
         )
 
     def _create_log_paths_from_tests(self, test: testConfig.ConfTest) -> Path:
-        log_path = test.logs_abspath
-        log_path.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        log_file = log_path / f"{timestamp}.json"
+        log_file = test.get_output_file()
+        log_file.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"Logs will be written to {log_file}")
         return log_file
 

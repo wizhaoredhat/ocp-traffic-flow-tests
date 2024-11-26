@@ -164,13 +164,20 @@ def parse_args() -> argparse.Namespace:
         description="Tool to evaluate TFT Flow test results"
     )
     parser.add_argument(
-        "config", metavar="config", type=str, help="Yaml file with tft test threshholds"
+        "config",
+        metavar="config",
+        type=str,
+        help='YAML configuration file with tft test threshholds. See "eval-config.yaml".',
     )
     parser.add_argument(
-        "logs", type=str, help="Directory containing TFT log files to evaluate"
+        "logs",
+        type=str,
+        help='Result file from ocp-traffic-flow-tests. This defaults to "./ft-logs/$TIMESTAMP.json".',
     )
     parser.add_argument(
-        "output", type=str, help="Output file to write evaluation results to"
+        "output",
+        type=str,
+        help="Output file to write evaluation results to.",
     )
     common.log_argparse_add_argument_verbose(parser)
 

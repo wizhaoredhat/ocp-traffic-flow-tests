@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import datetime
 import json
 import logging
 import os
@@ -461,6 +462,26 @@ class ConfTest(StructParseBaseNamed):
             cwd=self.config.test_config.cwddir,
         )
 
+    def get_output_file(self) -> pathlib.Path:
+        output_base = self.config.test_config.output_base
+
+        if output_base is None:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            return self.logs_abspath / f"{timestamp}.json"
+
+        path = common.path_norm(
+            output_base,
+            cwd=self.config.test_config.cwddir,
+            preserve_dir=True,
+        )
+        tft_idx = f"{self.config.tft_idx:03d}"
+        if path[-1] == "/":
+            base = "result-"
+        else:
+            base = os.path.basename(path)
+            path = os.path.dirname(path)
+        return pathlib.Path(os.path.join(path, f"{base}{tft_idx}.json"))
+
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
@@ -476,6 +497,10 @@ class ConfConfig(StructParseBase):
     @property
     def test_config(self) -> "TestConfig":
         return self._owner_reference.get(TestConfig)
+
+    @property
+    def tft_idx(self) -> int:
+        return self.yamlidx
 
     def serialize(self) -> dict[str, Any]:
         return {
@@ -536,6 +561,7 @@ class TestConfig:
     _client_infra: Optional[K8sClient]
     _client_lock: threading.Lock
     evaluator_config: Optional[str]
+    output_base: Optional[str]
 
     @property
     def mode(self) -> ClusterMode:
@@ -575,6 +601,7 @@ class TestConfig:
         config_path: Optional[str] = None,
         kubeconfigs: Optional[tuple[str, Optional[str]]] = None,
         evaluator_config: Optional[str] = None,
+        output_base: Optional[str] = None,
         cwddir: str = ".",
     ) -> None:
 
@@ -623,6 +650,10 @@ class TestConfig:
         self._client_lock = threading.Lock()
         self._client_tenant = None
         self._client_infra = None
+
+        if not output_base:
+            output_base = None
+        self.output_base = output_base
 
         kubeconfigs_cwd = cwddir
         if kubeconfigs is not None:
