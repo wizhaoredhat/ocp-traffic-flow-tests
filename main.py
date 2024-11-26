@@ -20,14 +20,17 @@ def parse_args() -> argparse.Namespace:
         "config",
         metavar="config",
         type=str,
-        help="Yaml file with test configuration (see config.yaml)",
+        help="YAML file with test configuration (see config.yaml)",
     )
     parser.add_argument(
         "evaluator_config",
         nargs="?",
         metavar="evaluator_config",
         type=str,
-        help="Yaml file with configuration for scoring test results (see eval-config.yaml)",
+        help="YAML file with configuration for scoring test results (see eval-config.yaml). "
+        "This parameter is optional. If provided, this effectively runs "
+        "./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` on "
+        "the result file. You can run this step separately.",
     )
     common.log_argparse_add_argument_verbosity(parser)
 
