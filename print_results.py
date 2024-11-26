@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import traceback
 
 from ktoolbox import common
 
@@ -78,4 +79,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        sys.exit(2)
