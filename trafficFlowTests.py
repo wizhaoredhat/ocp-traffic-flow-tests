@@ -59,30 +59,6 @@ class TrafficFlowTests:
         logger.info(f"Logs will be written to {log_file}")
         return log_file
 
-    def evaluate_run_success(
-        self,
-        cfg_descr: ConfigDescriptor,
-        evaluator: Evaluator,
-        log_file: Path,
-    ) -> bool:
-        # For the result of every test run, check the status of each run log to
-        # ensure all test passed
-
-        if not cfg_descr.tc.evaluator_config:
-            return True
-
-        logger.info(f"Evaluating results of tests {log_file}")
-        results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
-
-        test_results, plugin_results = evaluator.eval_log(log_file)
-
-        # Generate Resulting Json
-        logger.info(f"Dumping results to {results_path}")
-        evaluator.dump_to_json_file(results_path, test_results, plugin_results)
-
-        res = evaluator.log_pass_fail_status(test_results, plugin_results)
-        return res.result
-
     def _run_test_case_instance(
         self,
         cfg_descr: ConfigDescriptor,
@@ -180,12 +156,26 @@ class TrafficFlowTests:
         test = cfg_descr.get_tft()
         self._configure_namespace(cfg_descr)
         self._cleanup_previous_testspace(cfg_descr)
-        log_file = self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
         tft_results: list[TftResult] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
             tft_results.extend(self._run_test_case(cfg_descr2))
-        tftbase.output_list_serialize_file(tft_results, filename=log_file)
 
-        if not self.evaluate_run_success(cfg_descr, evaluator, log_file):
+        logger.info("Evaluating results of tests")
+        tft_results = evaluator.eval(tft_results=tft_results)
+        result_status = tftbase.PassFailStatus.compute(tft_results)
+        result_status.log()
+
+        log_file = self._create_log_paths_from_tests(test)
+
+        logger.info(f"Write results to {log_file}")
+        tftbase.output_list_serialize_file(tft_results, filename=log_file)
+        # For backward compatiblity, still write the "-RESULTS" file. It's
+        # mostly useless now as it's identical to the main file.
+        tftbase.output_list_serialize_file(
+            tft_results,
+            filename=log_file.parent / (str(log_file.stem) + "-RESULTS"),
+        )
+
+        if not result_status.result:
             logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")

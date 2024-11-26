@@ -221,12 +221,24 @@ class TestMetadata:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
+class EvalResult:
+    success: bool
+    msg: Optional[str] = None
+    bitrate_threshold: Optional[float] = None
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
 class BaseOutput:
     success: bool = True
     msg: Optional[str] = None
 
     @property
-    def err_msg(self) -> Optional[str]:
+    def eval_success(self) -> bool:
+        return self.eval_msg is None
+
+    @property
+    def eval_msg(self) -> Optional[str]:
         if self.success:
             return None
         if self.msg is not None:
@@ -258,6 +270,29 @@ class FlowTestOutput(AggregatableOutput):
     command: str
     result: dict[str, Any]
     bitrate_gbps: Bitrate
+    eval_result: Optional[EvalResult] = None
+
+    def clone(
+        self,
+        *,
+        eval_result: common._MISSING_TYPE | Optional[EvalResult] = common.MISSING,
+    ) -> "FlowTestOutput":
+        if isinstance(eval_result, common._MISSING_TYPE):
+            eval_result = self.eval_result
+        result: FlowTestOutput = dataclasses.replace(self, eval_result=eval_result)
+        return result
+
+    @property
+    def eval_msg(self) -> Optional[str]:
+        if not self.success:
+            if self.msg is not None:
+                return self.msg
+        elif self.eval_result is not None and not self.eval_result.success:
+            if self.eval_result.msg is not None:
+                return self.eval_result.msg
+        else:
+            return None
+        return "unspecified failure"
 
 
 @strict_dataclass
@@ -293,6 +328,41 @@ class TftResult:
     flow_test: Optional[FlowTestOutput] = None
     plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
 
+    @property
+    def eval_flow_test_success(self) -> bool:
+        if self.flow_test is None:
+            return False
+        return self.flow_test.eval_success
+
+    @property
+    def eval_plugins_success(self) -> bool:
+        return all(p.eval_success for p in self.plugins)
+
+    @property
+    def eval_all_success(self) -> bool:
+        return self.eval_flow_test_success and self.eval_plugins_success
+
+    @staticmethod
+    def group_by_success(
+        tft_results: Iterable["TftResult"],
+    ) -> tuple[list["TftResult"], list["TftResult"]]:
+        tft_results = list(tft_results)
+
+        group_success = [o for o in tft_results if o.eval_all_success]
+        group_fail = [o for o in tft_results if not o.eval_all_success]
+
+        def _key_fcn(o: TftResult) -> int:
+            comp_val = 0
+            if o.eval_flow_test_success:
+                comp_val += 10
+            if o.eval_plugins_success:
+                comp_val += 1
+            return comp_val
+
+        group_fail.sort(key=_key_fcn)
+
+        return group_success, group_fail
+
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
@@ -310,149 +380,45 @@ class PassFailStatus:
     num_plugin_passed: int
     num_plugin_failed: int
 
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class TestResult:
-    """Result of a single test case run
-
-    Attributes:
-        tft_metadata: information about which test ran
-        success: boolean representing whether the test passed or failed
-        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
-    """
-
-    tft_metadata: TestMetadata
-    success: bool
-    msg: Optional[str] = None
-    bitrate_gbps: Bitrate
-    bitrate_threshold: Optional[float]
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        plugin_name: the plugin
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    tft_metadata: TestMetadata
-    plugin_name: str
-    success: bool
-    msg: Optional[str]
-    plugin_output: PluginOutput
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class TestResultCollection:
-    passing: list[TestResult]
-    failing: list[TestResult]
-    plugin_passing: list[PluginResult]
-    plugin_failing: list[PluginResult]
-
     @staticmethod
-    def read_from_file(filename: str | Path) -> "TestResultCollection":
-        return common.dataclass_from_file(
-            TestResultCollection,
-            filename,
+    def compute(
+        tft_results: Iterable[TftResult],
+    ) -> "PassFailStatus":
+        tft_results = list(tft_results)
+
+        tft_passing = 0
+        tft_failing = 0
+        plugin_passing = 0
+        plugin_failing = 0
+        for result in tft_results:
+            if result.eval_flow_test_success:
+                tft_passing += 1
+            else:
+                tft_failing += 1
+            for plugin in result.plugins:
+                if plugin.eval_success:
+                    plugin_passing += 1
+                else:
+                    plugin_failing += 1
+
+        return PassFailStatus(
+            result=tft_failing + plugin_failing == 0,
+            num_tft_passed=tft_passing,
+            num_tft_failed=tft_failing,
+            num_plugin_passed=plugin_passing,
+            num_plugin_failed=plugin_failing,
         )
 
-
-@common.strict_dataclass
-@dataclasses.dataclass(frozen=True, kw_only=True, unsafe_hash=True)
-class GroupedResult:
-    tft_metadata: TestMetadata
-    test_results: list[TestResult] = dataclasses.field(
-        default_factory=list,
-        compare=False,
-    )
-    plugin_results: list[PluginResult] = dataclasses.field(
-        default_factory=list,
-        compare=False,
-    )
-
-    @property
-    def results_all_good(self) -> bool:
-        return all(test_result.success for test_result in self.test_results)
-
-    @property
-    def plugins_all_good(self) -> bool:
-        return all(plugin_result.success for plugin_result in self.plugin_results)
-
-    @property
-    def all_good(self) -> bool:
-        return self.results_all_good and self.plugins_all_good
-
-    @staticmethod
-    def _dict_get_or_default(
-        grouped_results: dict[TestMetadata, "GroupedResult"],
-        tft_metadata: TestMetadata,
-    ) -> "GroupedResult":
-        grouped_result = grouped_results.get(tft_metadata, None)
-        if grouped_result is None:
-            grouped_result = GroupedResult(tft_metadata=tft_metadata)
-            grouped_results[tft_metadata] = grouped_result
-        return grouped_result
-
-    @staticmethod
-    def _build_list(
-        test_results: TestResultCollection,
-    ) -> list["GroupedResult"]:
-        grouped_results: dict[TestMetadata, GroupedResult] = {}
-        for test_result in test_results.passing + test_results.failing:
-            grouped_result = GroupedResult._dict_get_or_default(
-                grouped_results,
-                test_result.tft_metadata,
-            )
-            grouped_result.test_results.append(test_result)
-        for plugin_result in test_results.plugin_passing + test_results.plugin_failing:
-            grouped_result = GroupedResult._dict_get_or_default(
-                grouped_results,
-                plugin_result.tft_metadata,
-            )
-            grouped_result.plugin_results.append(plugin_result)
-
-        return list(grouped_results.values())
-
-    @staticmethod
-    def _split_list(grouped_results: list["GroupedResult"]) -> tuple[
-        list["GroupedResult"],
-        list["GroupedResult"],
-    ]:
-        result_success = [
-            group_result for group_result in grouped_results if group_result.all_good
-        ]
-        result_failed = [
-            group_result
-            for group_result in grouped_results
-            if not group_result.all_good
-        ]
-
-        def _key_fcn(gr: GroupedResult) -> int:
-            if gr.results_all_good:
-                if gr.plugins_all_good:
-                    return 4
-                return 3
-            return 2
-
-        result_failed.sort(key=_key_fcn)
-
-        return result_success, result_failed
-
-    @staticmethod
-    def grouped_from(test_results: TestResultCollection) -> tuple[
-        list["GroupedResult"],
-        list["GroupedResult"],
-    ]:
-        lst = GroupedResult._build_list(test_results)
-        return GroupedResult._split_list(lst)
+    def log(
+        self,
+    ) -> None:
+        logger.info(f"RESULT: Success = {self.result}.")
+        logger.info(
+            f"  FlowTest results: Passed {self.num_tft_passed}/{self.num_tft_passed + self.num_tft_failed}"
+        )
+        logger.info(
+            f"  Plugin results: Passed {self.num_plugin_passed}/{self.num_plugin_passed + self.num_plugin_failed}"
+        )
 
 
 class TestCaseTypInfo(typing.NamedTuple):

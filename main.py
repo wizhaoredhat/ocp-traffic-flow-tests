@@ -15,7 +15,7 @@ from trafficFlowTests import TrafficFlowTests
 def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
-        description="test Traffic Flows in an OVN-Kubernetes cluster."
+        description="Test Traffic Flows in an OVN-Kubernetes cluster."
     )
     parser.add_argument(
         "config",
@@ -29,13 +29,13 @@ def parse_args() -> argparse.Namespace:
         metavar="evaluator_config",
         type=str,
         help='YAML file with configuration for scoring test results (see "eval-config.yaml"). '
-        "This parameter is optional. If provided, this effectively runs "
-        "`./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` on "
-        "the result file. You can run this step separately. The eval config can contain only a subset "
-        "of the relevant configurations and skip validation otherwise. "
-        "This also means, the entire configuration can be empty (either an empty "
-        " YAML file or only '{}'). Also, the filename can be '' to indicate a completely "
-        "empty configuration.",
+        "The configuration can also contain only a subset of the relevant configurations. "
+        "The evaluation will successfully pass if thresholds as missing. "
+        "Also, the entire configuration can be empty (either an empty "
+        "YAML file or only '{}') or the filename can be '' to indicate a completely "
+        "empty configuration. You can later run "
+        "`./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` "
+        "to update the evaluation with a different config.",
     )
     parser.add_argument(
         "-o",

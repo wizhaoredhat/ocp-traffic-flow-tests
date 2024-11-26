@@ -12,8 +12,6 @@ from pathlib import Path
 from typing import Any
 from typing import Optional
 
-from ktoolbox import common
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import evalConfig  # noqa: E402
@@ -204,10 +202,9 @@ def test_output_list_parse(
     else:
         assert os.path.exists(outputfile)
 
-        test_collection1 = common.dataclass_from_file(
-            tftbase.TestResultCollection, outputfile
-        )
-        assert isinstance(test_collection1, tftbase.TestResultCollection)
+        test_collection1 = tftbase.output_list_parse_file(outputfile)
+        assert isinstance(test_collection1, list)
+        assert all(isinstance(o, tftbase.TftResult) for o in test_collection1)
 
         if test_input_file.expected_outputfile is not None:
             assert filecmp.cmp(

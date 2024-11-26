@@ -5,19 +5,17 @@ import logging
 import sys
 import yaml
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
 
 from ktoolbox import common
-from ktoolbox.common import dataclass_to_json
 
 import evalConfig
 import tftbase
 
 from tftbase import FlowTestOutput
-from tftbase import PassFailStatus
-from tftbase import TestResult
-from tftbase import TestResultCollection
+from tftbase import TftResult
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -33,133 +31,78 @@ class Evaluator:
 
         self.eval_config = evalConfig.Config.parse(c)
 
-    def _eval_flow_test(self, run: FlowTestOutput) -> TestResult:
-        md = run.tft_metadata
+    def eval_flow_test_output(self, flow_test: FlowTestOutput) -> FlowTestOutput:
 
         bitrate_threshold: Optional[float] = None
 
         # We accept a missing eval_config entry.
-        cfg = self.eval_config.configs.get(md.test_type)
+        cfg = self.eval_config.configs.get(flow_test.tft_metadata.test_type)
         if cfg is not None:
-            cfg_test_case = cfg.test_cases.get(md.test_case_id)
+            cfg_test_case = cfg.test_cases.get(flow_test.tft_metadata.test_case_id)
             if cfg_test_case is not None:
-                bitrate_threshold = cfg_test_case.get_threshold(is_reverse=md.reverse)
+                bitrate_threshold = cfg_test_case.get_threshold(
+                    is_reverse=flow_test.tft_metadata.reverse
+                )
 
         success = True
         msg: Optional[str] = None
-        if not run.success:
+        if not flow_test.success:
             success = False
-            if run.msg is not None:
-                msg = f"Run failed: {run.msg}"
+            if flow_test.msg is not None:
+                msg = f"Run failed: {flow_test.msg}"
             else:
                 msg = "Run failed for unspecified reason"
-        elif not run.bitrate_gbps.is_passing(bitrate_threshold):
+        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold):
             success = False
-            msg = f"Run succeeded but {run.bitrate_gbps} is below threshold {bitrate_threshold}"
+            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below threshold {bitrate_threshold}"
 
-        return TestResult(
-            tft_metadata=md,
-            success=success,
-            msg=msg,
-            bitrate_gbps=run.bitrate_gbps,
-            bitrate_threshold=bitrate_threshold,
+        return flow_test.clone(
+            eval_result=tftbase.EvalResult(
+                success=success,
+                msg=msg,
+                bitrate_threshold=bitrate_threshold,
+            ),
         )
 
-    def eval_log(
-        self, log_path: str | Path
-    ) -> tuple[list[TestResult], list[tftbase.PluginResult]]:
-        try:
-            runs = tftbase.output_list_parse_file(log_path)
-        except Exception as e:
-            logger.error(f"error parsing {log_path}: {e}")
-            raise Exception(f"error parsing {log_path}: {e}")
+    def eval_test_result(self, idx: int, tft_result: TftResult) -> TftResult:
+        if tft_result.flow_test is None:
+            logger.error(f'invalid result #{idx}: missing "flow_test"')
+            raise Exception(f'invalid result #{idx}: missing "flow_test"')
 
-        test_results: list[TestResult] = []
-        plugin_results: list[tftbase.PluginResult] = []
+        new_flow_test = self.eval_flow_test_output(tft_result.flow_test)
 
-        for run_idx, run in enumerate(runs):
-            if run.flow_test is None:
-                logger.error(f'invalid result #{run_idx}: missing "flow_test"')
-                raise Exception(f'invalid result #{run_idx}: missing "flow_test"')
-            result = self._eval_flow_test(run.flow_test)
-            test_results.append(result)
-            for plugin_output in run.plugins:
-                plugin_result = plugin_output.plugin.eval_plugin_output(
-                    run.flow_test.tft_metadata,
-                    plugin_output,
-                )
-                if plugin_result is not None:
-                    plugin_results.append(plugin_result)
+        new_plugins = [
+            plugin_output.plugin.eval_plugin_output(
+                tft_result.flow_test.tft_metadata,
+                plugin_output,
+            )
+            for plugin_output in tft_result.plugins
+        ]
 
-        return test_results, plugin_results
+        return TftResult(
+            flow_test=new_flow_test,
+            plugins=new_plugins,
+        )
 
-    def dump_to_json(
+    def eval(
         self,
-        test_results: list[TestResult],
-        plugin_results: list[tftbase.PluginResult],
-    ) -> str:
-        res = TestResultCollection(
-            passing=[r for r in test_results if r.success],
-            failing=[r for r in test_results if not r.success],
-            plugin_passing=[r for r in plugin_results if r.success],
-            plugin_failing=[r for r in plugin_results if not r.success],
-        )
-        return dataclass_to_json(res)
+        tft_results: Iterable[TftResult],
+    ) -> list[TftResult]:
+        tft_results = list(tft_results)
+        return [
+            self.eval_test_result(idx, tft_result)
+            for idx, tft_result in enumerate(tft_results)
+        ]
 
-    def dump_to_json_file(
+    def eval_from_file(
         self,
         filename: str | Path,
-        test_results: list[TestResult],
-        plugin_results: list[tftbase.PluginResult],
-    ) -> str:
-        data = self.dump_to_json(test_results, plugin_results)
-        with open(filename, "w") as f:
-            f.write(data)
-        return data
-
-    def evaluate_pass_fail_status(
-        self,
-        test_results: list[TestResult],
-        plugin_results: list[tftbase.PluginResult],
-    ) -> PassFailStatus:
-        tft_passing = 0
-        tft_failing = 0
-        for result in test_results:
-            if result.success:
-                tft_passing += 1
-            else:
-                tft_failing += 1
-
-        plugin_passing = 0
-        plugin_failing = 0
-        for plugin_result in plugin_results:
-            if plugin_result.success:
-                plugin_passing += 1
-            else:
-                plugin_failing += 1
-
-        return PassFailStatus(
-            result=tft_failing + plugin_failing == 0,
-            num_tft_passed=tft_passing,
-            num_tft_failed=tft_failing,
-            num_plugin_passed=plugin_passing,
-            num_plugin_failed=plugin_failing,
-        )
-
-    def log_pass_fail_status(
-        self,
-        test_results: list[TestResult],
-        plugin_results: list[tftbase.PluginResult],
-    ) -> PassFailStatus:
-        res = self.evaluate_pass_fail_status(test_results, plugin_results)
-        logger.info(f"RESULT: Success = {res.result}.")
-        logger.info(
-            f"  FlowTest results: Passed {res.num_tft_passed}/{res.num_tft_passed + res.num_tft_failed}"
-        )
-        logger.info(
-            f"  Plugin results: Passed {res.num_plugin_passed}/{res.num_plugin_passed + res.num_plugin_failed}"
-        )
-        return res
+    ) -> list[TftResult]:
+        try:
+            tft_results = tftbase.output_list_parse_file(filename)
+        except Exception as e:
+            raise Exception(f"error parsing {filename}: {e}")
+        return self.eval(tft_results)
 
 
 def parse_args() -> argparse.Namespace:
@@ -180,13 +123,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "logs",
         type=str,
-        help='Result file from ocp-traffic-flow-tests. This file is usually written as "./ft-logs/$TIMESTAMP.json" '
-        "by the test tool.",
+        help="Result file from ocp-traffic-flow-tests. The test run by default writes this as file "
+        '"./ft-logs/$TIMESTAMP.json". Also, the test always already performs an evaluation with  '
+        "the provided eval config YAML (which can be empty or omitted). The input format is the same as the "
+        "output format and the same as the test produces.",
     )
     parser.add_argument(
         "output",
         type=str,
-        help="Output file to write evaluation results to.",
+        help="Output file to write evaluation results to. This is the same format as the input argument "
+        "'logs'. You can pass the output to evaluator.py again for updating the evaluation.",
     )
     common.log_argparse_add_argument_verbose(parser)
 
@@ -208,17 +154,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     evaluator = Evaluator(args.config)
-
-    # Hand evaluator log file to evaluate
-    file = Path(args.logs)
-
-    test_results, plugin_results = evaluator.eval_log(file)
-
-    # Generate Resulting Json
-    data = evaluator.dump_to_json_file(args.output, test_results, plugin_results)
-    logger.info(data)
-
-    evaluator.log_pass_fail_status(test_results, plugin_results)
+    tft_results = evaluator.eval_from_file(args.logs)
+    tftbase.output_list_serialize_file(tft_results, filename=args.output)
+    result_status = tftbase.PassFailStatus.compute(tft_results)
+    result_status.log()
 
 
 if __name__ == "__main__":
