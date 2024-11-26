@@ -24,7 +24,7 @@ current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
 
 config_path = os.path.join(parent_dir, "eval-config.yaml")
-config_path2 = os.path.join(parent_dir, "updated-eval-config.yaml")
+config_path2 = os.path.join(parent_dir, "tests/eval-config-2.yaml")
 evaluator_file = os.path.join(parent_dir, "evaluator.py")
 
 COMMON_COMMAND = ["python", evaluator_file, config_path]
