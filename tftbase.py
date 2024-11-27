@@ -688,6 +688,16 @@ def output_list_serialize(
     }
 
 
+def output_list_serialize_file(
+    tft_output: Iterable[TftAggregateOutput],
+    *,
+    filename: str | Path,
+) -> None:
+    out = output_list_serialize(tft_output)
+    with open(filename, "w") as f:
+        json.dump(out, f)
+
+
 def output_list_parse_file(filename: str | Path) -> list[TftAggregateOutput]:
     try:
         f = open(filename, "r")

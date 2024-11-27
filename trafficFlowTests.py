@@ -1,4 +1,3 @@
-import json
 import logging
 import task
 
@@ -59,13 +58,6 @@ class TrafficFlowTests:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"Logs will be written to {log_file}")
         return log_file
-
-    def _dump_result_to_log(
-        self, tft_output: list[TftAggregateOutput], *, log_file: str
-    ) -> None:
-        out = tftbase.output_list_serialize(tft_output)
-        with open(log_file, "w") as f:
-            json.dump(out, f)
 
     def evaluate_run_success(
         self,
@@ -193,7 +185,7 @@ class TrafficFlowTests:
         tft_output: list[TftAggregateOutput] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
             tft_output.extend(self._run_test_case(cfg_descr2))
-        self._dump_result_to_log(tft_output, log_file=str(log_file))
+        tftbase.output_list_serialize_file(tft_output, filename=log_file)
 
         if not self.evaluate_run_success(cfg_descr, evaluator, log_file):
             logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")
