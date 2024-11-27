@@ -12,7 +12,7 @@ from evaluator import Evaluator
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
-from tftbase import TftAggregateOutput
+from tftbase import TftResult
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -88,7 +88,7 @@ class TrafficFlowTests:
         cfg_descr: ConfigDescriptor,
         instance_index: int,
         reverse: bool = False,
-    ) -> TftAggregateOutput:
+    ) -> TftResult:
         connection = cfg_descr.get_connection()
 
         servers: list[task.ServerTask] = []
@@ -140,29 +140,29 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.finish_setup()
 
-        tft_aggregate_output = TftAggregateOutput()
+        tft_aggregate_output = TftResult()
 
         for tasks in servers + clients + monitors:
             tasks.aggregate_output(tft_aggregate_output)
 
         return tft_aggregate_output
 
-    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftAggregateOutput]:
+    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftResult]:
         # TODO Allow for multiple connections / instances to run simultaneously
-        tft_output: list[TftAggregateOutput] = []
+        tft_results: list[TftResult] = []
         for cfg_descr2 in cfg_descr.describe_all_connections():
             connection = cfg_descr2.get_connection()
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
-                tft_output.append(
+                tft_results.append(
                     self._run_test_case_instance(
                         cfg_descr2,
                         instance_index=instance_index,
                     )
                 )
                 if connection.test_type_handler.can_run_reverse():
-                    tft_output.append(
+                    tft_results.append(
                         self._run_test_case_instance(
                             cfg_descr2,
                             instance_index=instance_index,
@@ -170,7 +170,7 @@ class TrafficFlowTests:
                         )
                     )
                 self._cleanup_previous_testspace(cfg_descr2)
-        return tft_output
+        return tft_results
 
     def test_run(
         self,
@@ -182,10 +182,10 @@ class TrafficFlowTests:
         self._cleanup_previous_testspace(cfg_descr)
         log_file = self._create_log_paths_from_tests(test)
         logger.info(f"Running test {test.name} for {test.duration} seconds")
-        tft_output: list[TftAggregateOutput] = []
+        tft_results: list[TftResult] = []
         for cfg_descr2 in cfg_descr.describe_all_test_cases():
-            tft_output.extend(self._run_test_case(cfg_descr2))
-        tftbase.output_list_serialize_file(tft_output, filename=log_file)
+            tft_results.extend(self._run_test_case(cfg_descr2))
+        tftbase.output_list_serialize_file(tft_results, filename=log_file)
 
         if not self.evaluate_run_success(cfg_descr, evaluator, log_file):
             logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")

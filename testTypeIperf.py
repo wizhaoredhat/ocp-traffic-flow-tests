@@ -139,7 +139,7 @@ class IperfClient(task.ClientTask):
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
+        out: tftbase.TftResult,
     ) -> None:
         assert isinstance(result, FlowTestOutput)
         if self.test_type == TestType.IPERF_TCP:

@@ -174,7 +174,7 @@ def test_output_list_parse(
         data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
         data = data.replace('"invalid_pod_type"', '"SRIOV"')
 
-    def _check(output: list[tftbase.TftAggregateOutput]) -> None:
+    def _check(output: list[tftbase.TftResult]) -> None:
         assert isinstance(output, list)
         assert output
 

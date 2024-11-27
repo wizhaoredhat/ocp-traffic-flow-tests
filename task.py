@@ -590,7 +590,7 @@ class Task(ABC):
         logger.info(f"Completing execution on {self.log_name}")
         self._result = self._task_operation.finish(timeout=self.get_duration() * 1.5)
 
-    def aggregate_output(self, out: tftbase.TftAggregateOutput) -> None:
+    def aggregate_output(self, out: tftbase.TftResult) -> None:
         if self._result is None:
             return
         if not isinstance(self._result, tftbase.AggregatableOutput):
@@ -623,7 +623,7 @@ class Task(ABC):
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
+        out: tftbase.TftResult,
     ) -> None:
         # This should never happen.
         #

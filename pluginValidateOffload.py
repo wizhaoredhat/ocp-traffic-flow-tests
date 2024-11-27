@@ -270,7 +270,7 @@ class TaskValidateOffload(PluginTask):
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
+        out: tftbase.TftResult,
     ) -> None:
         assert isinstance(result, PluginOutput)
 

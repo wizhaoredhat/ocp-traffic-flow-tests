@@ -279,9 +279,9 @@ class PluginOutput(AggregatableOutput):
 
 @strict_dataclass
 @dataclass(kw_only=True)
-class TftAggregateOutput:
+class TftResult:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
-    pass a reference to an instance of TftAggregateOutput to each task to which the task will append
+    pass a reference to an instance of TftResult to each task to which the task will append
     it's respective output. A list of this class will be the expected format of input provided to
     evaluator.py.
 
@@ -681,24 +681,24 @@ def test_case_type_to_client_pod_type(
 
 
 def output_list_serialize(
-    tft_output: Iterable[TftAggregateOutput],
+    tft_results: Iterable[TftResult],
 ) -> dict[str, Any]:
     return {
-        TFT_TESTS: [common.dataclass_to_dict(o) for o in tft_output],
+        TFT_TESTS: [common.dataclass_to_dict(o) for o in tft_results],
     }
 
 
 def output_list_serialize_file(
-    tft_output: Iterable[TftAggregateOutput],
+    tft_results: Iterable[TftResult],
     *,
     filename: str | Path,
 ) -> None:
-    out = output_list_serialize(tft_output)
+    out = output_list_serialize(tft_results)
     with open(filename, "w") as f:
         json.dump(out, f)
 
 
-def output_list_parse_file(filename: str | Path) -> list[TftAggregateOutput]:
+def output_list_parse_file(filename: str | Path) -> list[TftResult]:
     try:
         f = open(filename, "r")
     except Exception as e:
@@ -717,7 +717,7 @@ def output_list_parse(
     data: Any,
     *,
     filename: Optional[str | Path] = None,
-) -> list[TftAggregateOutput]:
+) -> list[TftResult]:
 
     err = "data"
     if filename is not None:
@@ -741,10 +741,10 @@ def output_list_parse(
             f'{err} needs a list at top level key "{k}" but has {type(data)}'
         )
 
-    output_list: list[TftAggregateOutput] = []
+    output_list: list[TftResult] = []
     for data_tft_test in data_tft_tests:
         try:
-            result = common.dataclass_from_dict(TftAggregateOutput, data_tft_test)
+            result = common.dataclass_from_dict(TftResult, data_tft_test)
         except Exception as e:
             raise RuntimeError(f"{err} has invalid data: {e}")
         output_list.append(result)
