@@ -357,6 +357,13 @@ class TestResultCollection:
     plugin_passing: list[PluginResult]
     plugin_failing: list[PluginResult]
 
+    @staticmethod
+    def read_from_file(filename: str | Path) -> "TestResultCollection":
+        return common.dataclass_from_file(
+            TestResultCollection,
+            filename,
+        )
+
 
 @common.strict_dataclass
 @dataclasses.dataclass(frozen=True, kw_only=True, unsafe_hash=True)

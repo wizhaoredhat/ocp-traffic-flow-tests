@@ -1,3 +1,4 @@
+import dataclasses
 import filecmp
 import json
 import os
@@ -8,6 +9,9 @@ import yaml
 
 from pathlib import Path
 from typing import Any
+from typing import Optional
+
+from ktoolbox import common
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -20,171 +24,194 @@ TestType = tftbase.TestType
 TestCaseType = tftbase.TestCaseType
 
 
-current_dir = os.path.dirname(__file__)
-parent_dir = os.path.dirname(current_dir)
+test_dir = os.path.dirname(__file__)
+source_dir = os.path.dirname(test_dir)
 
-config_path = os.path.join(parent_dir, "eval-config.yaml")
-config_path2 = os.path.join(parent_dir, "tests/eval-config-2.yaml")
-evaluator_file = os.path.join(parent_dir, "evaluator.py")
 
-COMMON_COMMAND = ["python", evaluator_file, config_path]
+def _test_file(filename: str) -> str:
+    return os.path.join(test_dir, filename)
 
-TEST_INPUT_FILES = [
-    "input1.json",
-    "input2.json",
-    "input3.json",
-    "input4.json",
-    "input5.json",
+
+def _source_file(filename: str) -> str:
+    return os.path.join(source_dir, filename)
+
+
+EVAL_CONFIG_FILE = _source_file("eval-config.yaml")
+
+EVALUATOR_EXEC = _source_file("evaluator.py")
+PRINT_RESULTS_EXEC = _source_file("print_results.py")
+
+
+@dataclasses.dataclass(frozen=True)
+class TestConfigFile:
+    filename: str
+    is_valid: bool = dataclasses.field(default=True)
+    expected_outputfile: Optional[str] = dataclasses.field(default=None)
+
+
+TEST_CONFIG_FILES = [
+    TestConfigFile(_test_file("input1.json"), expected_outputfile="input1-RESULTS"),
+    TestConfigFile(_test_file("input2.json"), is_valid=False),
+    TestConfigFile(_test_file("input3.json"), is_valid=False),
+    TestConfigFile(_test_file("input4.json"), is_valid=False),
+    TestConfigFile(_test_file("input5.json")),
+    TestConfigFile(_test_file("input6.json"), expected_outputfile="input6-RESULTS"),
+]
+
+TEST_EVAL_CONFIG_FILES = [
+    EVAL_CONFIG_FILE,
+    _test_file("eval-config-2.yaml"),
 ]
 
 
-def run_subprocess(
-    command: list[str], **kwargs: Any
+def _run_subprocess(
+    command: list[str],
+    **kwargs: Any,
 ) -> subprocess.CompletedProcess[str]:
-    full_command = COMMON_COMMAND + command
-    result = subprocess.run(full_command, text=True, **kwargs)
+    if "check" not in kwargs:
+        kwargs["check"] = True
+    result = subprocess.run(command, text=True, **kwargs)
     print("STDOUT:", result.stdout)
     print("STDERR:", result.stderr)
     return result
 
 
-def test_evaluator_valid_input() -> None:
-    log_path = os.path.join(current_dir, "input1.json")
-    compare_path1 = os.path.join(current_dir, "output1a.json")
-    output_path1 = os.path.join(current_dir, "test-output1.json")
+def _run_evaluator(filename: str, outfile: str) -> subprocess.CompletedProcess[str]:
+    return _run_subprocess(
+        [
+            sys.executable,
+            EVALUATOR_EXEC,
+            EVAL_CONFIG_FILE,
+            filename,
+            outfile,
+        ]
+    )
 
-    run_subprocess(
-        [log_path, output_path1],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+
+def _run_print_results(filename: str) -> subprocess.CompletedProcess[str]:
+    return _run_subprocess(
+        [
+            sys.executable,
+            PRINT_RESULTS_EXEC,
+            filename,
+        ],
         check=False,
     )
 
-    assert filecmp.cmp(
-        output_path1, compare_path1
-    ), f"{output_path1} does not match {compare_path1}"
 
-    Path(output_path1).unlink()
+@pytest.mark.parametrize("test_eval_config", TEST_EVAL_CONFIG_FILES)
+def test_eval_config(test_eval_config: str) -> None:
+    filename = test_eval_config
+    assert os.path.exists(filename)
 
+    with open(filename, encoding="utf-8") as file:
+        conf_dict = yaml.safe_load(file)
 
-def test_evaluator_invalid_test_case_id() -> None:
-    log_path = os.path.join(current_dir, "input2.json")
+    c = evalConfig.Config.parse(conf_dict)
 
-    with pytest.raises(subprocess.CalledProcessError):
-        run_subprocess(
-            [log_path],
-            check=True,
+    assert (
+        c.configs[TestType.IPERF_UDP]
+        .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
+        .normal.threshold
+        == 5
+    )
+
+    for test_type in TestType:
+        if test_type not in c.configs:
+            continue
+
+        assert test_type in (
+            TestType.IPERF_UDP,
+            TestType.IPERF_TCP,
         )
 
+        d = c.configs[test_type].test_cases
 
-def test_evaluator_invalid_test_type() -> None:
-    log_path = os.path.join(current_dir, "input3.json")
+        for test_case_type in TestCaseType:
+            assert test_case_type in d
 
-    with pytest.raises(subprocess.CalledProcessError):
-        run_subprocess(
-            [log_path],
-            check=True,
-        )
+    dump = c.serialize()
+    assert c == evalConfig.Config.parse(dump)
 
+    c2 = c.configs[TestType.IPERF_UDP]
+    assert c2.test_type == TestType.IPERF_UDP
+    assert isinstance(c2.serialize(), list)
+    assert c2 == evalConfig.TestTypeData.parse(
+        1, "", TestType.IPERF_UDP, c2.serialize()
+    )
 
-def test_evaluator_invalid_pod_type() -> None:
-    log_path = os.path.join(current_dir, "input4.json")
-
-    with pytest.raises(subprocess.CalledProcessError):
-        run_subprocess(
-            [log_path],
-            check=True,
-        )
-
-
-def test_eval_config() -> None:
-    def _check(filename: str) -> None:
-        assert os.path.exists(filename)
-
-        with open(filename, encoding="utf-8") as file:
-            conf_dict = yaml.safe_load(file)
-
-        c = evalConfig.Config.parse(conf_dict)
-
-        assert (
-            c.configs[TestType.IPERF_UDP]
-            .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
-            .normal.threshold
-            == 5
-        )
-
-        for test_type in TestType:
-            if test_type not in c.configs:
-                continue
-
-            assert test_type in (
-                TestType.IPERF_UDP,
-                TestType.IPERF_TCP,
-            )
-
-            d = c.configs[test_type].test_cases
-
-            for test_case_type in TestCaseType:
-                assert test_case_type in d
-
-        dump = c.serialize()
-        assert c == evalConfig.Config.parse(dump)
-
-        c2 = c.configs[TestType.IPERF_UDP]
-        assert c2.test_type == TestType.IPERF_UDP
-        assert isinstance(c2.serialize(), list)
-        assert c2 == evalConfig.TestTypeData.parse(
-            1, "", TestType.IPERF_UDP, c2.serialize()
-        )
-
-        c3 = c2.test_cases[TestCaseType.POD_TO_HOST_DIFF_NODE]
-        assert c3.test_case_type == TestCaseType.POD_TO_HOST_DIFF_NODE
-        assert c3.serialize_json() == json.dumps(
-            {
-                "id": "POD_TO_HOST_DIFF_NODE",
-                "Normal": {"threshold": 5.0},
-                "Reverse": {"threshold": 5.0},
-            }
-        )
-        assert c3.yamlpath == ".IPERF_UDP[1]"
-        assert c3.normal.yamlpath == ".IPERF_UDP[1].Normal"
-
-    _check(config_path)
-    _check(config_path2)
+    c3 = c2.test_cases[TestCaseType.POD_TO_HOST_DIFF_NODE]
+    assert c3.test_case_type == TestCaseType.POD_TO_HOST_DIFF_NODE
+    assert c3.serialize_json() == json.dumps(
+        {
+            "id": "POD_TO_HOST_DIFF_NODE",
+            "Normal": {"threshold": 5.0},
+            "Reverse": {"threshold": 5.0},
+        }
+    )
+    assert c3.yamlpath == ".IPERF_UDP[1]"
+    assert c3.normal.yamlpath == ".IPERF_UDP[1].Normal"
 
 
-def test_output_list_parse() -> None:
-    for test_input_file in TEST_INPUT_FILES:
-        filename = os.path.join(current_dir, test_input_file)
-        assert os.path.isfile(filename)
+@pytest.mark.parametrize("test_input_file", TEST_CONFIG_FILES)
+def test_output_list_parse(
+    test_input_file: TestConfigFile,
+    tmp_path: Path,
+) -> None:
+    filename = test_input_file.filename
+    assert os.path.isfile(filename)
 
-        with open(filename, "r") as f:
-            data = f.read()
+    with open(filename, "r") as f:
+        data = f.read()
 
-        file_is_good = True
-        if test_input_file in ("input2.json", "input3.json", "input4.json"):
-            with pytest.raises(RuntimeError):
-                tftbase.output_list_parse_file(filename)
+    if not test_input_file.is_valid:
+        with pytest.raises(RuntimeError):
+            tftbase.output_list_parse_file(filename)
+        # The file is invalid, but we can patch the content to make it valid.
+        data = data.replace('"invalid_test_case_id"', '"POD_TO_POD_SAME_NODE"')
+        data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
+        data = data.replace('"invalid_pod_type"', '"SRIOV"')
 
-            file_is_good = False
-            data = data.replace('"invalid_test_case_id"', '"POD_TO_POD_SAME_NODE"')
-            data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
-            data = data.replace('"invalid_pod_type"', '"SRIOV"')
+    def _check(output: list[tftbase.TftAggregateOutput]) -> None:
+        assert isinstance(output, list)
+        assert output
 
-        def _check(output: list[tftbase.TftAggregateOutput]) -> None:
-            assert isinstance(output, list)
-            assert output
+    jdata = json.loads(data)
 
-        jdata = json.loads(data)
+    output = tftbase.output_list_parse(jdata, filename=filename)
+    _check(output)
 
-        output = tftbase.output_list_parse(jdata, filename=filename)
+    if test_input_file.is_valid:
+        output = tftbase.output_list_parse_file(filename)
         _check(output)
 
-        if file_is_good:
-            output = tftbase.output_list_parse_file(filename)
-            _check(output)
+    data2 = tftbase.output_list_serialize(output)
+    output2 = tftbase.output_list_parse(data2)
+    _check(output2)
+    assert output == output2
 
-        data2 = tftbase.output_list_serialize(output)
-        output2 = tftbase.output_list_parse(data2)
-        _check(output2)
-        assert output == output2
+    outputfile = str(tmp_path / "outputfile.json")
+    if test_input_file.is_valid:
+        _run_evaluator(filename, outputfile)
+    else:
+        with pytest.raises(subprocess.CalledProcessError):
+            _run_evaluator(filename, outputfile)
+
+    if not test_input_file.is_valid:
+        assert not os.path.exists(outputfile)
+    else:
+        assert os.path.exists(outputfile)
+
+        test_collection1 = common.dataclass_from_file(
+            tftbase.TestResultCollection, outputfile
+        )
+        assert isinstance(test_collection1, tftbase.TestResultCollection)
+
+        if test_input_file.expected_outputfile is not None:
+            assert filecmp.cmp(
+                outputfile,
+                _test_file(test_input_file.expected_outputfile),
+            ), f"{repr(outputfile)} does not match {repr(_test_file(test_input_file.expected_outputfile))}"
+
+        res = _run_print_results(outputfile)
+        assert res.returncode in (0, 1)

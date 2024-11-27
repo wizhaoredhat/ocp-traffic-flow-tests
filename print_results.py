@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import sys
+import traceback
 
 from ktoolbox import common
 
 import tftbase
-
-
-def read_test_result(filename: str) -> tftbase.TestResultCollection:
-    with open(filename, "r") as f:
-        jdata = json.load(f)
-
-    return common.dataclass_from_dict(tftbase.TestResultCollection, jdata)
 
 
 def print_result(test_result: tftbase.TestResult) -> None:
@@ -54,7 +47,7 @@ def main() -> None:
 
     common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
-    test_results = read_test_result(args.result)
+    test_results = tftbase.TestResultCollection.read_from_file(args.result)
 
     group_passing, group_failing = tftbase.GroupedResult.grouped_from(test_results)
 
@@ -86,4 +79,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        sys.exit(2)
