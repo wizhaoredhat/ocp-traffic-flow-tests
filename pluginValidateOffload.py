@@ -270,11 +270,9 @@ class TaskValidateOffload(PluginTask):
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftResult,
+        tft_result_builder: tftbase.TftResultBuilder,
     ) -> None:
-        assert isinstance(result, PluginOutput)
-
-        out.plugins.append(result)
+        result = tft_result_builder.add_plugin(result)
 
         if self.perf_pod_type == PodType.HOSTBACKED:
             if isinstance(self._perf_instance, task.ClientTask):

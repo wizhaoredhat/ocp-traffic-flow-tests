@@ -313,6 +313,34 @@ class PluginOutput(AggregatableOutput):
 
 @strict_dataclass
 @dataclass(kw_only=True)
+class TftResultBuilder:
+    _flow_test: Optional[FlowTestOutput] = None
+    _plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
+
+    def set_flow_test(self, flow_test: FlowTestOutput) -> None:
+        if self._flow_test is not None:
+            raise RuntimeError("Cannot set multiple FlowTestOutput results")
+        self._flow_test = flow_test
+
+    def add_plugin(self, plugin_output: AggregatableOutput) -> PluginOutput:
+        if not isinstance(plugin_output, PluginOutput):
+            raise ValueError(
+                "Invalid parameter of type {type(plugin_output)} for add_plugin()"
+            )
+        self._plugins.append(plugin_output)
+        return plugin_output
+
+    def build(self) -> "TftResult":
+        if self._flow_test is None:
+            raise RuntimeError("Failed to collect a FlowTestOutput")
+        return TftResult(
+            flow_test=self._flow_test,
+            plugins=tuple(self._plugins),
+        )
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
 class TftResult:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
     pass a reference to an instance of TftResult to each task to which the task will append
@@ -324,13 +352,11 @@ class TftResult:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[FlowTestOutput] = None
-    plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
+    flow_test: FlowTestOutput
+    plugins: tuple[PluginOutput, ...]
 
     @property
     def eval_flow_test_success(self) -> bool:
-        if self.flow_test is None:
-            return False
         return self.flow_test.eval_success
 
     @property

@@ -6,6 +6,7 @@ from pathlib import Path
 from ktoolbox import host
 
 import testConfig
+import tftbase
 
 from evaluator import Evaluator
 from task import Task
@@ -116,12 +117,12 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.finish_setup()
 
-        tft_aggregate_output = TftResult()
+        tft_result_builder = tftbase.TftResultBuilder()
 
         for tasks in servers + clients + monitors:
-            tasks.aggregate_output(tft_aggregate_output)
+            tasks.aggregate_output(tft_result_builder)
 
-        return tft_aggregate_output
+        return tft_result_builder.build()
 
     def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftResult]:
         # TODO Allow for multiple connections / instances to run simultaneously

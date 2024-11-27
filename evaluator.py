@@ -64,11 +64,7 @@ class Evaluator:
             ),
         )
 
-    def eval_test_result(self, idx: int, tft_result: TftResult) -> TftResult:
-        if tft_result.flow_test is None:
-            logger.error(f'invalid result #{idx}: missing "flow_test"')
-            raise Exception(f'invalid result #{idx}: missing "flow_test"')
-
+    def eval_test_result(self, tft_result: TftResult) -> TftResult:
         new_flow_test = self.eval_flow_test_output(tft_result.flow_test)
 
         new_plugins = [
@@ -81,17 +77,14 @@ class Evaluator:
 
         return TftResult(
             flow_test=new_flow_test,
-            plugins=new_plugins,
+            plugins=tuple(new_plugins),
         )
 
     def eval(
         self,
         tft_results: TftResults,
     ) -> TftResults:
-        lst = [
-            self.eval_test_result(idx, tft_result)
-            for idx, tft_result in enumerate(tft_results)
-        ]
+        lst = [self.eval_test_result(tft_result) for tft_result in tft_results]
         return TftResults(lst=tuple(lst))
 
     def eval_from_file(
