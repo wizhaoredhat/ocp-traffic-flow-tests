@@ -1,0 +1,15 @@
+[tool.mypy]
+strict = true
+files = "."
+
+[[tool.mypy.overrides]]
+module = "jc"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "serial"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pytest"
+ignore_missing_imports = true
