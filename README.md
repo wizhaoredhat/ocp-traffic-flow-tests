@@ -113,7 +113,7 @@ tool will try to autopopulate resource_name based on the secondary+network_nad p
 Simply run the python application as so:
 
 ```
-python main.py config.yaml
+./tft.py config.yaml
 ```
 
 ## Environment variables
