@@ -2,6 +2,7 @@ import dataclasses
 import filecmp
 import json
 import os
+import pathlib
 import pytest
 import subprocess
 import sys
@@ -17,6 +18,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import evalConfig  # noqa: E402
 import evaluator  # noqa: E402
+import testType  # noqa: E402
 import tftbase  # noqa: E402
 
 Evaluator = evaluator.Evaluator
@@ -215,3 +217,41 @@ def test_output_list_parse(
 
         res = _run_print_results(outputfile)
         assert res.returncode in (0, 1)
+
+
+def test_evaluator_1(tmp_path: pathlib.Path) -> None:
+    def _assert_is_empty(evaluator: Evaluator) -> None:
+        assert isinstance(evaluator, Evaluator)
+        assert isinstance(evaluator.eval_config, evalConfig.Config)
+        assert evaluator.eval_config.configs == {}
+
+    _assert_is_empty(Evaluator(None))
+    _assert_is_empty(Evaluator(""))
+
+    tmp_file = tmp_path / "tmp-eval-config.yaml"
+
+    with open(tmp_file, "w") as f:
+        f.write("")
+    _assert_is_empty(Evaluator(str(tmp_file)))
+
+    with open(tmp_file, "w") as f:
+        f.write("{}\n")
+    _assert_is_empty(Evaluator(str(tmp_file)))
+
+    with open(tmp_file, "w") as f:
+        f.write("[]\n")
+    with pytest.raises(ValueError):
+        Evaluator(str(tmp_file))
+
+    with open(tmp_file, "w") as f:
+        f.write("'1': []\n")
+    evaluator = Evaluator(str(tmp_file))
+    assert evaluator.eval_config.configs == {
+        TestType.IPERF_TCP: evalConfig.TestTypeData(
+            yamlpath=".IPERF_TCP",
+            yamlidx=0,
+            test_type=TestType.IPERF_TCP,
+            test_cases={},
+            test_type_handler=testType.TestTypeHandler.get(TestType.IPERF_TCP),
+        ),
+    }

@@ -67,14 +67,17 @@ class TrafficFlowTests:
         with open(log_file, "w") as f:
             json.dump(out, f)
 
-    def evaluate_run_success(self, cfg_descr: ConfigDescriptor, log_file: Path) -> bool:
+    def evaluate_run_success(
+        self,
+        cfg_descr: ConfigDescriptor,
+        evaluator: Evaluator,
+        log_file: Path,
+    ) -> bool:
         # For the result of every test run, check the status of each run log to
         # ensure all test passed
 
         if not cfg_descr.tc.evaluator_config:
             return True
-
-        evaluator = Evaluator(cfg_descr.tc.evaluator_config)
 
         logger.info(f"Evaluating results of tests {log_file}")
         results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
@@ -177,7 +180,11 @@ class TrafficFlowTests:
                 self._cleanup_previous_testspace(cfg_descr2)
         return tft_output
 
-    def test_run(self, cfg_descr: ConfigDescriptor) -> None:
+    def test_run(
+        self,
+        cfg_descr: ConfigDescriptor,
+        evaluator: Evaluator,
+    ) -> None:
         test = cfg_descr.get_tft()
         self._configure_namespace(cfg_descr)
         self._cleanup_previous_testspace(cfg_descr)
@@ -188,5 +195,5 @@ class TrafficFlowTests:
             tft_output.extend(self._run_test_case(cfg_descr2))
         self._dump_result_to_log(tft_output, log_file=str(log_file))
 
-        if not self.evaluate_run_success(cfg_descr, log_file):
+        if not self.evaluate_run_success(cfg_descr, evaluator, log_file):
             logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")

@@ -171,15 +171,17 @@ def parse_args() -> argparse.Namespace:
         metavar="config",
         type=str,
         help='YAML configuration file with tft test thresholds. See "eval-config.yaml". '
-        "The config can also contain a subset of the relevant configurations and skip validation "
-        "otherwise. This also means, the entire configuration can be empty (either an empty "
-        " YAML file or only '{}'). Also, the filename can be '' to indicate a completely "
+        "The configuration can also contain only a subset of the relevant configurations. "
+        "Evaluation will successfully pass if thresholds as missing. "
+        "Also, the entire configuration can be empty (either an empty "
+        "YAML file or only '{}') or the filename can be '' to indicate a completely "
         "empty configuration.",
     )
     parser.add_argument(
         "logs",
         type=str,
-        help='Result file from ocp-traffic-flow-tests. This defaults to "./ft-logs/$TIMESTAMP.json".',
+        help='Result file from ocp-traffic-flow-tests. This file is usually written as "./ft-logs/$TIMESTAMP.json" '
+        "by the test tool.",
     )
     parser.add_argument(
         "output",

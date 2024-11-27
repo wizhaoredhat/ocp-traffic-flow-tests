@@ -6,8 +6,9 @@ from pathlib import Path
 
 from ktoolbox import common
 
-from testConfig import TestConfig
+from evaluator import Evaluator
 from testConfig import ConfigDescriptor
+from testConfig import TestConfig
 from trafficFlowTests import TrafficFlowTests
 
 
@@ -20,17 +21,21 @@ def parse_args() -> argparse.Namespace:
         "config",
         metavar="config",
         type=str,
-        help="YAML file with test configuration (see config.yaml)",
+        help='YAML file with test configuration (see "config.yaml").',
     )
     parser.add_argument(
         "evaluator_config",
         nargs="?",
         metavar="evaluator_config",
         type=str,
-        help="YAML file with configuration for scoring test results (see eval-config.yaml). "
+        help='YAML file with configuration for scoring test results (see "eval-config.yaml"). '
         "This parameter is optional. If provided, this effectively runs "
-        "./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` on "
-        "the result file. You can run this step separately.",
+        "`./evaluator.py ${evaluator_config} ${test_result} ${evaluator_result}` on "
+        "the result file. You can run this step separately. The eval config can contain only a subset "
+        "of the relevant configurations and skip validation otherwise. "
+        "This also means, the entire configuration can be empty (either an empty "
+        " YAML file or only '{}'). Also, the filename can be '' to indicate a completely "
+        "empty configuration.",
     )
     parser.add_argument(
         "-o",
@@ -66,8 +71,10 @@ def main() -> None:
     )
     tft = TrafficFlowTests()
 
+    evaluator = Evaluator(config_path=tc.evaluator_config)
+
     for cfg_descr in ConfigDescriptor(tc).describe_all_tft():
-        tft.test_run(cfg_descr)
+        tft.test_run(cfg_descr, evaluator)
 
 
 if __name__ == "__main__":
