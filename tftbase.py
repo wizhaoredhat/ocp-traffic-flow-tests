@@ -7,7 +7,6 @@ import os
 import shlex
 import typing
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -342,14 +341,101 @@ class TftResult:
     def eval_all_success(self) -> bool:
         return self.eval_flow_test_success and self.eval_plugins_success
 
-    @staticmethod
-    def group_by_success(
-        tft_results: Iterable["TftResult"],
-    ) -> tuple[list["TftResult"], list["TftResult"]]:
-        tft_results = list(tft_results)
 
-        group_success = [o for o in tft_results if o.eval_all_success]
-        group_fail = [o for o in tft_results if not o.eval_all_success]
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class TftResults:
+    lst: tuple[TftResult, ...]
+
+    TFT_TESTS: typing.ClassVar[str] = "tft-tests"
+
+    def __iter__(self) -> typing.Iterator[TftResult]:
+        return iter(self.lst)
+
+    def __len__(self) -> int:
+        return len(self.lst)
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            TftResults.TFT_TESTS: [common.dataclass_to_dict(o) for o in self],
+        }
+
+    def serialize_to_file(
+        self,
+        filename: str | Path,
+    ) -> None:
+        out = self.serialize()
+        with open(filename, "w") as f:
+            json.dump(out, f)
+
+    @staticmethod
+    def parse(
+        data: Any,
+        *,
+        filename: Optional[str | Path] = None,
+    ) -> "TftResults":
+
+        err = "data"
+        if filename is not None:
+            # The filename is only used for the error message.
+            err = f"file {repr(str(filename))}"
+
+        if not isinstance(data, dict):
+            raise RuntimeError(f"{err} needs to contain a dictionary")
+
+        if TftResults.TFT_TESTS not in data:
+            raise RuntimeError(f'{err} needs a top level key "{TftResults.TFT_TESTS}"')
+
+        k = list(data)
+        k.remove(TftResults.TFT_TESTS)
+        if k:
+            raise RuntimeError(f'{err} has unknown top level key "{k[0]}"')
+
+        data_tft_tests = data[TftResults.TFT_TESTS]
+
+        if not isinstance(data_tft_tests, list):
+            raise RuntimeError(
+                f'{err} needs a list at top level key "{TftResults.TFT_TESTS}" but has {type(data)}'
+            )
+
+        lst: list[TftResult] = []
+        for data_tft_test in data_tft_tests:
+            try:
+                result = common.dataclass_from_dict(TftResult, data_tft_test)
+            except Exception as e:
+                raise RuntimeError(f"{err} has invalid data: {e}")
+            lst.append(result)
+
+        for r_idx, result in enumerate(lst):
+            for plugin_output in result.plugins:
+                try:
+                    plugin_output.plugin
+                except ValueError:
+                    raise RuntimeError(
+                        f'{err} has invalid plugin name "{plugin_output.plugin_metadata.plugin_name}" in result #{r_idx}'
+                    )
+
+        return TftResults(lst=tuple(lst))
+
+    @staticmethod
+    def parse_from_file(filename: str | Path) -> "TftResults":
+        try:
+            f = open(filename, "r")
+        except Exception as e:
+            raise RuntimeError(f"cannot load file {filename}: {e}")
+        try:
+            data = json.load(f)
+        except Exception:
+            raise RuntimeError(f"File {filename} does not contain valid JSON")
+        finally:
+            f.close()
+
+        return TftResults.parse(data, filename=filename)
+
+    def group_by_success(self) -> tuple["TftResults", "TftResults"]:
+
+        group_success = [o for o in self if o.eval_all_success]
+        group_fail = [o for o in self if not o.eval_all_success]
 
         def _key_fcn(o: TftResult) -> int:
             comp_val = 0
@@ -361,36 +447,17 @@ class TftResult:
 
         group_fail.sort(key=_key_fcn)
 
-        return group_success, group_fail
+        return (
+            TftResults(lst=tuple(group_success)),
+            TftResults(lst=tuple(group_fail)),
+        )
 
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class PassFailStatus:
-    """Pass/Fail ratio and result from evaluating a full tft Flow Test result
-
-    Attributes:
-        result: boolean representing whether the test was successful (100% passing)
-        num_passed: int number of test cases passed
-        num_failed: int number of test cases failed"""
-
-    result: bool
-    num_tft_passed: int
-    num_tft_failed: int
-    num_plugin_passed: int
-    num_plugin_failed: int
-
-    @staticmethod
-    def compute(
-        tft_results: Iterable[TftResult],
-    ) -> "PassFailStatus":
-        tft_results = list(tft_results)
-
+    def get_pass_fail_status(self) -> "PassFailStatus":
         tft_passing = 0
         tft_failing = 0
         plugin_passing = 0
         plugin_failing = 0
-        for result in tft_results:
+        for result in self:
             if result.eval_flow_test_success:
                 tft_passing += 1
             else:
@@ -408,6 +475,23 @@ class PassFailStatus:
             num_plugin_passed=plugin_passing,
             num_plugin_failed=plugin_failing,
         )
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class PassFailStatus:
+    """Pass/Fail ratio and result from evaluating a full tft Flow Test result
+
+    Attributes:
+        result: boolean representing whether the test was successful (100% passing)
+        num_passed: int number of test cases passed
+        num_failed: int number of test cases failed"""
+
+    result: bool
+    num_tft_passed: int
+    num_tft_failed: int
+    num_plugin_passed: int
+    num_plugin_failed: int
 
     def log(
         self,
@@ -644,87 +728,6 @@ def test_case_type_to_client_pod_type(
         return PodType.SRIOV
 
     return PodType.NORMAL
-
-
-def output_list_serialize(
-    tft_results: Iterable[TftResult],
-) -> dict[str, Any]:
-    return {
-        TFT_TESTS: [common.dataclass_to_dict(o) for o in tft_results],
-    }
-
-
-def output_list_serialize_file(
-    tft_results: Iterable[TftResult],
-    *,
-    filename: str | Path,
-) -> None:
-    out = output_list_serialize(tft_results)
-    with open(filename, "w") as f:
-        json.dump(out, f)
-
-
-def output_list_parse_file(filename: str | Path) -> list[TftResult]:
-    try:
-        f = open(filename, "r")
-    except Exception as e:
-        raise RuntimeError(f"cannot load file {filename}: {e}")
-    try:
-        data = json.load(f)
-    except Exception:
-        raise RuntimeError(f"File {filename} does not contain valid JSON")
-    finally:
-        f.close()
-
-    return output_list_parse(data, filename=filename)
-
-
-def output_list_parse(
-    data: Any,
-    *,
-    filename: Optional[str | Path] = None,
-) -> list[TftResult]:
-
-    err = "data"
-    if filename is not None:
-        err = f'file "{filename}'
-
-    if not isinstance(data, dict):
-        raise RuntimeError(f"{err} needs to contain a dictionary")
-
-    if TFT_TESTS not in data:
-        raise RuntimeError(f'{err} needs a top level key "{TFT_TESTS}"')
-
-    k = list(data)
-    k.remove(TFT_TESTS)
-    if k:
-        raise RuntimeError(f'{err} has unknown top level key "{k}"')
-
-    data_tft_tests = data[TFT_TESTS]
-
-    if not isinstance(data_tft_tests, list):
-        raise RuntimeError(
-            f'{err} needs a list at top level key "{k}" but has {type(data)}'
-        )
-
-    output_list: list[TftResult] = []
-    for data_tft_test in data_tft_tests:
-        try:
-            result = common.dataclass_from_dict(TftResult, data_tft_test)
-        except Exception as e:
-            raise RuntimeError(f"{err} has invalid data: {e}")
-        output_list.append(result)
-
-    for r_idx, result in enumerate(output_list):
-        for plugin_output in result.plugins:
-            try:
-                plugin_output.plugin
-            except ValueError:
-                raise RuntimeError(
-                    f'{err} has invalid plugin name "{plugin_output.plugin_metadata.plugin_name}" in result #{r_idx}'
-                )
-
-    return output_list
 
 
 if typing.TYPE_CHECKING:

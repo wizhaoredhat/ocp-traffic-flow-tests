@@ -5,7 +5,6 @@ import logging
 import sys
 import yaml
 
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +15,7 @@ import tftbase
 
 from tftbase import FlowTestOutput
 from tftbase import TftResult
+from tftbase import TftResults
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -86,23 +86,21 @@ class Evaluator:
 
     def eval(
         self,
-        tft_results: Iterable[TftResult],
-    ) -> list[TftResult]:
-        tft_results = list(tft_results)
-        return [
+        tft_results: TftResults,
+    ) -> TftResults:
+        lst = [
             self.eval_test_result(idx, tft_result)
             for idx, tft_result in enumerate(tft_results)
         ]
+        return TftResults(lst=tuple(lst))
 
     def eval_from_file(
         self,
         filename: str | Path,
-    ) -> list[TftResult]:
-        try:
-            tft_results = tftbase.output_list_parse_file(filename)
-        except Exception as e:
-            raise Exception(f"error parsing {filename}: {e}")
-        return self.eval(tft_results)
+    ) -> TftResults:
+        return self.eval(
+            TftResults.parse_from_file(filename),
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -155,9 +153,8 @@ def main() -> None:
     args = parse_args()
     evaluator = Evaluator(args.config)
     tft_results = evaluator.eval_from_file(args.logs)
-    tftbase.output_list_serialize_file(tft_results, filename=args.output)
-    result_status = tftbase.PassFailStatus.compute(tft_results)
-    result_status.log()
+    tft_results.serialize_to_file(args.output)
+    tft_results.get_pass_fail_status().log()
 
 
 if __name__ == "__main__":

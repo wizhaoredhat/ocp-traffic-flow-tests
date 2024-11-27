@@ -166,28 +166,24 @@ def test_output_list_parse(
 
     if not test_input_file.is_valid:
         with pytest.raises(RuntimeError):
-            tftbase.output_list_parse_file(filename)
+            tftbase.TftResults.parse_from_file(filename)
         # The file is invalid, but we can patch the content to make it valid.
         data = data.replace('"invalid_test_case_id"', '"POD_TO_POD_SAME_NODE"')
         data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
         data = data.replace('"invalid_pod_type"', '"SRIOV"')
 
-    def _check(output: list[tftbase.TftResult]) -> None:
-        assert isinstance(output, list)
-        assert output
-
     jdata = json.loads(data)
 
-    output = tftbase.output_list_parse(jdata, filename=filename)
-    _check(output)
+    output = tftbase.TftResults.parse(jdata, filename=filename)
+    assert isinstance(output, tftbase.TftResults)
 
     if test_input_file.is_valid:
-        output = tftbase.output_list_parse_file(filename)
-        _check(output)
+        output = tftbase.TftResults.parse_from_file(filename)
+        assert isinstance(output, tftbase.TftResults)
 
-    data2 = tftbase.output_list_serialize(output)
-    output2 = tftbase.output_list_parse(data2)
-    _check(output2)
+    data2 = output.serialize()
+    output2 = tftbase.TftResults.parse(data2)
+    assert isinstance(output2, tftbase.TftResults)
     assert output == output2
 
     outputfile = str(tmp_path / "outputfile.json")
@@ -202,8 +198,8 @@ def test_output_list_parse(
     else:
         assert os.path.exists(outputfile)
 
-        test_collection1 = tftbase.output_list_parse_file(outputfile)
-        assert isinstance(test_collection1, list)
+        test_collection1 = tftbase.TftResults.parse_from_file(outputfile)
+        assert isinstance(test_collection1, tftbase.TftResults)
         assert all(isinstance(o, tftbase.TftResult) for o in test_collection1)
 
         if test_input_file.expected_outputfile is not None:

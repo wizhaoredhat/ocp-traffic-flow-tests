@@ -6,13 +6,13 @@ from pathlib import Path
 from ktoolbox import host
 
 import testConfig
-import tftbase
 
 from evaluator import Evaluator
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
 from tftbase import TftResult
+from tftbase import TftResults
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -148,6 +148,12 @@ class TrafficFlowTests:
                 self._cleanup_previous_testspace(cfg_descr2)
         return tft_results
 
+    def _run_test_cases(self, cfg_descr: ConfigDescriptor) -> TftResults:
+        tft_results_lst: list[TftResult] = []
+        for cfg_descr2 in cfg_descr.describe_all_test_cases():
+            tft_results_lst.extend(self._run_test_case(cfg_descr2))
+        return TftResults(lst=tuple(tft_results_lst))
+
     def test_run(
         self,
         cfg_descr: ConfigDescriptor,
@@ -156,25 +162,24 @@ class TrafficFlowTests:
         test = cfg_descr.get_tft()
         self._configure_namespace(cfg_descr)
         self._cleanup_previous_testspace(cfg_descr)
+
         logger.info(f"Running test {test.name} for {test.duration} seconds")
-        tft_results: list[TftResult] = []
-        for cfg_descr2 in cfg_descr.describe_all_test_cases():
-            tft_results.extend(self._run_test_case(cfg_descr2))
+        tft_results = self._run_test_cases(cfg_descr)
 
         logger.info("Evaluating results of tests")
         tft_results = evaluator.eval(tft_results=tft_results)
-        result_status = tftbase.PassFailStatus.compute(tft_results)
+
+        result_status = tft_results.get_pass_fail_status()
         result_status.log()
 
         log_file = self._create_log_paths_from_tests(test)
 
         logger.info(f"Write results to {log_file}")
-        tftbase.output_list_serialize_file(tft_results, filename=log_file)
+        tft_results.serialize_to_file(log_file)
         # For backward compatiblity, still write the "-RESULTS" file. It's
         # mostly useless now as it's identical to the main file.
-        tftbase.output_list_serialize_file(
-            tft_results,
-            filename=log_file.parent / (str(log_file.stem) + "-RESULTS"),
+        tft_results.serialize_to_file(
+            log_file.parent / (str(log_file.stem) + "-RESULTS")
         )
 
         if not result_status.result:

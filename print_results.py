@@ -44,7 +44,7 @@ def print_tft_result(tft_result: tftbase.TftResult) -> None:
         print_plugin_output(plugin_output)
 
 
-def print_tft_results(tft_results: list[tftbase.TftResult]) -> None:
+def print_tft_results(tft_results: tftbase.TftResults) -> None:
     for tft_result in tft_results:
         print_tft_result(tft_result)
 
@@ -64,9 +64,9 @@ def main() -> None:
 
     common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
-    tft_results = tftbase.output_list_parse_file(args.result)
+    tft_results = tftbase.TftResults.parse_from_file(args.result)
 
-    group_success, group_fail = tftbase.TftResult.group_by_success(tft_results)
+    group_success, group_fail = tft_results.group_by_success()
 
     print(
         f"There are {len(group_success)} passing flows.{' Details:' if group_success else ''}"
