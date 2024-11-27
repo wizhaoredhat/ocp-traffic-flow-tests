@@ -24,9 +24,12 @@ logger = logging.getLogger("tft." + __name__)
 
 
 class Evaluator:
-    def __init__(self, config_path: str):
-        with open(config_path, encoding="utf-8") as file:
-            c = yaml.safe_load(file)
+    def __init__(self, config_path: Optional[str]):
+        if not config_path:
+            c = None
+        else:
+            with open(config_path, encoding="utf-8") as file:
+                c = yaml.safe_load(file)
 
         self.eval_config = evalConfig.Config.parse(c)
 
@@ -167,7 +170,11 @@ def parse_args() -> argparse.Namespace:
         "config",
         metavar="config",
         type=str,
-        help='YAML configuration file with tft test threshholds. See "eval-config.yaml".',
+        help='YAML configuration file with tft test thresholds. See "eval-config.yaml". '
+        "The config can also contain a subset of the relevant configurations and skip validation "
+        "otherwise. This also means, the entire configuration can be empty (either an empty "
+        " YAML file or only '{}'). Also, the filename can be '' to indicate a completely "
+        "empty configuration.",
     )
     parser.add_argument(
         "logs",
@@ -185,11 +192,11 @@ def parse_args() -> argparse.Namespace:
 
     common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
-    if not Path(args.config).exists():
+    if args.config and not Path(args.config).exists():
         logger.error(f"No config file found at {args.config}, exiting")
         sys.exit(-1)
 
-    if not Path(args.logs).exists():
+    if not args.logs or not Path(args.logs).exists():
         logger.error(f"Log file {args.logs} does not exist")
         sys.exit(-1)
 

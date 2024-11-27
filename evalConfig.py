@@ -136,7 +136,12 @@ class Config(StructParseBase):
     @staticmethod
     def parse(arg: Any) -> "Config":
         yamlpath = ""
-        vdict = common.structparse_check_strdict(arg, yamlpath)
+
+        if arg is None:
+            # An empty file is valid too. That shows up here as None.
+            vdict = {}
+        else:
+            vdict = common.structparse_check_strdict(arg, yamlpath)
 
         configs = {}
 
