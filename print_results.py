@@ -49,20 +49,26 @@ def print_tft_results(tft_results: tftbase.TftResults) -> None:
         print_tft_result(tft_result)
 
 
-def main() -> None:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Tool to prettify the TFT Flow test results"
     )
     parser.add_argument(
         "result",
         type=str,
-        help="The JSON result file from TFT Flow test",
+        help="The JSON result file from TFT Flow test.",
     )
     common.log_argparse_add_argument_verbose(parser)
 
     args = parser.parse_args()
 
     common.log_config_logger(args.verbose, "tft", "ktoolbox")
+
+    return args
+
+
+def main() -> None:
+    args = parse_args()
 
     tft_results = tftbase.TftResults.parse_from_file(args.result)
 
@@ -75,6 +81,7 @@ def main() -> None:
 
     if group_success:
         print("\n\n", end="")
+
     print(
         f"There are {len(group_fail)} failing flows.{' Details:' if group_fail else ''}"
     )
@@ -83,8 +90,9 @@ def main() -> None:
     if group_fail:
         print("Failures detected")
         sys.exit(1)
-    else:
-        print("No failures detected in results")
+
+    print("No failures detected in results")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
