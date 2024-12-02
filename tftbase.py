@@ -392,7 +392,8 @@ class TftResults:
     ) -> None:
         out = self.serialize()
         with open(filename, "w") as f:
-            json.dump(out, f)
+            json.dump(out, f, indent=2)
+            f.write("\n")
 
     @staticmethod
     def parse(
