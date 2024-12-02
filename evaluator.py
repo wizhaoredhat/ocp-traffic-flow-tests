@@ -24,12 +24,22 @@ logger = logging.getLogger("tft." + __name__)
 class Evaluator:
     def __init__(self, config_path: Optional[str]):
         if not config_path:
-            c = None
+            eval_config = evalConfig.Config.parse(None)
         else:
-            with open(config_path, encoding="utf-8") as file:
-                c = yaml.safe_load(file)
+            try:
+                with open(config_path, encoding="utf-8") as file:
+                    c = yaml.safe_load(file)
+            except Exception as e:
+                raise RuntimeError(f"Failure reading {repr(config_path)}: {e}")
 
-        self.eval_config = evalConfig.Config.parse(c)
+            try:
+                eval_config = evalConfig.Config.parse(c)
+            except ValueError as e:
+                raise ValueError(f"Failure parsing {repr(config_path)}: {e}")
+            except Exception as e:
+                raise RuntimeError(f"Failure loading {repr(config_path)}: {e}")
+
+        self.eval_config = eval_config
 
     def eval_flow_test_output(self, flow_test: FlowTestOutput) -> FlowTestOutput:
 
