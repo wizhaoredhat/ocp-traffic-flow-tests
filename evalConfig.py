@@ -4,6 +4,7 @@ from typing import Any
 
 from ktoolbox import common
 from ktoolbox.common import StructParseBase
+from ktoolbox.common import StructParseParseContext
 from ktoolbox.common import strict_dataclass
 
 import testType
@@ -18,13 +19,13 @@ class TestItem(StructParseBase):
     threshold: float
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "TestItem":
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
-            threshold = common.structparse_pop_float(*varg.for_key("threshold"))
+    def parse(pctx: StructParseParseContext) -> "TestItem":
+        with pctx.with_strdict() as varg:
+            threshold = common.structparse_pop_float(varg.for_key("threshold"))
 
         return TestItem(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             threshold=threshold,
         )
 
@@ -45,27 +46,27 @@ class TestCaseData(StructParseBase):
         return self.normal.threshold
 
     @staticmethod
-    def parse(yamlidx: int, yamlpath: str, arg: Any) -> "TestCaseData":
-        with common.structparse_with_strdict(arg, yamlpath) as varg:
+    def parse(pctx: StructParseParseContext) -> "TestCaseData":
+        with pctx.with_strdict() as varg:
 
             test_case_type = common.structparse_pop_enum(
-                *varg.for_key("id"),
+                varg.for_key("id"),
                 enum_type=TestCaseType,
             )
 
             normal = common.structparse_pop_obj(
-                *varg.for_key("Normal"),
+                varg.for_key("Normal"),
                 construct=TestItem.parse,
             )
 
             reverse = common.structparse_pop_obj(
-                *varg.for_key("Reverse"),
+                varg.for_key("Reverse"),
                 construct=TestItem.parse,
             )
 
         return TestCaseData(
-            yamlidx=yamlidx,
-            yamlpath=yamlpath,
+            yamlidx=pctx.yamlidx,
+            yamlpath=pctx.yamlpath,
             test_case_type=test_case_type,
             normal=normal,
             reverse=reverse,
@@ -107,11 +108,11 @@ class TestTypeData(StructParseBase):
         if not isinstance(arg, list):
             raise ValueError(f'"{yamlpath}": expects a list of test cases')
         test_cases = {}
-        for yamlidx2, arg2 in enumerate(arg):
-            c = TestCaseData.parse(yamlidx2, f"{yamlpath}[{yamlidx}]", arg2)
+        for pctx2 in StructParseParseContext.enumerate_list(yamlpath, arg):
+            c = TestCaseData.parse(pctx2)
             if c.test_case_type in test_cases:
                 raise ValueError(
-                    f'"{yamlpath}[{yamlidx2}]": duplicate key {c.test_case_type.name}'
+                    f'"{pctx2.yamlpath}": duplicate key {c.test_case_type.name}'
                 )
             test_cases[c.test_case_type] = c
 

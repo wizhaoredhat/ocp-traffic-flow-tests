@@ -3,4 +3,4 @@ jc
 jinja2
 paramiko
 pyserial
-git+https://github.com/thom311/ktoolbox@1d59ea4b5861fde27bc1e895378e8d23b52a92f7
+git+https://github.com/thom311/ktoolbox@73f6e6b3be475553c24cc2e2197dc6695f7e437d
