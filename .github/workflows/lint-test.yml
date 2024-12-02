@@ -39,7 +39,7 @@ jobs:
     - name: Type check with Mypy
       run: |
        mypy --version
-       mypy --strict --config-file mypy.ini .
+       mypy
     - name: Run tests with Pytest
       run: |
        pytest --version
