@@ -7,7 +7,6 @@ import os
 import shlex
 import typing
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -221,12 +220,24 @@ class TestMetadata:
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
+class EvalResult:
+    success: bool
+    msg: Optional[str] = None
+    bitrate_threshold: Optional[float] = None
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
 class BaseOutput:
     success: bool = True
     msg: Optional[str] = None
 
     @property
-    def err_msg(self) -> Optional[str]:
+    def eval_success(self) -> bool:
+        return self.eval_msg is None
+
+    @property
+    def eval_msg(self) -> Optional[str]:
         if self.success:
             return None
         if self.msg is not None:
@@ -258,6 +269,29 @@ class FlowTestOutput(AggregatableOutput):
     command: str
     result: dict[str, Any]
     bitrate_gbps: Bitrate
+    eval_result: Optional[EvalResult] = None
+
+    def clone(
+        self,
+        *,
+        eval_result: common._MISSING_TYPE | Optional[EvalResult] = common.MISSING,
+    ) -> "FlowTestOutput":
+        if isinstance(eval_result, common._MISSING_TYPE):
+            eval_result = self.eval_result
+        result: FlowTestOutput = dataclasses.replace(self, eval_result=eval_result)
+        return result
+
+    @property
+    def eval_msg(self) -> Optional[str]:
+        if not self.success:
+            if self.msg is not None:
+                return self.msg
+        elif self.eval_result is not None and not self.eval_result.success:
+            if self.eval_result.msg is not None:
+                return self.eval_result.msg
+        else:
+            return None
+        return "unspecified failure"
 
 
 @strict_dataclass
@@ -279,9 +313,37 @@ class PluginOutput(AggregatableOutput):
 
 @strict_dataclass
 @dataclass(kw_only=True)
-class TftAggregateOutput:
+class TftResultBuilder:
+    _flow_test: Optional[FlowTestOutput] = None
+    _plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
+
+    def set_flow_test(self, flow_test: FlowTestOutput) -> None:
+        if self._flow_test is not None:
+            raise RuntimeError("Cannot set multiple FlowTestOutput results")
+        self._flow_test = flow_test
+
+    def add_plugin(self, plugin_output: AggregatableOutput) -> PluginOutput:
+        if not isinstance(plugin_output, PluginOutput):
+            raise ValueError(
+                "Invalid parameter of type {type(plugin_output)} for add_plugin()"
+            )
+        self._plugins.append(plugin_output)
+        return plugin_output
+
+    def build(self) -> "TftResult":
+        if self._flow_test is None:
+            raise RuntimeError("Failed to collect a FlowTestOutput")
+        return TftResult(
+            flow_test=self._flow_test,
+            plugins=tuple(self._plugins),
+        )
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class TftResult:
     """Aggregated output of a single tft run. A single run of a trafficFlowTests._run_tests() will
-    pass a reference to an instance of TftAggregateOutput to each task to which the task will append
+    pass a reference to an instance of TftResult to each task to which the task will append
     it's respective output. A list of this class will be the expected format of input provided to
     evaluator.py.
 
@@ -290,8 +352,155 @@ class TftAggregateOutput:
         plugins: a list of objects derivated from type PluginOutput for each optional plugin to append
         resulting output to."""
 
-    flow_test: Optional[FlowTestOutput] = None
-    plugins: list[PluginOutput] = dataclasses.field(default_factory=list)
+    flow_test: FlowTestOutput
+    plugins: tuple[PluginOutput, ...]
+
+    @property
+    def eval_flow_test_success(self) -> bool:
+        return self.flow_test.eval_success
+
+    @property
+    def eval_plugins_success(self) -> bool:
+        return all(p.eval_success for p in self.plugins)
+
+    @property
+    def eval_all_success(self) -> bool:
+        return self.eval_flow_test_success and self.eval_plugins_success
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class TftResults:
+    lst: tuple[TftResult, ...]
+
+    TFT_TESTS: typing.ClassVar[str] = "tft-tests"
+
+    def __iter__(self) -> typing.Iterator[TftResult]:
+        return iter(self.lst)
+
+    def __len__(self) -> int:
+        return len(self.lst)
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            TftResults.TFT_TESTS: [common.dataclass_to_dict(o) for o in self],
+        }
+
+    def serialize_to_file(
+        self,
+        filename: str | Path,
+    ) -> None:
+        out = self.serialize()
+        with open(filename, "w") as f:
+            json.dump(out, f)
+
+    @staticmethod
+    def parse(
+        data: Any,
+        *,
+        filename: Optional[str | Path] = None,
+    ) -> "TftResults":
+
+        err = "data"
+        if filename is not None:
+            # The filename is only used for the error message.
+            err = f"file {repr(str(filename))}"
+
+        if not isinstance(data, dict):
+            raise RuntimeError(f"{err} needs to contain a dictionary")
+
+        if TftResults.TFT_TESTS not in data:
+            raise RuntimeError(f'{err} needs a top level key "{TftResults.TFT_TESTS}"')
+
+        k = list(data)
+        k.remove(TftResults.TFT_TESTS)
+        if k:
+            raise RuntimeError(f'{err} has unknown top level key "{k[0]}"')
+
+        data_tft_tests = data[TftResults.TFT_TESTS]
+
+        if not isinstance(data_tft_tests, list):
+            raise RuntimeError(
+                f'{err} needs a list at top level key "{TftResults.TFT_TESTS}" but has {type(data)}'
+            )
+
+        lst: list[TftResult] = []
+        for data_tft_test in data_tft_tests:
+            try:
+                result = common.dataclass_from_dict(TftResult, data_tft_test)
+            except Exception as e:
+                raise RuntimeError(f"{err} has invalid data: {e}")
+            lst.append(result)
+
+        for r_idx, result in enumerate(lst):
+            for plugin_output in result.plugins:
+                try:
+                    plugin_output.plugin
+                except ValueError:
+                    raise RuntimeError(
+                        f'{err} has invalid plugin name "{plugin_output.plugin_metadata.plugin_name}" in result #{r_idx}'
+                    )
+
+        return TftResults(lst=tuple(lst))
+
+    @staticmethod
+    def parse_from_file(filename: str | Path) -> "TftResults":
+        try:
+            f = open(filename, "r")
+        except Exception as e:
+            raise RuntimeError(f"cannot load file {filename}: {e}")
+        try:
+            data = json.load(f)
+        except Exception:
+            raise RuntimeError(f"File {filename} does not contain valid JSON")
+        finally:
+            f.close()
+
+        return TftResults.parse(data, filename=filename)
+
+    def group_by_success(self) -> tuple["TftResults", "TftResults"]:
+
+        group_success = [o for o in self if o.eval_all_success]
+        group_fail = [o for o in self if not o.eval_all_success]
+
+        def _key_fcn(o: TftResult) -> int:
+            comp_val = 0
+            if o.eval_flow_test_success:
+                comp_val += 10
+            if o.eval_plugins_success:
+                comp_val += 1
+            return comp_val
+
+        group_fail.sort(key=_key_fcn)
+
+        return (
+            TftResults(lst=tuple(group_success)),
+            TftResults(lst=tuple(group_fail)),
+        )
+
+    def get_pass_fail_status(self) -> "PassFailStatus":
+        tft_passing = 0
+        tft_failing = 0
+        plugin_passing = 0
+        plugin_failing = 0
+        for result in self:
+            if result.eval_flow_test_success:
+                tft_passing += 1
+            else:
+                tft_failing += 1
+            for plugin in result.plugins:
+                if plugin.eval_success:
+                    plugin_passing += 1
+                else:
+                    plugin_failing += 1
+
+        return PassFailStatus(
+            result=tft_failing + plugin_failing == 0,
+            num_tft_passed=tft_passing,
+            num_tft_failed=tft_failing,
+            num_plugin_passed=plugin_passing,
+            num_plugin_failed=plugin_failing,
+        )
 
 
 @strict_dataclass
@@ -310,149 +519,16 @@ class PassFailStatus:
     num_plugin_passed: int
     num_plugin_failed: int
 
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class TestResult:
-    """Result of a single test case run
-
-    Attributes:
-        tft_metadata: information about which test ran
-        success: boolean representing whether the test passed or failed
-        birate_gbps: Bitrate namedtuple containing the resulting rx and tx bitrate in Gbps
-    """
-
-    tft_metadata: TestMetadata
-    success: bool
-    msg: Optional[str] = None
-    bitrate_gbps: Bitrate
-    bitrate_threshold: Optional[float]
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class PluginResult:
-    """Result of a single plugin from a given run
-
-    Attributes:
-        plugin_name: the plugin
-        test_id: TestCaseType enum representing the type of traffic test (i.e. POD_TO_POD_SAME_NODE <1> )
-        test_type: TestType enum representing the traffic protocol (i.e. iperf_tcp)
-        reverse: Specify whether test is client->server or reversed server->client
-        success: boolean representing whether the test passed or failed
-    """
-
-    tft_metadata: TestMetadata
-    plugin_name: str
-    success: bool
-    msg: Optional[str]
-    plugin_output: PluginOutput
-
-
-@strict_dataclass
-@dataclass(frozen=True, kw_only=True)
-class TestResultCollection:
-    passing: list[TestResult]
-    failing: list[TestResult]
-    plugin_passing: list[PluginResult]
-    plugin_failing: list[PluginResult]
-
-    @staticmethod
-    def read_from_file(filename: str | Path) -> "TestResultCollection":
-        return common.dataclass_from_file(
-            TestResultCollection,
-            filename,
+    def log(
+        self,
+    ) -> None:
+        logger.info(f"RESULT: Success = {self.result}.")
+        logger.info(
+            f"  FlowTest results: Passed {self.num_tft_passed}/{self.num_tft_passed + self.num_tft_failed}"
         )
-
-
-@common.strict_dataclass
-@dataclasses.dataclass(frozen=True, kw_only=True, unsafe_hash=True)
-class GroupedResult:
-    tft_metadata: TestMetadata
-    test_results: list[TestResult] = dataclasses.field(
-        default_factory=list,
-        compare=False,
-    )
-    plugin_results: list[PluginResult] = dataclasses.field(
-        default_factory=list,
-        compare=False,
-    )
-
-    @property
-    def results_all_good(self) -> bool:
-        return all(test_result.success for test_result in self.test_results)
-
-    @property
-    def plugins_all_good(self) -> bool:
-        return all(plugin_result.success for plugin_result in self.plugin_results)
-
-    @property
-    def all_good(self) -> bool:
-        return self.results_all_good and self.plugins_all_good
-
-    @staticmethod
-    def _dict_get_or_default(
-        grouped_results: dict[TestMetadata, "GroupedResult"],
-        tft_metadata: TestMetadata,
-    ) -> "GroupedResult":
-        grouped_result = grouped_results.get(tft_metadata, None)
-        if grouped_result is None:
-            grouped_result = GroupedResult(tft_metadata=tft_metadata)
-            grouped_results[tft_metadata] = grouped_result
-        return grouped_result
-
-    @staticmethod
-    def _build_list(
-        test_results: TestResultCollection,
-    ) -> list["GroupedResult"]:
-        grouped_results: dict[TestMetadata, GroupedResult] = {}
-        for test_result in test_results.passing + test_results.failing:
-            grouped_result = GroupedResult._dict_get_or_default(
-                grouped_results,
-                test_result.tft_metadata,
-            )
-            grouped_result.test_results.append(test_result)
-        for plugin_result in test_results.plugin_passing + test_results.plugin_failing:
-            grouped_result = GroupedResult._dict_get_or_default(
-                grouped_results,
-                plugin_result.tft_metadata,
-            )
-            grouped_result.plugin_results.append(plugin_result)
-
-        return list(grouped_results.values())
-
-    @staticmethod
-    def _split_list(grouped_results: list["GroupedResult"]) -> tuple[
-        list["GroupedResult"],
-        list["GroupedResult"],
-    ]:
-        result_success = [
-            group_result for group_result in grouped_results if group_result.all_good
-        ]
-        result_failed = [
-            group_result
-            for group_result in grouped_results
-            if not group_result.all_good
-        ]
-
-        def _key_fcn(gr: GroupedResult) -> int:
-            if gr.results_all_good:
-                if gr.plugins_all_good:
-                    return 4
-                return 3
-            return 2
-
-        result_failed.sort(key=_key_fcn)
-
-        return result_success, result_failed
-
-    @staticmethod
-    def grouped_from(test_results: TestResultCollection) -> tuple[
-        list["GroupedResult"],
-        list["GroupedResult"],
-    ]:
-        lst = GroupedResult._build_list(test_results)
-        return GroupedResult._split_list(lst)
+        logger.info(
+            f"  Plugin results: Passed {self.num_plugin_passed}/{self.num_plugin_passed + self.num_plugin_failed}"
+        )
 
 
 class TestCaseTypInfo(typing.NamedTuple):
@@ -678,77 +754,6 @@ def test_case_type_to_client_pod_type(
         return PodType.SRIOV
 
     return PodType.NORMAL
-
-
-def output_list_serialize(
-    tft_output: Iterable[TftAggregateOutput],
-) -> dict[str, Any]:
-    return {
-        TFT_TESTS: [common.dataclass_to_dict(o) for o in tft_output],
-    }
-
-
-def output_list_parse_file(filename: str | Path) -> list[TftAggregateOutput]:
-    try:
-        f = open(filename, "r")
-    except Exception as e:
-        raise RuntimeError(f"cannot load file {filename}: {e}")
-    try:
-        data = json.load(f)
-    except Exception:
-        raise RuntimeError(f"File {filename} does not contain valid JSON")
-    finally:
-        f.close()
-
-    return output_list_parse(data, filename=filename)
-
-
-def output_list_parse(
-    data: Any,
-    *,
-    filename: Optional[str | Path] = None,
-) -> list[TftAggregateOutput]:
-
-    err = "data"
-    if filename is not None:
-        err = f'file "{filename}'
-
-    if not isinstance(data, dict):
-        raise RuntimeError(f"{err} needs to contain a dictionary")
-
-    if TFT_TESTS not in data:
-        raise RuntimeError(f'{err} needs a top level key "{TFT_TESTS}"')
-
-    k = list(data)
-    k.remove(TFT_TESTS)
-    if k:
-        raise RuntimeError(f'{err} has unknown top level key "{k}"')
-
-    data_tft_tests = data[TFT_TESTS]
-
-    if not isinstance(data_tft_tests, list):
-        raise RuntimeError(
-            f'{err} needs a list at top level key "{k}" but has {type(data)}'
-        )
-
-    output_list: list[TftAggregateOutput] = []
-    for data_tft_test in data_tft_tests:
-        try:
-            result = common.dataclass_from_dict(TftAggregateOutput, data_tft_test)
-        except Exception as e:
-            raise RuntimeError(f"{err} has invalid data: {e}")
-        output_list.append(result)
-
-    for r_idx, result in enumerate(output_list):
-        for plugin_output in result.plugins:
-            try:
-                plugin_output.plugin
-            except ValueError:
-                raise RuntimeError(
-                    f'{err} has invalid plugin name "{plugin_output.plugin_metadata.plugin_name}" in result #{r_idx}'
-                )
-
-    return output_list
 
 
 if typing.TYPE_CHECKING:

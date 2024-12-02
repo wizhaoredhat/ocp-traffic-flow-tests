@@ -2,6 +2,7 @@ import dataclasses
 import filecmp
 import json
 import os
+import pathlib
 import pytest
 import subprocess
 import sys
@@ -11,12 +12,11 @@ from pathlib import Path
 from typing import Any
 from typing import Optional
 
-from ktoolbox import common
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import evalConfig  # noqa: E402
 import evaluator  # noqa: E402
+import testType  # noqa: E402
 import tftbase  # noqa: E402
 
 Evaluator = evaluator.Evaluator
@@ -166,28 +166,24 @@ def test_output_list_parse(
 
     if not test_input_file.is_valid:
         with pytest.raises(RuntimeError):
-            tftbase.output_list_parse_file(filename)
+            tftbase.TftResults.parse_from_file(filename)
         # The file is invalid, but we can patch the content to make it valid.
         data = data.replace('"invalid_test_case_id"', '"POD_TO_POD_SAME_NODE"')
         data = data.replace('"invalid_test_type"', '"IPERF_TCP"')
         data = data.replace('"invalid_pod_type"', '"SRIOV"')
 
-    def _check(output: list[tftbase.TftAggregateOutput]) -> None:
-        assert isinstance(output, list)
-        assert output
-
     jdata = json.loads(data)
 
-    output = tftbase.output_list_parse(jdata, filename=filename)
-    _check(output)
+    output = tftbase.TftResults.parse(jdata, filename=filename)
+    assert isinstance(output, tftbase.TftResults)
 
     if test_input_file.is_valid:
-        output = tftbase.output_list_parse_file(filename)
-        _check(output)
+        output = tftbase.TftResults.parse_from_file(filename)
+        assert isinstance(output, tftbase.TftResults)
 
-    data2 = tftbase.output_list_serialize(output)
-    output2 = tftbase.output_list_parse(data2)
-    _check(output2)
+    data2 = output.serialize()
+    output2 = tftbase.TftResults.parse(data2)
+    assert isinstance(output2, tftbase.TftResults)
     assert output == output2
 
     outputfile = str(tmp_path / "outputfile.json")
@@ -202,10 +198,9 @@ def test_output_list_parse(
     else:
         assert os.path.exists(outputfile)
 
-        test_collection1 = common.dataclass_from_file(
-            tftbase.TestResultCollection, outputfile
-        )
-        assert isinstance(test_collection1, tftbase.TestResultCollection)
+        test_collection1 = tftbase.TftResults.parse_from_file(outputfile)
+        assert isinstance(test_collection1, tftbase.TftResults)
+        assert all(isinstance(o, tftbase.TftResult) for o in test_collection1)
 
         if test_input_file.expected_outputfile is not None:
             assert filecmp.cmp(
@@ -215,3 +210,41 @@ def test_output_list_parse(
 
         res = _run_print_results(outputfile)
         assert res.returncode in (0, 1)
+
+
+def test_evaluator_1(tmp_path: pathlib.Path) -> None:
+    def _assert_is_empty(evaluator: Evaluator) -> None:
+        assert isinstance(evaluator, Evaluator)
+        assert isinstance(evaluator.eval_config, evalConfig.Config)
+        assert evaluator.eval_config.configs == {}
+
+    _assert_is_empty(Evaluator(None))
+    _assert_is_empty(Evaluator(""))
+
+    tmp_file = tmp_path / "tmp-eval-config.yaml"
+
+    with open(tmp_file, "w") as f:
+        f.write("")
+    _assert_is_empty(Evaluator(str(tmp_file)))
+
+    with open(tmp_file, "w") as f:
+        f.write("{}\n")
+    _assert_is_empty(Evaluator(str(tmp_file)))
+
+    with open(tmp_file, "w") as f:
+        f.write("[]\n")
+    with pytest.raises(ValueError):
+        Evaluator(str(tmp_file))
+
+    with open(tmp_file, "w") as f:
+        f.write("'1': []\n")
+    evaluator = Evaluator(str(tmp_file))
+    assert evaluator.eval_config.configs == {
+        TestType.IPERF_TCP: evalConfig.TestTypeData(
+            yamlpath=".IPERF_TCP",
+            yamlidx=0,
+            test_type=TestType.IPERF_TCP,
+            test_cases={},
+            test_type_handler=testType.TestTypeHandler.get(TestType.IPERF_TCP),
+        ),
+    }

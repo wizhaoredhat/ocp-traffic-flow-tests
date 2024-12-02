@@ -4,42 +4,59 @@ import argparse
 import sys
 import traceback
 
+from typing import Optional
+
 from ktoolbox import common
 
 import tftbase
 
 
-def print_result(test_result: tftbase.TestResult) -> None:
-    if not test_result.success:
-        msg = f"failed: {test_result.msg or 'unspecified failure'}"
+def print_flow_test_output(test_output: Optional[tftbase.FlowTestOutput]) -> None:
+    if test_output is None:
+        print("Test ID: Unknown test")
+        return
+    if not test_output.eval_success:
+        msg = f"failed: {test_output.eval_msg}"
     else:
         msg = "succeeded"
     print(
-        f"Test ID: {test_result.tft_metadata.test_case_id.name}, "
-        f"Test Type: {test_result.tft_metadata.test_type.name}, "
-        f"Reverse: {common.bool_to_str(test_result.tft_metadata.reverse)}, "
-        f"TX Bitrate: {test_result.bitrate_gbps.tx} Gbps, "
-        f"RX Bitrate: {test_result.bitrate_gbps.rx} Gbps, "
+        f"Test ID: {test_output.tft_metadata.test_case_id.name}, "
+        f"Test Type: {test_output.tft_metadata.test_type.name}, "
+        f"Reverse: {common.bool_to_str(test_output.tft_metadata.reverse)}, "
+        f"TX Bitrate: {test_output.bitrate_gbps.tx} Gbps, "
+        f"RX Bitrate: {test_output.bitrate_gbps.rx} Gbps, "
         f"{msg}"
     )
 
 
-def print_plugin_result(plugin_result: tftbase.PluginResult) -> None:
-    if not plugin_result.success:
-        msg = f"failed: {plugin_result.msg or 'unspecified failure'}"
+def print_plugin_output(plugin_output: tftbase.PluginOutput) -> None:
+    msg = f"failed: {plugin_output.eval_msg}"
+    if not plugin_output.eval_success:
+        msg = f"failed: {plugin_output.eval_msg}"
     else:
         msg = "succeeded"
-    print("     " f"plugin {plugin_result.plugin_name}, " f"{msg}")
+    print("     " f"plugin {plugin_output.plugin_metadata.plugin_name}, " f"{msg}")
 
 
-def main() -> None:
+def print_tft_result(tft_result: tftbase.TftResult) -> None:
+    print_flow_test_output(tft_result.flow_test)
+    for plugin_output in tft_result.plugins:
+        print_plugin_output(plugin_output)
+
+
+def print_tft_results(tft_results: tftbase.TftResults) -> None:
+    for tft_result in tft_results:
+        print_tft_result(tft_result)
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Tool to prettify the TFT Flow test results"
     )
     parser.add_argument(
         "result",
         type=str,
-        help="The JSON result file from TFT Flow test",
+        help="The JSON result file from TFT Flow test.",
     )
     common.log_argparse_add_argument_verbose(parser)
 
@@ -47,35 +64,35 @@ def main() -> None:
 
     common.log_config_logger(args.verbose, "tft", "ktoolbox")
 
-    test_results = tftbase.TestResultCollection.read_from_file(args.result)
+    return args
 
-    group_passing, group_failing = tftbase.GroupedResult.grouped_from(test_results)
+
+def main() -> None:
+    args = parse_args()
+
+    tft_results = tftbase.TftResults.parse_from_file(args.result)
+
+    group_success, group_fail = tft_results.group_by_success()
 
     print(
-        f"There are {len(group_passing)} passing flows.{' Details:' if group_passing else ''}"
+        f"There are {len(group_success)} passing flows.{' Details:' if group_success else ''}"
     )
-    for group in group_passing:
-        for test_result in group.test_results:
-            print_result(test_result)
-        for plugin_result in group.plugin_results:
-            print_plugin_result(plugin_result)
+    print_tft_results(group_success)
 
-    if group_passing:
+    if group_success:
         print("\n\n", end="")
-    print(
-        f"There are {len(group_failing)} failing flows.{' Details:' if group_failing else ''}"
-    )
-    for group in group_failing:
-        for test_result in group.test_results:
-            print_result(test_result)
-        for plugin_result in group.plugin_results:
-            print_plugin_result(plugin_result)
 
-    if group_failing:
+    print(
+        f"There are {len(group_fail)} failing flows.{' Details:' if group_fail else ''}"
+    )
+    print_tft_results(group_fail)
+
+    if group_fail:
         print("Failures detected")
         sys.exit(1)
-    else:
-        print("No failures detected in results")
+
+    print("No failures detected in results")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

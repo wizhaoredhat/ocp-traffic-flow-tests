@@ -1,4 +1,3 @@
-import json
 import logging
 import task
 
@@ -13,7 +12,8 @@ from evaluator import Evaluator
 from task import Task
 from testConfig import ConfigDescriptor
 from testSettings import TestSettings
-from tftbase import TftAggregateOutput
+from tftbase import TftResult
+from tftbase import TftResults
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -60,40 +60,12 @@ class TrafficFlowTests:
         logger.info(f"Logs will be written to {log_file}")
         return log_file
 
-    def _dump_result_to_log(
-        self, tft_output: list[TftAggregateOutput], *, log_file: str
-    ) -> None:
-        out = tftbase.output_list_serialize(tft_output)
-        with open(log_file, "w") as f:
-            json.dump(out, f)
-
-    def evaluate_run_success(self, cfg_descr: ConfigDescriptor, log_file: Path) -> bool:
-        # For the result of every test run, check the status of each run log to
-        # ensure all test passed
-
-        if not cfg_descr.tc.evaluator_config:
-            return True
-
-        evaluator = Evaluator(cfg_descr.tc.evaluator_config)
-
-        logger.info(f"Evaluating results of tests {log_file}")
-        results_path = log_file.parent / (str(log_file.stem) + "-RESULTS")
-
-        test_results, plugin_results = evaluator.eval_log(log_file)
-
-        # Generate Resulting Json
-        logger.info(f"Dumping results to {results_path}")
-        evaluator.dump_to_json_file(results_path, test_results, plugin_results)
-
-        res = evaluator.log_pass_fail_status(test_results, plugin_results)
-        return res.result
-
     def _run_test_case_instance(
         self,
         cfg_descr: ConfigDescriptor,
         instance_index: int,
         reverse: bool = False,
-    ) -> TftAggregateOutput:
+    ) -> TftResult:
         connection = cfg_descr.get_connection()
 
         servers: list[task.ServerTask] = []
@@ -145,29 +117,29 @@ class TrafficFlowTests:
         for tasks in servers + clients + monitors:
             tasks.finish_setup()
 
-        tft_aggregate_output = TftAggregateOutput()
+        tft_result_builder = tftbase.TftResultBuilder()
 
         for tasks in servers + clients + monitors:
-            tasks.aggregate_output(tft_aggregate_output)
+            tasks.aggregate_output(tft_result_builder)
 
-        return tft_aggregate_output
+        return tft_result_builder.build()
 
-    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftAggregateOutput]:
+    def _run_test_case(self, cfg_descr: ConfigDescriptor) -> list[TftResult]:
         # TODO Allow for multiple connections / instances to run simultaneously
-        tft_output: list[TftAggregateOutput] = []
+        tft_results: list[TftResult] = []
         for cfg_descr2 in cfg_descr.describe_all_connections():
             connection = cfg_descr2.get_connection()
             logger.info(f"Starting {connection.name}")
             logger.info(f"Number Of Simultaneous connections {connection.instances}")
             for instance_index in range(connection.instances):
-                tft_output.append(
+                tft_results.append(
                     self._run_test_case_instance(
                         cfg_descr2,
                         instance_index=instance_index,
                     )
                 )
                 if connection.test_type_handler.can_run_reverse():
-                    tft_output.append(
+                    tft_results.append(
                         self._run_test_case_instance(
                             cfg_descr2,
                             instance_index=instance_index,
@@ -175,18 +147,41 @@ class TrafficFlowTests:
                         )
                     )
                 self._cleanup_previous_testspace(cfg_descr2)
-        return tft_output
+        return tft_results
 
-    def test_run(self, cfg_descr: ConfigDescriptor) -> None:
+    def _run_test_cases(self, cfg_descr: ConfigDescriptor) -> TftResults:
+        tft_results_lst: list[TftResult] = []
+        for cfg_descr2 in cfg_descr.describe_all_test_cases():
+            tft_results_lst.extend(self._run_test_case(cfg_descr2))
+        return TftResults(lst=tuple(tft_results_lst))
+
+    def test_run(
+        self,
+        cfg_descr: ConfigDescriptor,
+        evaluator: Evaluator,
+    ) -> None:
         test = cfg_descr.get_tft()
         self._configure_namespace(cfg_descr)
         self._cleanup_previous_testspace(cfg_descr)
-        log_file = self._create_log_paths_from_tests(test)
-        logger.info(f"Running test {test.name} for {test.duration} seconds")
-        tft_output: list[TftAggregateOutput] = []
-        for cfg_descr2 in cfg_descr.describe_all_test_cases():
-            tft_output.extend(self._run_test_case(cfg_descr2))
-        self._dump_result_to_log(tft_output, log_file=str(log_file))
 
-        if not self.evaluate_run_success(cfg_descr, log_file):
+        logger.info(f"Running test {test.name} for {test.duration} seconds")
+        tft_results = self._run_test_cases(cfg_descr)
+
+        logger.info("Evaluating results of tests")
+        tft_results = evaluator.eval(tft_results=tft_results)
+
+        result_status = tft_results.get_pass_fail_status()
+        result_status.log()
+
+        log_file = self._create_log_paths_from_tests(test)
+
+        logger.info(f"Write results to {log_file}")
+        tft_results.serialize_to_file(log_file)
+        # For backward compatiblity, still write the "-RESULTS" file. It's
+        # mostly useless now as it's identical to the main file.
+        tft_results.serialize_to_file(
+            log_file.parent / (str(log_file.stem) + "-RESULTS")
+        )
+
+        if not result_status.result:
             logger.error(f"Failure detected in {cfg_descr.get_tft().name} results")

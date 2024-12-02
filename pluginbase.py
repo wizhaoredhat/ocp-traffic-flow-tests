@@ -4,12 +4,10 @@ import typing
 
 from abc import ABC
 from abc import abstractmethod
-from typing import Optional
 
 from ktoolbox import common
 
 from tftbase import PluginOutput
-from tftbase import PluginResult
 from tftbase import TestMetadata
 
 
@@ -61,22 +59,18 @@ class Plugin(ABC):
         self,
         md: TestMetadata,
         plugin_output: PluginOutput,
-    ) -> Optional[PluginResult]:
-        if not plugin_output.success:
+    ) -> PluginOutput:
+        if not plugin_output.eval_success:
             logger.error(
-                f"{self.PLUGIN_NAME} plugin failed for {common.dataclass_to_json(md)}: {plugin_output.err_msg}"
+                f"{self.PLUGIN_NAME} plugin failed for {common.dataclass_to_json(md)}: {plugin_output.eval_msg}"
             )
         else:
             logger.debug(
                 f"{self.PLUGIN_NAME} plugin succeded for {common.dataclass_to_json(md)}"
             )
-        return PluginResult(
-            tft_metadata=md,
-            plugin_name=self.PLUGIN_NAME,
-            success=plugin_output.success,
-            msg=plugin_output.err_msg,
-            plugin_output=plugin_output,
-        )
+        # Currently this doesn't really do anything additionally. We already evaluated
+        # for success.
+        return plugin_output
 
 
 _plugin_registry_lock = threading.Lock()

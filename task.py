@@ -590,7 +590,7 @@ class Task(ABC):
         logger.info(f"Completing execution on {self.log_name}")
         self._result = self._task_operation.finish(timeout=self.get_duration() * 1.5)
 
-    def aggregate_output(self, out: tftbase.TftAggregateOutput) -> None:
+    def aggregate_output(self, tft_result_builder: tftbase.TftResultBuilder) -> None:
         if self._result is None:
             return
         if not isinstance(self._result, tftbase.AggregatableOutput):
@@ -600,9 +600,7 @@ class Task(ABC):
         result = self._result
 
         if isinstance(result, tftbase.FlowTestOutput):
-            if out.flow_test is not None:
-                raise RuntimeError("There can only be one FlowTestOutput")
-            out.flow_test = result
+            tft_result_builder.set_flow_test(result)
             if result.success:
                 log_level = logging.INFO
                 log_msg = "success"
@@ -618,12 +616,12 @@ class Task(ABC):
                 # _aggregate_output.
                 return
 
-        self._aggregate_output(result, out)
+        self._aggregate_output(result, tft_result_builder)
 
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
+        tft_result_builder: tftbase.TftResultBuilder,
     ) -> None:
         # This should never happen.
         #

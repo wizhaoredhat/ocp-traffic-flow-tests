@@ -92,9 +92,8 @@ class TaskMeasureCPU(PluginTask):
     def _aggregate_output(
         self,
         result: tftbase.AggregatableOutput,
-        out: tftbase.TftAggregateOutput,
+        tft_result_builder: tftbase.TftResultBuilder,
     ) -> None:
-        assert isinstance(result, PluginOutput)
-        out.plugins.append(result)
+        result = tft_result_builder.add_plugin(result)
         p_idle = result.result["percent_idle"]
         logger.info(f"Idle on {self.node_name} = {p_idle}%")
