@@ -2,8 +2,8 @@
 
 import argparse
 import logging
+import pathlib
 import sys
-import yaml
 
 from pathlib import Path
 from typing import Optional
@@ -22,24 +22,12 @@ logger = logging.getLogger("tft." + __name__)
 
 
 class Evaluator:
-    def __init__(self, config_path: Optional[str]):
-        if not config_path:
-            eval_config = evalConfig.Config.parse(None)
-        else:
-            try:
-                with open(config_path, encoding="utf-8") as file:
-                    c = yaml.safe_load(file)
-            except Exception as e:
-                raise RuntimeError(f"Failure reading {repr(config_path)}: {e}")
+    eval_config: evalConfig.Config
 
-            try:
-                eval_config = evalConfig.Config.parse(c)
-            except ValueError as e:
-                raise ValueError(f"Failure parsing {repr(config_path)}: {e}")
-            except Exception as e:
-                raise RuntimeError(f"Failure loading {repr(config_path)}: {e}")
-
-        self.eval_config = eval_config
+    def __init__(self, config: Optional[evalConfig.Config | str | pathlib.Path]):
+        if not isinstance(config, evalConfig.Config):
+            config = evalConfig.Config.parse_from_file(config)
+        self.eval_config = config
 
     def eval_flow_test_output(self, flow_test: FlowTestOutput) -> FlowTestOutput:
 

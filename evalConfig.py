@@ -1,6 +1,11 @@
+import os
+import pathlib
+import yaml
+
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import Optional
 
 from ktoolbox import common
 from ktoolbox.common import StructParseBase
@@ -132,9 +137,29 @@ class TestTypeData(StructParseBase):
 @dataclass(frozen=True, kw_only=True)
 class Config(StructParseBase):
     configs: Mapping[TestType, TestTypeData]
+    config_path: Optional[str]
+    configdir: str
+    cwddir: str
 
     @staticmethod
-    def parse(arg: Any) -> "Config":
+    def parse(
+        arg: Any,
+        *,
+        config_path: Optional[str] = None,
+        cwddir: str = ".",
+    ) -> "Config":
+
+        if not config_path:
+            config_path = None
+
+        cwddir = common.path_norm(cwddir, make_absolute=True)
+        config_path = common.path_norm(config_path, cwd=cwddir)
+
+        if config_path is not None:
+            configdir = os.path.dirname(config_path)
+        else:
+            configdir = cwddir
+
         yamlpath = ""
 
         if arg is None:
@@ -162,7 +187,41 @@ class Config(StructParseBase):
             yamlidx=0,
             yamlpath=yamlpath,
             configs=configs,
+            config_path=config_path,
+            configdir=configdir,
+            cwddir=cwddir,
         )
+
+    @staticmethod
+    def parse_from_file(
+        config_path: Optional[str | pathlib.Path] = None,
+        *,
+        cwddir: str = ".",
+    ) -> "Config":
+        yamldata: Any = None
+        errmsg_detail = ""
+
+        if not config_path:
+            config_path = None
+
+        cwddir = common.path_norm(cwddir, make_absolute=True)
+        config_path = common.path_norm(config_path, cwd=cwddir)
+
+        if config_path is not None:
+            config_path = str(config_path)
+            errmsg_detail = f" {repr(config_path)}"
+            try:
+                with open(config_path) as file:
+                    yamldata = yaml.safe_load(file)
+            except Exception as e:
+                raise RuntimeError(f"Failure reading{errmsg_detail}: {e}")
+
+        try:
+            return Config.parse(yamldata, config_path=config_path, cwddir=cwddir)
+        except ValueError as e:
+            raise ValueError(f"Failure parsing{errmsg_detail}: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failure loading{errmsg_detail}: {e}")
 
     def serialize(self) -> dict[str, Any]:
         return {k.name: v.serialize() for k, v in self.configs.items()}
