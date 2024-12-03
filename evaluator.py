@@ -39,7 +39,7 @@ class Evaluator:
 
         bitrate_threshold: Optional[float] = None
         if item is not None:
-            bitrate_threshold = item.threshold
+            bitrate_threshold = item.get_threshold()
 
         success = True
         msg: Optional[str] = None

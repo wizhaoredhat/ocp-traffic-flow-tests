@@ -4,7 +4,8 @@ IPERF_TCP:
     Normal:
       threshold: 18
     Reverse:
-      threshold: 18
+      threshold_rx: 18
+      threshold_tx: 18
   - id: 2 # POD_TO_POD_DIFF_NODE
     Normal:
       threshold: 18

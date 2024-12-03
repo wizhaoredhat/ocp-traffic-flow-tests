@@ -15,6 +15,7 @@ from ktoolbox.common import StructParseParseContext
 from ktoolbox.common import strict_dataclass
 
 import testType
+import tftbase
 
 from tftbase import TestCaseType
 from tftbase import TestType
@@ -23,24 +24,99 @@ from tftbase import TestType
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
 class TestItem(StructParseBase):
-    threshold: float
+    threshold_rx: Optional[float]
+    threshold_tx: Optional[float]
+
+    @property
+    def has_thresholds(self) -> bool:
+        return self.threshold_rx is not None or self.threshold_tx is not None
+
+    def get_threshold(
+        self,
+        *,
+        rx: Optional[bool] = None,
+        tx: Optional[bool] = None,
+    ) -> Optional[float]:
+        rx, tx = tftbase.eval_binary_opt_in(rx, tx)
+        if rx and tx:
+            # Either rx/tx is requested. We return the maximum for both.
+            if not self.has_thresholds:
+                return None
+            return max(
+                v for v in (self.threshold_rx, self.threshold_tx) if v is not None
+            )
+        elif rx:
+            return self.threshold_rx
+        elif tx:
+            return self.threshold_tx
+        else:
+            return None
 
     @staticmethod
     def parse(pctx: StructParseParseContext) -> "TestItem":
+        if pctx.arg is None:
+            return TestItem(
+                yamlidx=pctx.yamlidx,
+                yamlpath=pctx.yamlpath,
+                threshold_rx=None,
+                threshold_tx=None,
+            )
+
         with pctx.with_strdict() as varg:
-            threshold = common.structparse_pop_float(varg.for_key("threshold"))
+            threshold_rx = common.structparse_pop_float(
+                varg.for_key("threshold_rx"),
+                default=None,
+            )
+            threshold_tx = common.structparse_pop_float(
+                varg.for_key("threshold_tx"),
+                default=None,
+            )
+            threshold = common.structparse_pop_float(
+                varg.for_key("threshold"),
+                default=None,
+            )
+
+            if threshold_rx is None and threshold_tx is None:
+                if threshold is not None:
+                    threshold_rx = threshold
+                    threshold_tx = threshold
+            else:
+                if threshold is not None:
+                    raise pctx.value_error(
+                        f"Cannot set together with '{'threshold_rx' if threshold_rx is not None else 'threshold_tx'}'",
+                        key="threshold",
+                    )
 
         return TestItem(
             yamlidx=pctx.yamlidx,
             yamlpath=pctx.yamlpath,
-            threshold=threshold,
+            threshold_rx=threshold_rx,
+            threshold_tx=threshold_tx,
         )
 
     def serialize(self) -> dict[str, Any]:
-        t = self.threshold
-        if t == int(t):
-            t = int(t)
-        return {"threshold": t}
+        extra: dict[str, Any] = {}
+        if self.has_thresholds:
+
+            def _normalize(x: Optional[float]) -> Optional[int | float]:
+                if x is None:
+                    return None
+                if x == int(x):
+                    return int(x)
+                return x
+
+            if self.threshold_rx == self.threshold_tx:
+                common.dict_add_optional(
+                    extra, "threshold", _normalize(self.threshold_rx)
+                )
+            else:
+                common.dict_add_optional(
+                    extra, "threshold_rx", _normalize(self.threshold_rx)
+                )
+                common.dict_add_optional(
+                    extra, "threshold_tx", _normalize(self.threshold_tx)
+                )
+        return extra
 
 
 @strict_dataclass
@@ -71,11 +147,13 @@ class TestCaseData(StructParseBase):
             normal = common.structparse_pop_obj(
                 varg.for_key("Normal"),
                 construct=TestItem.parse,
+                construct_default=True,
             )
 
             reverse = common.structparse_pop_obj(
                 varg.for_key("Reverse"),
                 construct=TestItem.parse,
+                construct_default=True,
             )
 
         return TestCaseData(
@@ -87,10 +165,14 @@ class TestCaseData(StructParseBase):
         )
 
     def serialize(self) -> dict[str, Any]:
+        extra: dict[str, Any] = {}
+        if self.normal.has_thresholds:
+            common.dict_add_optional(extra, "Normal", self.normal.serialize())
+        if self.reverse.has_thresholds:
+            common.dict_add_optional(extra, "Reverse", self.reverse.serialize())
         return {
             "id": self.test_case_type.name,
-            "Normal": self.normal.serialize(),
-            "Reverse": self.reverse.serialize(),
+            **extra,
         }
 
 
