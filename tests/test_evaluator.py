@@ -112,7 +112,7 @@ def test_eval_config(test_eval_config: str) -> None:
     assert (
         c.configs[TestType.IPERF_UDP]
         .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
-        .normal.threshold
+        .normal.get_threshold()
         == 5
     )
 
