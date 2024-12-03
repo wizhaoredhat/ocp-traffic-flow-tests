@@ -40,6 +40,7 @@ EVAL_CONFIG_FILE = _source_file("eval-config.yaml")
 
 EVALUATOR_EXEC = _source_file("evaluator.py")
 PRINT_RESULTS_EXEC = _source_file("print_results.py")
+GENERATE_EVAL_CONFIG_EXEC = _source_file("generate_eval_config.py")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -92,6 +93,24 @@ def _run_evaluator(filename: str, outfile: str) -> subprocess.CompletedProcess[s
             filename,
             outfile,
         ]
+    )
+
+
+def _run_generate_eval_config(
+    args: list[str],
+    output: str | pathlib.Path,
+    *,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    return _run_subprocess(
+        [
+            sys.executable,
+            GENERATE_EVAL_CONFIG_EXEC,
+            *args,
+            "-o",
+            str(output),
+        ],
+        check=check,
     )
 
 
@@ -266,3 +285,60 @@ def test_evaluator_1(tmp_path: pathlib.Path) -> None:
             test_type_handler=testType.TestTypeHandler.get(TestType.IPERF_TCP),
         ),
     }
+
+
+def test_generate_eval_config(tmp_path: pathlib.Path) -> None:
+
+    tmp_file = tmp_path / "tmp-eval-config0.yaml"
+
+    _run_generate_eval_config(
+        [
+            "--config",
+            EVAL_CONFIG_FILE,
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output0.yaml"))
+
+    tmp_file = tmp_path / "tmp-eval-config.yaml"
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output1.yaml"))
+
+    res = _run_generate_eval_config(
+        [],
+        str(tmp_file),
+        check=False,
+    )
+    assert res.returncode == 55
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+            "--config",
+            EVAL_CONFIG_FILE,
+            "--force",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output2.yaml"))
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+            "--config",
+            EVAL_CONFIG_FILE,
+            "--tighten-only",
+            "--force",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output3.yaml"))
