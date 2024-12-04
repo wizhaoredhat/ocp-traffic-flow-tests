@@ -18,6 +18,7 @@ from ktoolbox.common import strict_dataclass
 import testType
 import tftbase
 
+from tftbase import Bitrate
 from tftbase import TestCaseType
 from tftbase import TestType
 
@@ -73,9 +74,21 @@ class TestItem(StructParseBase):
     threshold_rx: Optional[float]
     threshold_tx: Optional[float]
 
+    def _post_check(self) -> None:
+        object.__setattr__(
+            self,
+            "_bitrate",
+            Bitrate(rx=self.threshold_rx, tx=self.threshold_tx),
+        )
+
     @property
     def has_thresholds(self) -> bool:
         return self.threshold_rx is not None or self.threshold_tx is not None
+
+    @property
+    def bitrate(self) -> Bitrate:
+        bitrate: Bitrate = getattr(self, "_bitrate")
+        return bitrate
 
     def get_threshold(
         self,

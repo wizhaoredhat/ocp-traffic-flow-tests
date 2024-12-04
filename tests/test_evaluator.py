@@ -109,6 +109,20 @@ def test_eval_config(test_eval_config: str) -> None:
 
     c = evalConfig.Config.parse(conf_dict)
 
+    item = (
+        c.configs[TestType.IPERF_UDP]
+        .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
+        .normal
+    )
+
+    assert item is c.get_item(
+        test_type=TestType.IPERF_UDP,
+        test_case_id=TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE,
+        is_reverse=False,
+    )
+    assert item.get_threshold() == 5
+    assert item.bitrate == tftbase.Bitrate(rx=5, tx=5)
+
     assert (
         c.configs[TestType.IPERF_UDP]
         .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
