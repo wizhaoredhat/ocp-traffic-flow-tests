@@ -191,6 +191,10 @@ class Bitrate:
         if not self._valid_x(self.rx):
             raise ValueError("rx is not a valid bitrange")
 
+    @property
+    def is_na(self) -> bool:
+        return self.tx is None and self.rx is None
+
     def is_passing(
         self,
         threshold: Optional[float],
@@ -208,6 +212,16 @@ class Bitrate:
             if self.rx is not None and self.rx < threshold:
                 return False
         return True
+
+    @property
+    def pretty_str(self) -> str:
+        return f"[rx={self.rx},tx={self.tx}]"
+
+    @staticmethod
+    def get_pretty_str(bitrate: Optional["Bitrate"]) -> str:
+        if bitrate is None:
+            return "None"
+        return bitrate.pretty_str
 
 
 Bitrate.NA = Bitrate()
