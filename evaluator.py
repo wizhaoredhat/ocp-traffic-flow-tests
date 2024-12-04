@@ -37,9 +37,11 @@ class Evaluator:
             is_reverse=flow_test.tft_metadata.reverse,
         )
 
-        bitrate_threshold: Optional[float] = None
+        bitrate_threshold_rx: Optional[float] = None
+        bitrate_threshold_tx: Optional[float] = None
         if item is not None:
-            bitrate_threshold = item.get_threshold()
+            bitrate_threshold_rx = item.get_threshold(rx=True)
+            bitrate_threshold_tx = item.get_threshold(tx=True)
 
         success = True
         msg: Optional[str] = None
@@ -49,15 +51,19 @@ class Evaluator:
                 msg = f"Run failed: {flow_test.msg}"
             else:
                 msg = "Run failed for unspecified reason"
-        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold):
+        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold_rx, rx=True):
             success = False
-            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below threshold {bitrate_threshold}"
+            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below RX threshold {bitrate_threshold_rx}"
+        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold_tx, tx=True):
+            success = False
+            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below TX threshold {bitrate_threshold_tx}"
 
         return flow_test.clone(
             eval_result=tftbase.EvalResult(
                 success=success,
                 msg=msg,
-                bitrate_threshold=bitrate_threshold,
+                bitrate_threshold_rx=bitrate_threshold_rx,
+                bitrate_threshold_tx=bitrate_threshold_tx,
             ),
         )
 

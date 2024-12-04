@@ -248,7 +248,8 @@ class TestMetadata:
 class EvalResult:
     success: bool
     msg: Optional[str] = None
-    bitrate_threshold: Optional[float] = None
+    bitrate_threshold_rx: Optional[float] = None
+    bitrate_threshold_tx: Optional[float] = None
 
 
 @strict_dataclass
