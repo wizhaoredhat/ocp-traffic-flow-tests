@@ -71,6 +71,30 @@ TFT_TESTS = "tft-tests"
 T = typing.TypeVar("T")
 
 
+def eval_binary_opt_in(
+    a: Optional[bool],
+    b: Optional[bool],
+) -> tuple[bool, bool]:
+    if a is None and b is None:
+        # If both are unset, we return True,True
+        return True, True
+
+    # Normalize values to a Optional[bool].
+    if a is not None:
+        a = bool(a)
+    if b is not None:
+        b = bool(b)
+
+    # if one of the arguments is unset, it's the opposite
+    # of the other.
+    if a is None:
+        a = not b
+    if b is None:
+        b = not a
+
+    return a, b
+
+
 class ClusterMode(Enum):
     SINGLE = 1
     DPU = 3
@@ -171,15 +195,16 @@ class Bitrate:
         self,
         threshold: Optional[float],
         *,
-        tx: bool = False,
-        rx: bool = False,
+        rx: Optional[bool] = None,
+        tx: Optional[bool] = None,
     ) -> bool:
         if threshold is None:
             return True
-        if tx or not rx:
+        rx, tx = eval_binary_opt_in(rx, tx)
+        if tx:
             if self.tx is not None and self.tx < threshold:
                 return False
-        if rx or not tx:
+        if rx:
             if self.rx is not None and self.rx < threshold:
                 return False
         return True
