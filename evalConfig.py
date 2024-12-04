@@ -4,6 +4,7 @@ import typing
 import yaml
 
 from collections.abc import Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
@@ -19,6 +20,51 @@ import tftbase
 
 from tftbase import TestCaseType
 from tftbase import TestType
+
+
+@strict_dataclass
+@dataclass(frozen=True, kw_only=True)
+class EvalIdentity:
+    test_type: TestType
+    test_case_id: TestCaseType
+    is_reverse: bool
+
+    def clone(
+        self,
+        test_type: Optional[TestType] = None,
+        test_case_id: Optional[TestCaseType] = None,
+        is_reverse: Optional[bool] = None,
+    ) -> "EvalIdentity":
+        if test_type is None:
+            test_type = self.test_type
+        if test_case_id is None:
+            test_case_id = self.test_case_id
+        if is_reverse is None:
+            is_reverse = self.is_reverse
+        return EvalIdentity(
+            test_type=test_type,
+            test_case_id=test_case_id,
+            is_reverse=is_reverse,
+        )
+
+    @staticmethod
+    def from_metadata(tft_metadata: tftbase.TestMetadata) -> "EvalIdentity":
+        return EvalIdentity(
+            test_type=tft_metadata.test_type,
+            test_case_id=tft_metadata.test_case_id,
+            is_reverse=tft_metadata.reverse,
+        )
+
+    def both_directions(self) -> tuple["EvalIdentity", "EvalIdentity"]:
+        reverse = self.clone(is_reverse=not self.is_reverse)
+        if self.is_reverse:
+            return reverse, self
+        else:
+            return self, reverse
+
+    @property
+    def pretty_str(self) -> str:
+        return f"[{self.test_type.name}, {self.test_case_id.name}, {'R' if self.is_reverse else 'N'}]"
 
 
 @strict_dataclass
@@ -326,6 +372,27 @@ class Config(StructParseBase):
             filename,
         )
 
+    @common.iter_dictify
+    def get_items(self) -> Iterable[tuple[EvalIdentity, TestItem]]:
+        for test_type, test_type_data in self.configs.items():
+            for test_case_id, test_case_data in test_type_data.test_cases.items():
+                item = test_case_data.get_item(is_reverse=False)
+                if item is not None:
+                    ei = EvalIdentity(
+                        test_type=test_type,
+                        test_case_id=test_case_id,
+                        is_reverse=False,
+                    )
+                    yield ei, item
+                item = test_case_data.get_item(is_reverse=True)
+                if item is not None:
+                    ei = EvalIdentity(
+                        test_type=test_type,
+                        test_case_id=test_case_id,
+                        is_reverse=True,
+                    )
+                    yield ei, item
+
     def get_item(
         self,
         *,
@@ -340,3 +407,13 @@ class Config(StructParseBase):
         if test_case_data is None:
             return None
         return test_case_data.get_item(is_reverse=is_reverse)
+
+    def get_item_for_id(
+        self,
+        ei: EvalIdentity,
+    ) -> Optional[TestItem]:
+        return self.get_item(
+            test_type=ei.test_type,
+            test_case_id=ei.test_case_id,
+            is_reverse=ei.is_reverse,
+        )
