@@ -999,7 +999,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -1960,7 +1961,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -3101,7 +3103,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -4062,7 +4065,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -5203,7 +5207,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -6164,7 +6169,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -7305,7 +7311,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -8266,7 +8273,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -9407,7 +9415,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -10349,7 +10358,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -11471,7 +11481,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -12413,7 +12424,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -13535,7 +13547,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -14496,7 +14509,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -15637,7 +15651,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -16598,7 +16613,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -17739,7 +17755,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -18700,7 +18717,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -19841,7 +19859,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -20802,7 +20821,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -21943,7 +21963,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -22885,7 +22906,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -24006,8 +24028,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=11.891, rx=11.874) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=11.891, rx=11.874) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -24948,8 +24971,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=10.826, rx=10.84) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=10.826, rx=10.84) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -26071,7 +26095,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -26994,7 +27019,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -28097,7 +28123,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -29020,7 +29047,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -30123,7 +30151,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -31065,7 +31094,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -32186,8 +32216,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=12.311, rx=12.294) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=12.311, rx=12.294) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -33128,8 +33159,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=10.489, rx=10.502) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=10.489, rx=10.502) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -34251,7 +34283,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -35174,7 +35207,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -36277,7 +36311,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -37200,7 +37235,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -38303,7 +38339,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -39226,7 +39263,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 10.0
+          "bitrate_threshold_rx": 10.0,
+          "bitrate_threshold_tx": 10.0
         }
       },
       "plugins": [
@@ -40329,7 +40367,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": [
@@ -41252,7 +41291,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 10.0
+          "bitrate_threshold_rx": 10.0,
+          "bitrate_threshold_tx": 10.0
         }
       },
       "plugins": [
