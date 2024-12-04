@@ -50,10 +50,14 @@ class TestCaseData(StructParseBase):
     normal: TestItem
     reverse: TestItem
 
-    def get_threshold(self, *, is_reverse: bool) -> float:
+    def get_item(
+        self,
+        *,
+        is_reverse: bool,
+    ) -> TestItem:
         if is_reverse:
-            return self.reverse.threshold
-        return self.normal.threshold
+            return self.reverse
+        return self.normal
 
     @staticmethod
     def parse(pctx: StructParseParseContext) -> "TestCaseData":
@@ -239,3 +243,18 @@ class Config(StructParseBase):
             self.serialize(),
             filename,
         )
+
+    def get_item(
+        self,
+        *,
+        test_type: TestType,
+        test_case_id: TestCaseType,
+        is_reverse: bool,
+    ) -> Optional[TestItem]:
+        test_type_data = self.configs.get(test_type)
+        if test_type_data is None:
+            return None
+        test_case_data = test_type_data.test_cases.get(test_case_id)
+        if test_case_data is None:
+            return None
+        return test_case_data.get_item(is_reverse=is_reverse)

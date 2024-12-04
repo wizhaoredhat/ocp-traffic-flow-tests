@@ -31,16 +31,15 @@ class Evaluator:
 
     def eval_flow_test_output(self, flow_test: FlowTestOutput) -> FlowTestOutput:
 
-        bitrate_threshold: Optional[float] = None
+        item = self.eval_config.get_item(
+            test_type=flow_test.tft_metadata.test_type,
+            test_case_id=flow_test.tft_metadata.test_case_id,
+            is_reverse=flow_test.tft_metadata.reverse,
+        )
 
-        # We accept a missing eval_config entry.
-        cfg = self.eval_config.configs.get(flow_test.tft_metadata.test_type)
-        if cfg is not None:
-            cfg_test_case = cfg.test_cases.get(flow_test.tft_metadata.test_case_id)
-            if cfg_test_case is not None:
-                bitrate_threshold = cfg_test_case.get_threshold(
-                    is_reverse=flow_test.tft_metadata.reverse
-                )
+        bitrate_threshold: Optional[float] = None
+        if item is not None:
+            bitrate_threshold = item.threshold
 
         success = True
         msg: Optional[str] = None
