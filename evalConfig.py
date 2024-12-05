@@ -1,5 +1,6 @@
 import os
 import pathlib
+import typing
 import yaml
 
 from collections.abc import Mapping
@@ -8,6 +9,7 @@ from typing import Any
 from typing import Optional
 
 from ktoolbox import common
+from ktoolbox import kyaml
 from ktoolbox.common import StructParseBase
 from ktoolbox.common import StructParseParseContext
 from ktoolbox.common import strict_dataclass
@@ -225,3 +227,12 @@ class Config(StructParseBase):
 
     def serialize(self) -> dict[str, Any]:
         return {k.name: v.serialize() for k, v in self.configs.items()}
+
+    def serialize_to_file(
+        self,
+        filename: str | pathlib.Path | typing.IO[str],
+    ) -> None:
+        kyaml.dump(
+            self.serialize(),
+            filename,
+        )
