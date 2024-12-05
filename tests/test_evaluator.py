@@ -145,8 +145,8 @@ def test_eval_config(test_eval_config: str) -> None:
     assert c3.serialize_json() == json.dumps(
         {
             "id": "POD_TO_HOST_DIFF_NODE",
-            "Normal": {"threshold": 5.0},
-            "Reverse": {"threshold": 5.0},
+            "Normal": {"threshold": 5},
+            "Reverse": {"threshold": 5},
         }
     )
     assert c3.yamlpath == ".IPERF_UDP[3]"
