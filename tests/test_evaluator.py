@@ -342,3 +342,17 @@ def test_generate_eval_config(tmp_path: pathlib.Path) -> None:
         tmp_file,
     )
     _assert_filecmp(tmp_file, _test_file("generate-eval-config-output3.yaml"))
+
+
+def test_eval_config_yaml(tmp_path: pathlib.Path) -> None:
+
+    tmp_file = tmp_path / "tmp-eval-config1.yaml"
+
+    _run_generate_eval_config(
+        [
+            "--config",
+            EVAL_CONFIG_FILE,
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, EVAL_CONFIG_FILE)
