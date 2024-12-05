@@ -37,7 +37,10 @@ class TestItem(StructParseBase):
         )
 
     def serialize(self) -> dict[str, Any]:
-        return {"threshold": self.threshold}
+        t = self.threshold
+        if t == int(t):
+            t = int(t)
+        return {"threshold": t}
 
 
 @strict_dataclass
