@@ -64,6 +64,13 @@ TEST_EVAL_CONFIG_FILES = [
 ]
 
 
+def _assert_filecmp(file1: str | pathlib.Path, file2: str | pathlib.Path) -> None:
+    assert filecmp.cmp(
+        file1,
+        file2,
+    ), f"{repr(str(file1))} does not match {repr(str(file2))}"
+
+
 def _run_subprocess(
     command: list[str],
     **kwargs: Any,
@@ -217,10 +224,7 @@ def test_output_list_parse(
         assert all(isinstance(o, tftbase.TftResult) for o in test_collection1)
 
         if test_input_file.expected_outputfile is not None:
-            assert filecmp.cmp(
-                outputfile,
-                _test_file(test_input_file.expected_outputfile),
-            ), f"{repr(outputfile)} does not match {repr(_test_file(test_input_file.expected_outputfile))}"
+            _assert_filecmp(outputfile, _test_file(test_input_file.expected_outputfile))
 
         res = _run_print_results(outputfile)
         assert res.returncode in (0, 1)
