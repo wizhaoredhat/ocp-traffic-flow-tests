@@ -40,6 +40,7 @@ EVAL_CONFIG_FILE = _source_file("eval-config.yaml")
 
 EVALUATOR_EXEC = _source_file("evaluator.py")
 PRINT_RESULTS_EXEC = _source_file("print_results.py")
+GENERATE_EVAL_CONFIG_EXEC = _source_file("generate_eval_config.py")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -62,6 +63,13 @@ TEST_EVAL_CONFIG_FILES = [
     EVAL_CONFIG_FILE,
     _test_file("eval-config-2.yaml"),
 ]
+
+
+def _assert_filecmp(file1: str | pathlib.Path, file2: str | pathlib.Path) -> None:
+    assert filecmp.cmp(
+        file1,
+        file2,
+    ), f"{repr(str(file1))} does not match {repr(str(file2))}"
 
 
 def _run_subprocess(
@@ -88,6 +96,24 @@ def _run_evaluator(filename: str, outfile: str) -> subprocess.CompletedProcess[s
     )
 
 
+def _run_generate_eval_config(
+    args: list[str],
+    output: str | pathlib.Path,
+    *,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    return _run_subprocess(
+        [
+            sys.executable,
+            GENERATE_EVAL_CONFIG_EXEC,
+            *args,
+            "-o",
+            str(output),
+        ],
+        check=check,
+    )
+
+
 def _run_print_results(filename: str) -> subprocess.CompletedProcess[str]:
     return _run_subprocess(
         [
@@ -109,10 +135,24 @@ def test_eval_config(test_eval_config: str) -> None:
 
     c = evalConfig.Config.parse(conf_dict)
 
+    item = (
+        c.configs[TestType.IPERF_UDP]
+        .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
+        .normal
+    )
+
+    assert item is c.get_item(
+        test_type=TestType.IPERF_UDP,
+        test_case_id=TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE,
+        is_reverse=False,
+    )
+    assert item.get_threshold() == 5
+    assert item.bitrate == tftbase.Bitrate(rx=5, tx=5)
+
     assert (
         c.configs[TestType.IPERF_UDP]
         .test_cases[TestCaseType.HOST_TO_NODE_PORT_TO_HOST_SAME_NODE]
-        .normal.threshold
+        .normal.get_threshold()
         == 5
     )
 
@@ -145,8 +185,8 @@ def test_eval_config(test_eval_config: str) -> None:
     assert c3.serialize_json() == json.dumps(
         {
             "id": "POD_TO_HOST_DIFF_NODE",
-            "Normal": {"threshold": 5.0},
-            "Reverse": {"threshold": 5.0},
+            "Normal": {"threshold": 5},
+            "Reverse": {"threshold": 5},
         }
     )
     assert c3.yamlpath == ".IPERF_UDP[3]"
@@ -203,10 +243,7 @@ def test_output_list_parse(
         assert all(isinstance(o, tftbase.TftResult) for o in test_collection1)
 
         if test_input_file.expected_outputfile is not None:
-            assert filecmp.cmp(
-                outputfile,
-                _test_file(test_input_file.expected_outputfile),
-            ), f"{repr(outputfile)} does not match {repr(_test_file(test_input_file.expected_outputfile))}"
+            _assert_filecmp(outputfile, _test_file(test_input_file.expected_outputfile))
 
         res = _run_print_results(outputfile)
         assert res.returncode in (0, 1)
@@ -248,3 +285,74 @@ def test_evaluator_1(tmp_path: pathlib.Path) -> None:
             test_type_handler=testType.TestTypeHandler.get(TestType.IPERF_TCP),
         ),
     }
+
+
+def test_generate_eval_config(tmp_path: pathlib.Path) -> None:
+
+    tmp_file = tmp_path / "tmp-eval-config0.yaml"
+
+    _run_generate_eval_config(
+        [
+            "--config",
+            EVAL_CONFIG_FILE,
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output0.yaml"))
+
+    tmp_file = tmp_path / "tmp-eval-config.yaml"
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output1.yaml"))
+
+    res = _run_generate_eval_config(
+        [],
+        str(tmp_file),
+        check=False,
+    )
+    assert res.returncode == 55
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+            "--config",
+            EVAL_CONFIG_FILE,
+            "--force",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output2.yaml"))
+
+    _run_generate_eval_config(
+        [
+            *[f.filename for f in TEST_CONFIG_FILES],
+            "--skip-invalid-logs",
+            "--config",
+            EVAL_CONFIG_FILE,
+            "--tighten-only",
+            "--force",
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, _test_file("generate-eval-config-output3.yaml"))
+
+
+def test_eval_config_yaml(tmp_path: pathlib.Path) -> None:
+
+    tmp_file = tmp_path / "tmp-eval-config1.yaml"
+
+    _run_generate_eval_config(
+        [
+            "--config",
+            EVAL_CONFIG_FILE,
+        ],
+        tmp_file,
+    )
+    _assert_filecmp(tmp_file, EVAL_CONFIG_FILE)
