@@ -22,9 +22,9 @@ from typing import TypeVar
 from ktoolbox import common
 from ktoolbox import host
 from ktoolbox import netdev
+from ktoolbox import kjinja2
 from ktoolbox.k8sClient import K8sClient
 
-import jinja2util
 import tftbase
 
 from pluginbase import Plugin
@@ -345,7 +345,11 @@ class Task(ABC):
             f'Generate {log_info} "{out_file_yaml}" (from "{in_file_template}", for {self.log_name})'
         )
 
-        rendered = jinja2util.j2_render(in_file_template, out_file_yaml, template_args)
+        rendered = kjinja2.render_file(
+            in_file_template,
+            template_args,
+            out_file=out_file_yaml,
+        )
 
         rendered_dict = yaml.safe_load(rendered)
         logger.debug(f'"{in_file_template}" contains: {json.dumps(rendered_dict)}')
