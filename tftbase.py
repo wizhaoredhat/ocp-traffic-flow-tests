@@ -388,11 +388,9 @@ class TftResults:
 
     def serialize_to_file(
         self,
-        filename: str | Path,
+        file: str | Path | typing.IO[str],
     ) -> None:
-        out = self.serialize()
-        with open(filename, "w") as f:
-            json.dump(out, f)
+        common.json_dump(self.serialize(), file)
 
     @staticmethod
     def parse(
