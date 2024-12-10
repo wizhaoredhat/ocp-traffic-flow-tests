@@ -419,7 +419,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -783,7 +784,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -1206,8 +1208,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.925, rx=13.868) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.925, rx=13.868) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -1570,8 +1573,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.495, rx=13.547) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.495, rx=13.547) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -1995,7 +1999,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -2359,7 +2364,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -2782,8 +2788,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.852, rx=13.795) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.852, rx=13.795) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -3146,8 +3153,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.297, rx=13.347) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.297, rx=13.347) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -3571,7 +3579,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -3935,7 +3944,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -4359,7 +4369,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -4723,7 +4734,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -5147,7 +5159,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -5511,7 +5524,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -5934,8 +5948,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.972, rx=13.915) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.972, rx=13.915) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -6298,8 +6313,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.186, rx=13.236) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.186, rx=13.236) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -6723,7 +6739,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -7087,7 +7104,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -7510,8 +7528,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.675, rx=13.618) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.675, rx=13.618) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -7874,8 +7893,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.075, rx=13.124) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.075, rx=13.124) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -8299,7 +8319,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -8663,7 +8684,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -9086,8 +9108,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=12.276, rx=12.228) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=12.276, rx=12.228) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -9450,8 +9473,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.792, rx=13.845) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.792, rx=13.845) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -9875,7 +9899,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -10239,7 +10264,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -10663,7 +10689,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -11027,7 +11054,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -11451,7 +11479,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -11815,7 +11844,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -12238,8 +12268,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=12.237, rx=12.189) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=12.237, rx=12.189) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -12602,8 +12633,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=13.842, rx=13.895) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=13.842, rx=13.895) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -13027,7 +13059,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -13391,7 +13424,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -13815,7 +13849,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -14179,7 +14214,8 @@
         "eval_result": {
           "success": true,
           "msg": null,
-          "bitrate_threshold": 18.0
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -14602,8 +14638,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=9.3752, rx=9.3357) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=9.3752, rx=9.3357) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -14966,8 +15003,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=9.3376, rx=9.3729) is below threshold 10.0",
-          "bitrate_threshold": 10.0
+          "msg": "Run succeeded but Bitrate(tx=9.3376, rx=9.3729) is below RX threshold 10.0",
+          "bitrate_threshold_rx": 10.0,
+          "bitrate_threshold_tx": 10.0
         }
       },
       "plugins": []
@@ -15390,8 +15428,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=9.4165, rx=9.3762) is below threshold 18.0",
-          "bitrate_threshold": 18.0
+          "msg": "Run succeeded but Bitrate(tx=9.4165, rx=9.3762) is below RX threshold 18.0",
+          "bitrate_threshold_rx": 18.0,
+          "bitrate_threshold_tx": 18.0
         }
       },
       "plugins": []
@@ -15754,8 +15793,9 @@
         },
         "eval_result": {
           "success": false,
-          "msg": "Run succeeded but Bitrate(tx=9.3784, rx=9.4138) is below threshold 10.0",
-          "bitrate_threshold": 10.0
+          "msg": "Run succeeded but Bitrate(tx=9.3784, rx=9.4138) is below RX threshold 10.0",
+          "bitrate_threshold_rx": 10.0,
+          "bitrate_threshold_tx": 10.0
         }
       },
       "plugins": []
