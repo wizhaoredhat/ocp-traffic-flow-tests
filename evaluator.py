@@ -2,8 +2,8 @@
 
 import argparse
 import logging
+import pathlib
 import sys
-import yaml
 
 from pathlib import Path
 from typing import Optional
@@ -22,37 +22,26 @@ logger = logging.getLogger("tft." + __name__)
 
 
 class Evaluator:
-    def __init__(self, config_path: Optional[str]):
-        if not config_path:
-            eval_config = evalConfig.Config.parse(None)
-        else:
-            try:
-                with open(config_path, encoding="utf-8") as file:
-                    c = yaml.safe_load(file)
-            except Exception as e:
-                raise RuntimeError(f"Failure reading {repr(config_path)}: {e}")
+    eval_config: evalConfig.Config
 
-            try:
-                eval_config = evalConfig.Config.parse(c)
-            except ValueError as e:
-                raise ValueError(f"Failure parsing {repr(config_path)}: {e}")
-            except Exception as e:
-                raise RuntimeError(f"Failure loading {repr(config_path)}: {e}")
-
-        self.eval_config = eval_config
+    def __init__(self, config: Optional[evalConfig.Config | str | pathlib.Path]):
+        if not isinstance(config, evalConfig.Config):
+            config = evalConfig.Config.parse_from_file(config)
+        self.eval_config = config
 
     def eval_flow_test_output(self, flow_test: FlowTestOutput) -> FlowTestOutput:
 
-        bitrate_threshold: Optional[float] = None
+        item = self.eval_config.get_item(
+            test_type=flow_test.tft_metadata.test_type,
+            test_case_id=flow_test.tft_metadata.test_case_id,
+            is_reverse=flow_test.tft_metadata.reverse,
+        )
 
-        # We accept a missing eval_config entry.
-        cfg = self.eval_config.configs.get(flow_test.tft_metadata.test_type)
-        if cfg is not None:
-            cfg_test_case = cfg.test_cases.get(flow_test.tft_metadata.test_case_id)
-            if cfg_test_case is not None:
-                bitrate_threshold = cfg_test_case.get_threshold(
-                    is_reverse=flow_test.tft_metadata.reverse
-                )
+        bitrate_threshold_rx: Optional[float] = None
+        bitrate_threshold_tx: Optional[float] = None
+        if item is not None:
+            bitrate_threshold_rx = item.get_threshold(rx=True)
+            bitrate_threshold_tx = item.get_threshold(tx=True)
 
         success = True
         msg: Optional[str] = None
@@ -62,15 +51,19 @@ class Evaluator:
                 msg = f"Run failed: {flow_test.msg}"
             else:
                 msg = "Run failed for unspecified reason"
-        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold):
+        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold_rx, rx=True):
             success = False
-            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below threshold {bitrate_threshold}"
+            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below RX threshold {bitrate_threshold_rx}"
+        elif not flow_test.bitrate_gbps.is_passing(bitrate_threshold_tx, tx=True):
+            success = False
+            msg = f"Run succeeded but {flow_test.bitrate_gbps} is below TX threshold {bitrate_threshold_tx}"
 
         return flow_test.clone(
             eval_result=tftbase.EvalResult(
                 success=success,
                 msg=msg,
-                bitrate_threshold=bitrate_threshold,
+                bitrate_threshold_rx=bitrate_threshold_rx,
+                bitrate_threshold_tx=bitrate_threshold_tx,
             ),
         )
 

@@ -1,14 +1,18 @@
 IPERF_TCP:
   - id: POD_TO_POD_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 20.167733333333334
+      threshold_tx: 20.222933333333334
     Reverse:
-      threshold: 18
+      threshold_rx: 21.877333333333333
+      threshold_tx: 21.817600000000002
   - id: POD_TO_POD_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 14.4632
+      threshold_tx: 14.498400000000002
     Reverse:
-      threshold: 18
+      threshold_rx: 14.380000000000003
+      threshold_tx: 14.3476
   - id: POD_TO_HOST_SAME_NODE
     Normal:
       threshold: 18
@@ -21,14 +25,18 @@ IPERF_TCP:
       threshold: 18
   - id: POD_TO_CLUSTER_IP_TO_POD_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 37.126
+      threshold_tx: 37.3305
     Reverse:
-      threshold: 18
+      threshold_rx: 37.846
+      threshold_tx: 37.853
   - id: POD_TO_CLUSTER_IP_TO_POD_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 14.462000000000002
+      threshold_tx: 14.496800000000002
     Reverse:
-      threshold: 18
+      threshold_rx: 14.288800000000002
+      threshold_tx: 14.257600000000004
   - id: POD_TO_CLUSTER_IP_TO_HOST_SAME_NODE
     Normal:
       threshold: 18
@@ -36,29 +44,39 @@ IPERF_TCP:
       threshold: 18
   - id: POD_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 21.8175
+      threshold_tx: 21.8155
     Reverse:
-      threshold: 18
+      threshold_rx: 17.419
+      threshold_tx: 17.322999999999997
   - id: POD_TO_NODE_PORT_TO_POD_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 38.0935
+      threshold_tx: 38.2985
     Reverse:
-      threshold: 18
+      threshold_rx: 41.898
+      threshold_tx: 41.672999999999995
   - id: POD_TO_NODE_PORT_TO_POD_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 14.504399999999999
+      threshold_tx: 14.539200000000001
     Reverse:
-      threshold: 18
+      threshold_rx: 14.2616
+      threshold_tx: 14.2296
   - id: POD_TO_NODE_PORT_TO_HOST_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 37.85750000000001
+      threshold_tx: 38.061
     Reverse:
-      threshold: 18
+      threshold_rx: 42.116
+      threshold_tx: 41.892
   - id: POD_TO_NODE_PORT_TO_HOST_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 14.416
+      threshold_tx: 14.4512
     Reverse:
-      threshold: 18
+      threshold_rx: 14.149600000000001
+      threshold_tx: 14.1188
   - id: HOST_TO_HOST_SAME_NODE
     Normal:
       threshold: 18
@@ -86,19 +104,25 @@ IPERF_TCP:
       threshold: 18
   - id: HOST_TO_CLUSTER_IP_TO_POD_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 11.697000000000001
+      threshold_tx: 11.698500000000001
     Reverse:
-      threshold: 18
+      threshold_rx: 9.874000000000002
+      threshold_tx: 9.8472
   - id: HOST_TO_CLUSTER_IP_TO_HOST_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 20.7625
+      threshold_tx: 20.754500000000004
     Reverse:
-      threshold: 18
+      threshold_rx: 21.0064
+      threshold_tx: 20.9484
   - id: HOST_TO_CLUSTER_IP_TO_HOST_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 23.293000000000003
+      threshold_tx: 23.291999999999998
     Reverse:
-      threshold: 18
+      threshold_rx: 21.233499999999996
+      threshold_tx: 21.236
   - id: HOST_TO_NODE_PORT_TO_POD_SAME_NODE
     Normal:
       threshold: 18
@@ -106,29 +130,38 @@ IPERF_TCP:
       threshold: 18
   - id: HOST_TO_NODE_PORT_TO_POD_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 12.1365
+      threshold_tx: 12.200000000000001
     Reverse:
-      threshold: 18
+      threshold_rx: 9.7588
+      threshold_tx: 9.732400000000002
   - id: HOST_TO_NODE_PORT_TO_HOST_SAME_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 20.368000000000002
+      threshold_tx: 20.425200000000004
     Reverse:
-      threshold: 18
+      threshold_rx: 22.5945
+      threshold_tx: 22.605499999999996
   - id: HOST_TO_NODE_PORT_TO_HOST_DIFF_NODE
     Normal:
-      threshold: 18
+      threshold_rx: 23.3125
+      threshold_tx: 23.3415
     Reverse:
-      threshold: 18
+      threshold: 21.496
   - id: POD_TO_EXTERNAL
     Normal:
-      threshold: 18
+      threshold_rx: 13.128680000000001
+      threshold_tx: 13.15728
     Reverse:
-      threshold: 10
+      threshold_rx: 13.15476
+      threshold_tx: 13.128640000000003
   - id: HOST_TO_EXTERNAL
     Normal:
-      threshold: 18
+      threshold_rx: 13.14088
+      threshold_tx: 13.169799999999999
     Reverse:
-      threshold: 10
+      threshold_rx: 13.17192
+      threshold_tx: 13.14536
   - id: POD_TO_POD_2ND_INTERFACE_SAME_NODE
     Normal:
       threshold: 18

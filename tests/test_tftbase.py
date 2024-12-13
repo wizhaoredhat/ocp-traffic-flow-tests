@@ -117,3 +117,19 @@ def test_iperf_output() -> None:
 
 def test_test_case_typ_infos() -> None:
     assert list(tftbase._test_case_typ_infos) == list(TestCaseType)
+
+
+def test_eval_binary_opt_in() -> None:
+
+    assert tftbase.eval_binary_opt_in(None, None) == (True, True)
+
+    assert tftbase.eval_binary_opt_in(False, None) == (False, True)
+    assert tftbase.eval_binary_opt_in(None, False) == (True, False)
+    assert tftbase.eval_binary_opt_in(True, None) == (True, False)
+    assert tftbase.eval_binary_opt_in(None, True) == (False, True)
+
+    assert tftbase.eval_binary_opt_in(False, False) == (False, False)
+    assert tftbase.eval_binary_opt_in(True, True) == (True, True)
+
+    assert tftbase.eval_binary_opt_in(True, False) == (True, False)
+    assert tftbase.eval_binary_opt_in(False, True) == (False, True)

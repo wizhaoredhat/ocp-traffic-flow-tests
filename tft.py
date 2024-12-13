@@ -71,7 +71,7 @@ def main() -> None:
     )
     tft = TrafficFlowTests()
 
-    evaluator = Evaluator(config_path=tc.evaluator_config)
+    evaluator = Evaluator(tc.evaluator_config)
 
     for cfg_descr in ConfigDescriptor(tc).describe_all_tft():
         tft.test_run(cfg_descr, evaluator)
