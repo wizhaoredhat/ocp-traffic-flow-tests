@@ -106,7 +106,13 @@ class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
 
             def _construct_args(pctx2: StructParseParseContext) -> tuple[str, ...]:
                 if isinstance(pctx2.arg, str):
-                    return tuple(shlex.split(pctx2.arg))
+                    try:
+                        lst = shlex.split(pctx2.arg)
+                    except Exception:
+                        raise pctx2.value_error(
+                            f"cannot parse command line {repr(pctx2.arg)}"
+                        )
+                    return tuple(lst)
                 if isinstance(pctx2.arg, list):
                     if not all(isinstance(x, str) for x in pctx2.arg):
                         raise pctx2.value_error(
@@ -144,6 +150,14 @@ class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
         )
 
         return typing.cast("T2", result)
+
+    def _validate(self, test_type: TestType) -> None:
+        if self.args is not None:
+            if test_type not in (TestType.SIMPLE,):
+                raise self.value_error(
+                    f"not supported with test type {repr(test_type.name)}",
+                    key="args",
+                )
 
 
 @strict_dataclass
@@ -319,21 +333,11 @@ class ConfConnection(StructParseBaseNamed):
                 "currently only one client entry is supported", key="client"
             )
 
-        for idx, s in enumerate(server):
-            if s.args is not None:
-                if test_type not in (TestType.SIMPLE,):
-                    raise pctx.value_error(
-                        f"args are not supported for test type {test_type}",
-                        subpath=f".server[{idx}].args",
-                    )
+        for s in server:
+            s._validate(test_type)
 
-        for idx, c in enumerate(client):
-            if c.args is not None:
-                if test_type not in (TestType.SIMPLE,):
-                    raise pctx.value_error(
-                        f"args are not supported for test type {test_type}",
-                        subpath=f".client[{idx}].args",
-                    )
+        for c in client:
+            c._validate(test_type)
 
         return ConfConnection(
             yamlidx=pctx.yamlidx,
