@@ -55,8 +55,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "result",
-        type=str,
-        help="The JSON result file from TFT Flow test.",
+        nargs="+",
+        help="The JSON result file(s) from TFT Flow test.",
     )
     common.log_argparse_add_argument_verbose(parser)
 
@@ -67,28 +67,38 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    args = parse_args()
+def process_file(result_file: str) -> bool:
 
-    tft_results = tftbase.TftResults.parse_from_file(args.result)
+    tft_results = tftbase.TftResults.parse_from_file(result_file)
 
     group_success, group_fail = tft_results.group_by_success()
 
     print(
-        f"There are {len(group_success)} passing flows.{' Details:' if group_success else ''}"
+        f"There are {len(group_success)} passing flows in {repr(result_file)}.{' Details:' if group_success else ''}"
     )
     print_tft_results(group_success)
 
-    if group_success:
-        print("\n\n", end="")
-
     print(
-        f"There are {len(group_fail)} failing flows.{' Details:' if group_fail else ''}"
+        f"There are {len(group_fail)} failing flows in {repr(result_file)}.{' Details:' if group_fail else ''}"
     )
     print_tft_results(group_fail)
 
-    if group_fail:
-        print("Failures detected")
+    print()
+    return not group_fail
+
+
+def main() -> None:
+    args = parse_args()
+
+    failed_files: list[str] = []
+
+    for result_file in args.result:
+        if not process_file(result_file):
+            failed_files.append(result_file)
+
+    print()
+    if failed_files:
+        print(f"Failures detected in {repr(failed_files)}")
         sys.exit(1)
 
     print("No failures detected in results")
