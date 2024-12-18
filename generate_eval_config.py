@@ -205,7 +205,7 @@ def parse_args() -> argparse.Namespace:
         "-T",
         "--tighten-only",
         action="store_true",
-        help="With '--config' the values are only updated if they tighten/lower the thresholds.",
+        help="With '--config' the values are only updated if they tighten (increase) the thresholds.",
     )
     common.log_argparse_add_argument_verbose(parser)
 
