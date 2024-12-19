@@ -260,7 +260,7 @@ class ConfConnection(StructParseBaseNamed):
     def effective_secondary_network_nad(self) -> str:
         nad = self.secondary_network_nad
         if nad is None:
-            nad = "ocp-secondary"
+            nad = "tft-secondary"
         if "/" not in nad:
             nad = f"{self.namespace}/{nad}"
         return nad
