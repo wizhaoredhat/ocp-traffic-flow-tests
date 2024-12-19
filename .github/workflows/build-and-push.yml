@@ -21,10 +21,6 @@ jobs:
       run: |
         docker buildx create --use
 
-    - name: Convert GitHub repository owner to lowercase
-      id: lowercase_owner
-      run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
     - name: Log in to GitHub Container Registry
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -34,6 +30,6 @@ jobs:
         docker buildx build \
           --file ./Containerfile \
           --platform linux/arm64,linux/amd64 \
-          --tag ghcr.io/${{ env.owner }}/ocp-traffic-flow-tests:latest \
+          --tag ghcr.io/ovn-kubernetes/kubernetes-traffic-flow-tests:latest \
           --push \
           .
