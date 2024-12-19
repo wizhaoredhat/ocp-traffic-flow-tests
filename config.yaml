@@ -1,14 +1,16 @@
 tft:
   - name: "Test 1"
     namespace: "default"
-    # test cases can be specified individually i.e "1,2,3,6" or as a range i.e. "1-9,15-19"
+    # "test_cases" can be specified individually i.e "1,2,3,6" or as a range
+    # i.e. "1-9,15-19" or using the pretty names.
     test_cases: "1"
     duration: "30"
-    # Location of artifacts from run can be specified: default <working-dir>/ft-logs/
-    # logs: "/tmp/ft-logs"
+    # "logs": location of test results. Defaults to "<working-dir>/ft-logs/".
+    # It is better to pass "--output-base" to ./tft.py.
     connections:
       - name: "Connection_1"
-        # supported types: iperf-tcp, iperf-udp, netperf-tcp-stream, netperf-tcp-rr
+        # supported "type": iperf-tcp, iperf-udp, netperf-tcp-stream,
+        # netperf-tcp-rr, http, simple.
         type: "iperf-tcp"
         instances: 1
         server:
@@ -22,10 +24,13 @@ tft:
           - name: measure_cpu
           - name: measure_power
           - name: validate_offload
-        # (Optional) Secondary network is required for tests 27-29. For these tests, it is mandatory; if not specified, it will default to "tft-secondary." For other tests, 
-        # the secondary network is optional. If it is undefined, the tests will default to using the primary network.
-        # (Optional) Define the resource name for SRIOV pods, where the resource requests and limits are configured. Defaults to None if not set. If the user specified the secondary nad 
-        # it will try to autopopulate the resource name based on the nad. 
-        # resource_name: "openshift.io/dpu"
+        # "secondary_network_nad" is always used for tests 27-29.
+        # For these tests, it defaults to "tft-secondary". For other tests,
+        # leaving "secondary_network_nad" unset means to use the primary
+        # network.
+        # "resource_name" is the resource name for SRIOV pods, where
+        # the resource requests and limits are configured. If unset and a
+        # "secondary_network_nad" is used, the "resource_name" is detected.
+        # Otherwise, no resource name is used.
 kubeconfig:
 kubeconfig_infra:
