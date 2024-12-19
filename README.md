@@ -101,7 +101,7 @@ kubeconfig_infra: (18)
     | measure_cpu      | Measure CPU Usage    |
     | measure_power    | Measure Power Usage  |
     | validate_offload | Verify OvS Offload   |
-16. "secondary_network_nad" - (Optional) - The name of the secondary network for multi-homing and multi-networkpolicies tests. For tests except 27-29, the primary network will be used if unspecified (the default which is None). For mandatory tests 27-29 it defaults to "ocp-secondary" if not set.
+16. "secondary_network_nad" - (Optional) - The name of the secondary network for multi-homing and multi-networkpolicies tests. For tests except 27-29, the primary network will be used if unspecified (the default which is None). For mandatory tests 27-29 it defaults to "tft-secondary" if not set.
 17. "resource_name" - (Optional) - The resource name for tests that require resource limit and requests to be set. This field is optional and will default to None if not set, but if secondary network nad is defined, traffic flow test
 tool will try to autopopulate resource_name based on the secondary+network_nad provided.
 18. "kubeconfig", "kubeconfig_infra": if set to non-empty strings, then these are the KUBECONFIG
