@@ -117,7 +117,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "logs",
         type=str,
-        help="Result file from ocp-traffic-flow-tests. The test run by default writes this as file "
+        help='Result file from a traffic flow test run. The "tft.py" tool by default writes this as file '
         '"./ft-logs/$TIMESTAMP.json". Also, the test always already performs an evaluation with  '
         "the provided eval config YAML (which can be empty or omitted). The input format is the same as the "
         "output format and the same as the test produces.",
