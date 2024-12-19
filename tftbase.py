@@ -24,7 +24,9 @@ logger = logging.getLogger("tft." + __name__)
 ENV_TFT_TEST_IMAGE = "TFT_TEST_IMAGE"
 ENV_TFT_IMAGE_PULL_POLICY = "TFT_IMAGE_PULL_POLICY"
 
-ENV_TFT_TEST_IMAGE_DEFAULT = "ghcr.io/wizhaoredhat/ocp-traffic-flow-tests:latest"
+ENV_TFT_TEST_IMAGE_DEFAULT = (
+    "ghcr.io/ovn-kubernetes/kubernetes-traffic-flow-tests:latest"
+)
 
 
 def get_environ(name: str) -> Optional[str]:
