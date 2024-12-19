@@ -46,7 +46,7 @@ RUN /opt/pyvenv3.11/bin/python -m pip install -r /tmp/requirements.txt && \
 RUN \
     echo -e "#/bin/sh\nexec /opt/pyvenv3.11/bin/python \"\$@\"" > /usr/bin/python-pyvenv3.11 && \
     chmod +x /usr/bin/python-pyvenv3.11 && \
-    echo -e "#!/bin/sh\ncd /opt/ocp-tft/ && exec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && \
+    echo -e "#!/bin/sh\nexec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && \
     chmod +x /usr/bin/ocp-tft-netdev
 
 RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
