@@ -71,10 +71,9 @@ class HttpClient(task.ClientTask):
             self.ts.clmo_barrier.wait()
 
             def _check_success(r: host.Result) -> bool:
-                return (
-                    r.success
-                    and r.out == "kubernetes-traffic-flow-tests\n"
-                    and r.err == ""
+                return r.success and r.match(
+                    out="kubernetes-traffic-flow-tests\n",
+                    err="",
                 )
 
             sleep_time = 0.2
