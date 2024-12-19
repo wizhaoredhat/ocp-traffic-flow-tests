@@ -40,7 +40,7 @@ class HttpServer(task.ServerTask):
             "-m",
             "http.server",
             "-d",
-            "/etc/ocp-traffic-flow-tests",
+            "/etc/kubernetes-traffic-flow-tests",
             f"{self.port}",
         ]
 
@@ -71,7 +71,11 @@ class HttpClient(task.ClientTask):
             self.ts.clmo_barrier.wait()
 
             def _check_success(r: host.Result) -> bool:
-                return r.success and r.out == "ocp-traffic-flow-tests\n" and r.err == ""
+                return (
+                    r.success
+                    and r.out == "kubernetes-traffic-flow-tests\n"
+                    and r.err == ""
+                )
 
             sleep_time = 0.2
             end_timestamp = time.monotonic() + self.get_duration() - sleep_time
