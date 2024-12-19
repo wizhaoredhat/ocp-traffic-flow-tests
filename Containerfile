@@ -46,15 +46,15 @@ RUN /opt/pyvenv3.11/bin/python -m pip install -r /tmp/requirements.txt && \
 RUN \
     echo -e "#/bin/sh\nexec /opt/pyvenv3.11/bin/python \"\$@\"" > /usr/bin/python-pyvenv3.11 && \
     chmod +x /usr/bin/python-pyvenv3.11 && \
-    echo -e "#!/bin/sh\ncd /opt/ocp-tft/ && exec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ocp-tft-netdev && \
-    chmod +x /usr/bin/ocp-tft-netdev
+    echo -e "#!/bin/sh\nexec /opt/pyvenv3.11/bin/python -m ktoolbox.netdev \"\$@\"" > /usr/bin/ktoolbox-netdev && \
+    chmod +x /usr/bin/ktoolbox-netdev
 
-RUN mkdir -p /etc/ocp-traffic-flow-tests && echo "ocp-traffic-flow-tests" > /etc/ocp-traffic-flow-tests/data
+RUN mkdir -p /etc/kubernetes-traffic-flow-tests && echo "kubernetes-traffic-flow-tests" > /etc/kubernetes-traffic-flow-tests/data
 
 COPY ./scripts/simple-tcp-server-client.py /usr/bin/simple-tcp-server-client
 
 COPY ./images/container-entry-point.sh /usr/bin/container-entry-point.sh
 
-WORKDIR /opt/ocp-tft
+WORKDIR /
 ENTRYPOINT ["/usr/bin/container-entry-point.sh"]
 CMD ["/usr/bin/sleep", "infinity"]

@@ -169,7 +169,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "logs",
         nargs="*",
-        help="Result file from ocp-traffic-flow-tests.",
+        help="Result file(s) from a traffic flow test run.",
     )
     parser.add_argument(
         "-o",

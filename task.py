@@ -647,7 +647,7 @@ class Task(ABC):
         vf_rep_for_pciaddr: Optional[str] = None,
     ) -> Optional[list[dict[str, Any]]]:
         r = self.run_oc_exec(
-            "ocp-tft-netdev get_device_infos",
+            "ktoolbox-netdev get_device_infos",
             pod_name=pod_name,
         )
 
