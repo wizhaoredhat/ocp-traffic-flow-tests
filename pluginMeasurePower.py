@@ -57,7 +57,12 @@ class TaskMeasurePower(PluginTask):
         return plugin
 
     def __init__(self, ts: TestSettings, node_name: str, tenant: bool):
-        super().__init__(ts, 0, node_name, tenant)
+        super().__init__(
+            ts=ts,
+            index=0,
+            node_name=node_name,
+            tenant=tenant,
+        )
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (

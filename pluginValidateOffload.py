@@ -150,7 +150,12 @@ class TaskValidateOffload(PluginTask):
         perf_instance: task.ServerTask | task.ClientTask,
         tenant: bool,
     ):
-        super().__init__(ts, 0, perf_instance.node_name, tenant)
+        super().__init__(
+            ts=ts,
+            index=0,
+            node_name=perf_instance.node_name,
+            tenant=tenant,
+        )
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (

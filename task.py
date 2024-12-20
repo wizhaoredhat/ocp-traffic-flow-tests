@@ -246,7 +246,12 @@ class TaskOperation:
 
 class Task(ABC):
     def __init__(
-        self, ts: TestSettings, index: int, node_name: str, tenant: bool
+        self,
+        *,
+        ts: TestSettings,
+        index: int,
+        node_name: str,
+        tenant: bool,
     ) -> None:
         self.in_file_template = ""
         self.out_file_yaml = ""
@@ -702,7 +707,12 @@ class Task(ABC):
 
 class ServerTask(Task, ABC):
     def __init__(self, ts: TestSettings):
-        super().__init__(ts, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+        super().__init__(
+            ts=ts,
+            index=ts.server_index,
+            node_name=ts.node_server_name,
+            tenant=ts.server_is_tenant,
+        )
 
         connection_mode = ts.connection_mode
         pod_type = ts.server_pod_type
@@ -861,7 +871,12 @@ class ServerTask(Task, ABC):
 
 class ClientTask(Task, ABC):
     def __init__(self, ts: TestSettings, server: ServerTask):
-        super().__init__(ts, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
+        super().__init__(
+            ts=ts,
+            index=ts.client_index,
+            node_name=ts.conf_client.name,
+            tenant=ts.client_is_tenant,
+        )
 
         pod_type = ts.client_pod_type
         node_name = self.node_name
