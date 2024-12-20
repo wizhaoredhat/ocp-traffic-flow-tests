@@ -25,15 +25,13 @@ class PluginMeasureCpu(pluginbase.Plugin):
         self,
         *,
         ts: TestSettings,
-        node_server_name: str,
-        node_client_name: str,
         perf_server: task.ServerTask,
         perf_client: task.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         return [
-            TaskMeasureCPU(ts, node_server_name, tenant),
-            TaskMeasureCPU(ts, node_client_name, tenant),
+            TaskMeasureCPU(ts, ts.conf_server.name, tenant),
+            TaskMeasureCPU(ts, ts.conf_client.name, tenant),
         ]
 
 

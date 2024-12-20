@@ -88,8 +88,6 @@ class TrafficFlowTests:
         for plugin in connection.plugins:
             m = plugin.plugin.enable(
                 ts=ts,
-                node_server_name=c_server.name,
-                node_client_name=c_client.name,
                 perf_server=servers[-1],
                 perf_client=clients[-1],
                 tenant=True,

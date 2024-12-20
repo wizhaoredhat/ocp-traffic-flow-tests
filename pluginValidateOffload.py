@@ -123,8 +123,6 @@ class PluginValidateOffload(pluginbase.Plugin):
         self,
         *,
         ts: TestSettings,
-        node_server_name: str,
-        node_client_name: str,
         perf_server: task.ServerTask,
         perf_client: task.ClientTask,
         tenant: bool,
