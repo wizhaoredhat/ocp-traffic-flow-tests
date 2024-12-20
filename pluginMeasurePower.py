@@ -34,7 +34,7 @@ class PluginMeasurePower(pluginbase.Plugin):
         tenant: bool,
     ) -> list[PluginTask]:
         return [
-            TaskMeasurePower(ts, TaskMode.SERVER, tenant),
+            TaskMeasurePower(ts, TaskMode.SERVER_USED, tenant),
             TaskMeasurePower(ts, TaskMode.CLIENT, tenant),
         ]
 
