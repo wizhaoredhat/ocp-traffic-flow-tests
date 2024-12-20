@@ -129,8 +129,8 @@ class PluginValidateOffload(pluginbase.Plugin):
     ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
         return [
-            TaskValidateOffload(ts, perf_server, tenant),
-            TaskValidateOffload(ts, perf_client, tenant),
+            TaskValidateOffload(ts, ts.conf_server_used.name, perf_server, tenant),
+            TaskValidateOffload(ts, ts.conf_client.name, perf_client, tenant),
         ]
 
 
@@ -145,13 +145,14 @@ class TaskValidateOffload(PluginTask):
     def __init__(
         self,
         ts: TestSettings,
+        node_name: str,
         perf_instance: task.ServerTask | task.ClientTask,
         tenant: bool,
     ):
         super().__init__(
             ts=ts,
             index=0,
-            node_name=perf_instance.node_name,
+            node_name=node_name,
             tenant=tenant,
         )
 
