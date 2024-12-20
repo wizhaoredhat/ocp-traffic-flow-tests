@@ -9,6 +9,8 @@ import tftbase
 
 from tftbase import NodeLocation
 from tftbase import PodInfo
+from tftbase import TaskMode
+from tftbase import TestCaseTypInfo
 from tftbase import TestMetadata
 
 
@@ -18,8 +20,6 @@ class TestSettings:
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
 
     cfg_descr: testConfig.ConfigDescriptor
-    conf_server: testConfig.ConfServer
-    conf_client: testConfig.ConfClient
     instance_index: int
     reverse: bool
 
@@ -37,9 +37,42 @@ class TestSettings:
         self._lock: threading.Lock
         object.__setattr__(self, "_lock", threading.Lock())
 
-        # Check that the cfg_descr has a connection/test_case_id
+        # Access some properties here. We would get an exception early on, if
+        # there is something wrong.
         self.connection
-        self.test_case_id
+        self.test_case_typ_info
+        self.conf_server
+        self.conf_client
+
+    @property
+    def conf_server(self) -> testConfig.ConfServer:
+        # For now, only one server/client is supported and TestConfig already
+        # enforces that. Do tuple-unpacking here, to further assert that there
+        # is only one server/client.
+        (c_server,) = self.connection.server
+        return c_server
+
+    @property
+    def conf_client(self) -> testConfig.ConfClient:
+        # For now, only one server/client is supported and TestConfig already
+        # enforces that. Do tuple-unpacking here, to further assert that there
+        # is only one server/client.
+        (c_client,) = self.connection.client
+        return c_client
+
+    @property
+    def conf_server_used(self) -> testConfig.ConfBaseClientServer:
+        if self.test_case_typ_info.is_same_node:
+            return self.conf_client
+        else:
+            return self.conf_server
+
+    def conf_clientserver(self, task_mode: TaskMode) -> testConfig.ConfBaseClientServer:
+        if task_mode == TaskMode.CLIENT:
+            return self.conf_client
+        if task_mode == TaskMode.SERVER:
+            return self.conf_server_used
+        raise ValueError()
 
     @property
     def clmo_barrier(self) -> threading.Barrier:
@@ -76,6 +109,10 @@ class TestSettings:
         return self.cfg_descr.get_test_case()
 
     @property
+    def test_case_typ_info(self) -> TestCaseTypInfo:
+        return TestCaseTypInfo.get(self.test_case_id)
+
+    @property
     def server_is_tenant(self) -> bool:
         # TODO: Handle Case when not tenant
         return True
@@ -96,40 +133,27 @@ class TestSettings:
         return self.instance_index
 
     @property
-    def node_server_name(self) -> str:
-        if tftbase.test_case_type_is_same_node(self.test_case_id):
-            return self.conf_client.name
-        else:
-            return self.conf_server.name
-
-    @property
     def server_pod_type(self) -> tftbase.PodType:
-        return tftbase.test_case_type_to_server_pod_type(
-            self.test_case_id,
-            self.conf_server.pod_type,
-        )
+        return self.test_case_typ_info.get_server_pod_type(self.conf_server.pod_type)
 
     @property
     def client_pod_type(self) -> tftbase.PodType:
-        return tftbase.test_case_type_to_client_pod_type(
-            self.test_case_id,
-            self.conf_client.pod_type,
-        )
+        return self.test_case_typ_info.get_client_pod_type(self.conf_client.pod_type)
 
     @property
     def connection_mode(self) -> tftbase.ConnectionMode:
-        return tftbase.test_case_type_to_connection_mode(self.test_case_id)
+        return self.test_case_typ_info.connection_mode
 
     @property
-    def nodeLocation(self) -> NodeLocation:
-        return tftbase.test_case_type_get_node_location(self.test_case_id)
+    def node_location(self) -> NodeLocation:
+        return self.test_case_typ_info.node_location
 
     def get_test_info(self) -> str:
-        return f"""type={self.connection.test_type.name}, test-case={self.test_case_id.name}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.nodeLocation.name}
+        return f"""type={self.connection.test_type.name}, test-case={self.test_case_id.name}: {self.client_pod_type.name} pod to {self.connection_mode.name} to {self.server_pod_type.name} pod - {self.node_location.name}
         Client Node: {self.conf_client.name}
             Tenant={self.client_is_tenant}
             Index={self.client_index}
-        Server Node: {self.node_server_name}
+        Server Node: {self.conf_server_used.name}
             Exec Persistence: {self.conf_server.persistent}
             Tenant={self.server_is_tenant}
             Index={self.server_index}"""
@@ -138,7 +162,7 @@ class TestSettings:
         direction = ""
         if self.reverse:
             direction = "-REV"
-        return f"{self.test_case_id.name}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.nodeLocation.name}{direction}"
+        return f"{self.test_case_id.name}-{self.client_pod_type.name}_TO_{self.connection_mode.name}_TO_{self.server_pod_type.name}-{self.node_location.name}{direction}"
 
     def get_test_metadata(self) -> TestMetadata:
         return TestMetadata(
@@ -149,7 +173,7 @@ class TestSettings:
             test_type=self.connection.test_type,
             reverse=self.reverse,
             server=PodInfo(
-                name=self.node_server_name,
+                name=self.conf_server_used.name,
                 pod_type=self.server_pod_type,
                 is_tenant=self.server_is_tenant,
                 index=self.client_index,

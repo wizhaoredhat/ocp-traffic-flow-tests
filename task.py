@@ -33,6 +33,7 @@ from tftbase import BaseOutput
 from tftbase import ClusterMode
 from tftbase import ConnectionMode
 from tftbase import PodType
+from tftbase import TaskMode
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -246,8 +247,14 @@ class TaskOperation:
 
 class Task(ABC):
     def __init__(
-        self, ts: TestSettings, index: int, node_name: str, tenant: bool
+        self,
+        *,
+        ts: TestSettings,
+        index: int,
+        tenant: bool,
+        task_mode: TaskMode,
     ) -> None:
+        self.task_mode = task_mode
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
@@ -256,7 +263,6 @@ class Task(ABC):
         self._result: Optional[BaseOutput] = None
         self.lh = host.local
         self.index = index
-        self.node_name = node_name
         self.tenant = tenant
         self.ts = ts
         self.tc = ts.cfg_descr.tc
@@ -271,6 +277,10 @@ class Task(ABC):
     @property
     def log_name_setup(self) -> str:
         return f"{self.log_name}.setup"
+
+    @property
+    def node_name(self) -> str:
+        return self.ts.conf_clientserver(self.task_mode).name
 
     def get_namespace(self) -> str:
         return self.ts.cfg_descr.get_tft().namespace
@@ -702,7 +712,12 @@ class Task(ABC):
 
 class ServerTask(Task, ABC):
     def __init__(self, ts: TestSettings):
-        super().__init__(ts, ts.server_index, ts.node_server_name, ts.server_is_tenant)
+        super().__init__(
+            ts=ts,
+            index=ts.server_index,
+            tenant=ts.server_is_tenant,
+            task_mode=TaskMode.SERVER,
+        )
 
         connection_mode = ts.connection_mode
         pod_type = ts.server_pod_type
@@ -861,7 +876,12 @@ class ServerTask(Task, ABC):
 
 class ClientTask(Task, ABC):
     def __init__(self, ts: TestSettings, server: ServerTask):
-        super().__init__(ts, ts.client_index, ts.conf_client.name, ts.client_is_tenant)
+        super().__init__(
+            ts=ts,
+            index=ts.client_index,
+            tenant=ts.client_is_tenant,
+            task_mode=TaskMode.CLIENT,
+        )
 
         pod_type = ts.client_pod_type
         node_name = self.node_name

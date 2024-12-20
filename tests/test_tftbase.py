@@ -11,6 +11,7 @@ import tftbase  # noqa: E402
 from tftbase import FlowTestOutput  # noqa: E402
 from tftbase import PodInfo  # noqa: E402
 from tftbase import PodType  # noqa: E402
+from tftbase import TestCaseTypInfo  # noqa: E402
 from tftbase import TestCaseType  # noqa: E402
 from tftbase import TestMetadata  # noqa: E402
 from tftbase import TestType  # noqa: E402
@@ -116,7 +117,58 @@ def test_iperf_output() -> None:
 
 
 def test_test_case_typ_infos() -> None:
+    for typ, ti in tftbase._test_case_typ_infos.items():
+        assert typ == ti.test_case_type
     assert list(tftbase._test_case_typ_infos) == list(TestCaseType)
+    test_case_typ_infos = list(tftbase._test_case_typ_infos.values())
+    assert list(tftbase._test_case_typ_infos) == [
+        ti.test_case_type for ti in test_case_typ_infos
+    ]
+
+    def _is_identical(ti1: TestCaseTypInfo, ti2: TestCaseTypInfo) -> bool:
+        assert ti1.test_case_type != ti2.test_case_type
+        return (
+            ti1.connection_mode == ti2.connection_mode
+            and ti1.is_same_node == ti2.is_same_node
+            and ti1.is_server_hostbacked == ti2.is_server_hostbacked
+            and ti1.is_client_hostbacked == ti2.is_client_hostbacked
+        )
+
+    # FIXME: the following TestCaseType pairs are identical configuration.
+    # That is not right. If you run those two tests, the exact same thing will
+    # be tested.
+    identical_cases = (
+        (
+            TestCaseType.POD_TO_NODE_PORT_TO_POD_SAME_NODE,
+            TestCaseType.POD_TO_NODE_PORT_TO_HOST_SAME_NODE,
+        ),
+        (
+            TestCaseType.POD_TO_NODE_PORT_TO_POD_DIFF_NODE,
+            TestCaseType.POD_TO_NODE_PORT_TO_HOST_DIFF_NODE,
+        ),
+        (
+            TestCaseType.HOST_TO_HOST_SAME_NODE,
+            TestCaseType.HOST_TO_POD_SAME_NODE,
+        ),
+        (
+            TestCaseType.HOST_TO_HOST_DIFF_NODE,
+            TestCaseType.HOST_TO_POD_DIFF_NODE,
+        ),
+        (
+            TestCaseType.POD_TO_EXTERNAL,
+            TestCaseType.HOST_TO_EXTERNAL,
+        ),
+    )
+    for idx1, ti1 in enumerate(test_case_typ_infos):
+        for idx2, ti2 in enumerate(test_case_typ_infos[idx1 + 1 :]):
+            if (ti1.test_case_type, ti2.test_case_type) in identical_cases:
+                assert _is_identical(ti1, ti2)
+            else:
+                assert not _is_identical(ti1, ti2)
+    for idx1, tt1 in enumerate(identical_cases):
+        assert tt1[0].value < tt1[1].value
+        for idx2, tt2 in enumerate(identical_cases[idx1 + 1 :]):
+            assert tt1[0].value < tt2[0].value
 
 
 def test_eval_binary_opt_in() -> None:

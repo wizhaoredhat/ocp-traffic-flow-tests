@@ -13,6 +13,7 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
+from tftbase import TaskMode
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -25,15 +26,13 @@ class PluginMeasureCpu(pluginbase.Plugin):
         self,
         *,
         ts: TestSettings,
-        node_server_name: str,
-        node_client_name: str,
         perf_server: task.ServerTask,
         perf_client: task.ClientTask,
         tenant: bool,
     ) -> list[PluginTask]:
         return [
-            TaskMeasureCPU(ts, node_server_name, tenant),
-            TaskMeasureCPU(ts, node_client_name, tenant),
+            TaskMeasureCPU(ts, TaskMode.SERVER, tenant),
+            TaskMeasureCPU(ts, TaskMode.CLIENT, tenant),
         ]
 
 
@@ -45,15 +44,19 @@ class TaskMeasureCPU(PluginTask):
     def plugin(self) -> pluginbase.Plugin:
         return plugin
 
-    def __init__(self, ts: TestSettings, node_name: str, tenant: bool):
-        super().__init__(ts, 0, node_name, tenant)
+    def __init__(self, ts: TestSettings, task_mode: TaskMode, tenant: bool):
+        super().__init__(
+            ts=ts,
+            index=0,
+            task_mode=task_mode,
+            tenant=tenant,
+        )
 
         self.in_file_template = "./manifests/tools-pod.yaml.j2"
         self.out_file_yaml = (
             f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         )
         self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
-        self.node_name = node_name
 
     def get_template_args(self) -> dict[str, str | list[str]]:
         return {
