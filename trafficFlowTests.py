@@ -72,13 +72,8 @@ class TrafficFlowTests:
         clients: list[task.ClientTask] = []
         monitors: list[Task] = []
 
-        c_server = connection.server[0]
-        c_client = connection.client[0]
-
         ts = TestSettings(
             cfg_descr=cfg_descr,
-            conf_server=c_server,
-            conf_client=c_client,
             instance_index=instance_index,
             reverse=reverse,
         )

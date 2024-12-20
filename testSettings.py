@@ -19,8 +19,6 @@ class TestSettings:
     """TestSettings will handle determining the logic require to configure the client/server for a given test"""
 
     cfg_descr: testConfig.ConfigDescriptor
-    conf_server: testConfig.ConfServer
-    conf_client: testConfig.ConfClient
     instance_index: int
     reverse: bool
 
@@ -38,9 +36,28 @@ class TestSettings:
         self._lock: threading.Lock
         object.__setattr__(self, "_lock", threading.Lock())
 
-        # Check that the cfg_descr has a connection/test_case_id
+        # Access some properties here. We would get an exception early on, if
+        # there is something wrong.
         self.connection
         self.test_case_typ_info
+        self.conf_server
+        self.conf_client
+
+    @property
+    def conf_server(self) -> testConfig.ConfServer:
+        # For now, only one server/client is supported and TestConfig already
+        # enforces that. Do tuple-unpacking here, to further assert that there
+        # is only one server/client.
+        (c_server,) = self.connection.server
+        return c_server
+
+    @property
+    def conf_client(self) -> testConfig.ConfClient:
+        # For now, only one server/client is supported and TestConfig already
+        # enforces that. Do tuple-unpacking here, to further assert that there
+        # is only one server/client.
+        (c_client,) = self.connection.client
+        return c_client
 
     @property
     def clmo_barrier(self) -> threading.Barrier:
