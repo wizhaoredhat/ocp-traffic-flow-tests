@@ -103,9 +103,8 @@ class ClusterMode(Enum):
 
 
 class TaskMode(Enum):
-    SERVER = 1
-    CLIENT = 2
-    SERVER_USED = 3
+    CLIENT = 1
+    SERVER = 2
 
 
 class TestType(Enum):

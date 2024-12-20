@@ -130,7 +130,7 @@ class PluginValidateOffload(pluginbase.Plugin):
     ) -> list[PluginTask]:
         # TODO allow this to run on each individual server + client pairs.
         return [
-            TaskValidateOffload(ts, TaskMode.SERVER_USED, perf_server, tenant),
+            TaskValidateOffload(ts, TaskMode.SERVER, perf_server, tenant),
             TaskValidateOffload(ts, TaskMode.CLIENT, perf_client, tenant),
         ]
 
