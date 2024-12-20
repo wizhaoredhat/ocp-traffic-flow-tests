@@ -65,7 +65,7 @@ class _ConfBaseConnectionItem(StructParseBaseNamed, abc.ABC):
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class _ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
+class ConfBaseClientServer(_ConfBaseConnectionItem, abc.ABC):
     sriov: bool
     pod_type: PodType
     default_network: str
@@ -190,7 +190,7 @@ class ConfPlugin(_ConfBaseConnectionItem):
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class ConfServer(_ConfBaseClientServer):
+class ConfServer(ConfBaseClientServer):
     persistent: bool
 
     def serialize(self) -> dict[str, Any]:
@@ -201,15 +201,15 @@ class ConfServer(_ConfBaseClientServer):
 
     @staticmethod
     def parse(pctx: StructParseParseContext) -> "ConfServer":
-        return _ConfBaseClientServer._parse(ConfServer, pctx)
+        return ConfBaseClientServer._parse(ConfServer, pctx)
 
 
 @strict_dataclass
 @dataclass(frozen=True, kw_only=True)
-class ConfClient(_ConfBaseClientServer):
+class ConfClient(ConfBaseClientServer):
     @staticmethod
     def parse(pctx: StructParseParseContext) -> "ConfClient":
-        return _ConfBaseClientServer._parse(ConfClient, pctx)
+        return ConfBaseClientServer._parse(ConfClient, pctx)
 
 
 @strict_dataclass
