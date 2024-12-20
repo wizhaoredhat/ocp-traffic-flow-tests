@@ -13,6 +13,7 @@ from task import TaskOperation
 from testSettings import TestSettings
 from tftbase import BaseOutput
 from tftbase import PluginOutput
+from tftbase import TaskMode
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -30,8 +31,8 @@ class PluginMeasureCpu(pluginbase.Plugin):
         tenant: bool,
     ) -> list[PluginTask]:
         return [
-            TaskMeasureCPU(ts, ts.conf_server.name, tenant),
-            TaskMeasureCPU(ts, ts.conf_client.name, tenant),
+            TaskMeasureCPU(ts, TaskMode.SERVER, tenant),
+            TaskMeasureCPU(ts, TaskMode.CLIENT, tenant),
         ]
 
 
@@ -43,11 +44,12 @@ class TaskMeasureCPU(PluginTask):
     def plugin(self) -> pluginbase.Plugin:
         return plugin
 
-    def __init__(self, ts: TestSettings, node_name: str, tenant: bool):
+    def __init__(self, ts: TestSettings, task_mode: TaskMode, tenant: bool):
         super().__init__(
             ts=ts,
             index=0,
-            node_name=node_name,
+            node_name=ts.conf_clientserver(task_mode).name,
+            task_mode=task_mode,
             tenant=tenant,
         )
 

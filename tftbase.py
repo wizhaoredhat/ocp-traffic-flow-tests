@@ -102,6 +102,12 @@ class ClusterMode(Enum):
     DPU = 3
 
 
+class TaskMode(Enum):
+    SERVER = 1
+    CLIENT = 2
+    SERVER_USED = 3
+
+
 class TestType(Enum):
     IPERF_TCP = 1
     IPERF_UDP = 2

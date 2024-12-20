@@ -33,6 +33,7 @@ from tftbase import BaseOutput
 from tftbase import ClusterMode
 from tftbase import ConnectionMode
 from tftbase import PodType
+from tftbase import TaskMode
 
 
 logger = logging.getLogger("tft." + __name__)
@@ -252,7 +253,9 @@ class Task(ABC):
         index: int,
         node_name: str,
         tenant: bool,
+        task_mode: TaskMode,
     ) -> None:
+        self.task_mode = task_mode
         self.in_file_template = ""
         self.out_file_yaml = ""
         self.pod_name = ""
@@ -712,6 +715,7 @@ class ServerTask(Task, ABC):
             index=ts.server_index,
             node_name=ts.conf_server_used.name,
             tenant=ts.server_is_tenant,
+            task_mode=TaskMode.SERVER_USED,
         )
 
         connection_mode = ts.connection_mode
@@ -876,6 +880,7 @@ class ClientTask(Task, ABC):
             index=ts.client_index,
             node_name=ts.conf_client.name,
             tenant=ts.client_is_tenant,
+            task_mode=TaskMode.CLIENT,
         )
 
         pod_type = ts.client_pod_type

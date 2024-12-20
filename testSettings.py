@@ -9,6 +9,7 @@ import tftbase
 
 from tftbase import NodeLocation
 from tftbase import PodInfo
+from tftbase import TaskMode
 from tftbase import TestCaseTypInfo
 from tftbase import TestMetadata
 
@@ -65,6 +66,15 @@ class TestSettings:
             return self.conf_client
         else:
             return self.conf_server
+
+    def conf_clientserver(self, task_mode: TaskMode) -> testConfig.ConfBaseClientServer:
+        if task_mode == TaskMode.SERVER:
+            return self.conf_server
+        if task_mode == TaskMode.CLIENT:
+            return self.conf_client
+        if task_mode == TaskMode.SERVER_USED:
+            return self.conf_server_used
+        raise ValueError()
 
     @property
     def clmo_barrier(self) -> threading.Barrier:
