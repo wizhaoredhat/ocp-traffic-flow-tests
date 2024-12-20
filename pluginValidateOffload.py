@@ -153,7 +153,6 @@ class TaskValidateOffload(PluginTask):
         super().__init__(
             ts=ts,
             index=0,
-            node_name=ts.conf_clientserver(task_mode).name,
             task_mode=task_mode,
             tenant=tenant,
         )

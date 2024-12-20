@@ -251,7 +251,6 @@ class Task(ABC):
         *,
         ts: TestSettings,
         index: int,
-        node_name: str,
         tenant: bool,
         task_mode: TaskMode,
     ) -> None:
@@ -264,7 +263,6 @@ class Task(ABC):
         self._result: Optional[BaseOutput] = None
         self.lh = host.local
         self.index = index
-        self.node_name = node_name
         self.tenant = tenant
         self.ts = ts
         self.tc = ts.cfg_descr.tc
@@ -279,6 +277,10 @@ class Task(ABC):
     @property
     def log_name_setup(self) -> str:
         return f"{self.log_name}.setup"
+
+    @property
+    def node_name(self) -> str:
+        return self.ts.conf_clientserver(self.task_mode).name
 
     def get_namespace(self) -> str:
         return self.ts.cfg_descr.get_tft().namespace
@@ -713,7 +715,6 @@ class ServerTask(Task, ABC):
         super().__init__(
             ts=ts,
             index=ts.server_index,
-            node_name=ts.conf_server_used.name,
             tenant=ts.server_is_tenant,
             task_mode=TaskMode.SERVER_USED,
         )
@@ -878,7 +879,6 @@ class ClientTask(Task, ABC):
         super().__init__(
             ts=ts,
             index=ts.client_index,
-            node_name=ts.conf_client.name,
             tenant=ts.client_is_tenant,
             task_mode=TaskMode.CLIENT,
         )
