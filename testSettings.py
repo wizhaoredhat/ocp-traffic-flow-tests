@@ -60,6 +60,13 @@ class TestSettings:
         return c_client
 
     @property
+    def conf_server_used(self) -> testConfig.ConfBaseClientServer:
+        if self.test_case_typ_info.is_same_node:
+            return self.conf_client
+        else:
+            return self.conf_server
+
+    @property
     def clmo_barrier(self) -> threading.Barrier:
         with self._lock:
             b = getattr(self, "_clmo_barrier", None)
@@ -118,13 +125,6 @@ class TestSettings:
         return self.instance_index
 
     @property
-    def node_server_name(self) -> str:
-        if self.test_case_typ_info.is_same_node:
-            return self.conf_client.name
-        else:
-            return self.conf_server.name
-
-    @property
     def server_pod_type(self) -> tftbase.PodType:
         return self.test_case_typ_info.get_server_pod_type(self.conf_server.pod_type)
 
@@ -145,7 +145,7 @@ class TestSettings:
         Client Node: {self.conf_client.name}
             Tenant={self.client_is_tenant}
             Index={self.client_index}
-        Server Node: {self.node_server_name}
+        Server Node: {self.conf_server_used.name}
             Exec Persistence: {self.conf_server.persistent}
             Tenant={self.server_is_tenant}
             Index={self.server_index}"""
@@ -165,7 +165,7 @@ class TestSettings:
             test_type=self.connection.test_type,
             reverse=self.reverse,
             server=PodInfo(
-                name=self.node_server_name,
+                name=self.conf_server_used.name,
                 pod_type=self.server_pod_type,
                 is_tenant=self.server_is_tenant,
                 index=self.client_index,

@@ -710,7 +710,7 @@ class ServerTask(Task, ABC):
         super().__init__(
             ts=ts,
             index=ts.server_index,
-            node_name=ts.node_server_name,
+            node_name=ts.conf_server_used.name,
             tenant=ts.server_is_tenant,
         )
 
