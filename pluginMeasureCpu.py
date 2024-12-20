@@ -56,7 +56,6 @@ class TaskMeasureCPU(PluginTask):
             f"./manifests/yamls/tools-pod-{self.node_name}-measure-cpu.yaml"
         )
         self.pod_name = f"tools-pod-{self.node_name}-measure-cpu"
-        self.node_name = node_name
 
     def get_template_args(self) -> dict[str, str | list[str]]:
         return {
